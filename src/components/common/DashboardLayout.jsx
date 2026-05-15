@@ -1,10 +1,10 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
 import { useTheme } from '../../context/ThemeContext'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const navItems = [
   { to: '/', label: 'sidebar.reception', icon: Users },
@@ -17,12 +17,25 @@ export default function DashboardLayout() {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isRTL, setIsRTL] = useState(false)
+
+  useEffect(() => {
+    const checkRTL = () => {
+      setIsRTL(document.documentElement.dir === 'rtl')
+    }
+    checkRTL()
+    
+    const observer = new MutationObserver(checkRTL)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['dir'] })
+    
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-dark-100 dark:to-dark-200">
+    <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} ${isRTL ? 'rtl' : 'ltr'}`}>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         {/* Mobile Header */}
-        <div className="lg:hidden bg-white dark:bg-dark-200 shadow-sm px-4 py-3 flex items-center justify-between">
+        <div className="lg:hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-40">
           <div className="font-bold text-xl">
             <span className="bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
               {t('app.title')}
@@ -30,15 +43,15 @@ export default function DashboardLayout() {
           </div>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
         <div className="flex">
-          {/* Sidebar - Desktop */}
-          <aside className={`fixed lg:relative z-30 w-72 bg-white dark:bg-dark-200 shadow-xl flex flex-col transition-transform duration-300 ${
+          {/* Sidebar */}
+          <aside className={`fixed lg:relative z-30 w-80 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md shadow-2xl flex flex-col transition-transform duration-300 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}>
             {/* Logo Area */}
@@ -48,7 +61,7 @@ export default function DashboardLayout() {
                   {t('app.title')}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t('app.name')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t('app.tagline')}</p>
             </div>
 
             {/* Navigation */}
@@ -68,18 +81,13 @@ export default function DashboardLayout() {
                 >
                   <item.icon size={20} />
                   <span className="font-medium">{t(item.label)}</span>
-                  {!navItems.find(i => i.to === item.to)?.isActive && (
-                    <div className="ml-auto opacity-0 group-hover:opacity-100 transition">
-                      <div className="w-1 h-1 rounded-full bg-gray-400"></div>
-                    </div>
-                  )}
                 </NavLink>
               ))}
             </nav>
 
             {/* Bottom Section */}
             <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 dark:bg-gray-800">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 dark:bg-gray-900">
                 <LanguageSwitcher />
                 <ThemeSwitcher />
               </div>
@@ -100,7 +108,7 @@ export default function DashboardLayout() {
 
           {/* Main Content */}
           <main className="flex-1 lg:ml-0 min-h-screen">
-            <div className="p-4 md:p-8">
+            <div className="p-4 md:p-8 animate-fade-in">
               <Outlet />
             </div>
           </main>
