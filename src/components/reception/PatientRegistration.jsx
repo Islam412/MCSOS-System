@@ -20,10 +20,7 @@ export default function PatientRegistration() {
       return
     }
     const patientId = 'P' + Math.floor(Math.random() * 10000)
-    toast.success(`${form.name} ${t('reception.registered_success')} ${patientId}`, {
-      duration: 4000,
-      position: isRTL ? 'top-center' : 'top-right',
-    })
+    toast.success(`${form.name} ${t('reception.registered_success')} - ${t('reception.id')}: ${patientId}`)
     setForm({ name: '', phone: '', email: '', idNumber: '' })
   }
 
@@ -53,7 +50,7 @@ export default function PatientRegistration() {
             <input
               type="text"
               required
-              placeholder={t('reception.name')}
+              placeholder={t('placeholders.enter_name')}
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -70,7 +67,7 @@ export default function PatientRegistration() {
             <input
               type="tel"
               required
-              placeholder="+966 5X XXX XXXX"
+              placeholder={t('placeholders.enter_phone')}
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -86,7 +83,7 @@ export default function PatientRegistration() {
             <Mail className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="email"
-              placeholder="patient@example.com"
+              placeholder={t('placeholders.enter_email')}
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -102,7 +99,7 @@ export default function PatientRegistration() {
             <IdCard className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="text"
-              placeholder={t('reception.national_id')}
+              placeholder={t('placeholders.enter_id')}
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.idNumber}
               onChange={(e) => setForm({ ...form, idNumber: e.target.value })}
