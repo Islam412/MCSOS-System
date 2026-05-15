@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Settings } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -14,21 +14,19 @@ const navItems = [
 ]
 
 export default function DashboardLayout() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { theme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [isRTL, setIsRTL] = useState(false)
+  const isRTL = i18n.language === 'ar'
 
   useEffect(() => {
-    const checkRTL = () => {
-      setIsRTL(document.documentElement.dir === 'rtl')
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileMenuOpen(false)
+      }
     }
-    checkRTL()
-    
-    const observer = new MutationObserver(checkRTL)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['dir'] })
-    
-    return () => observer.disconnect()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   return (
@@ -55,7 +53,7 @@ export default function DashboardLayout() {
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}>
             {/* Logo Area */}
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+            <div className={`p-6 border-b border-gray-100 dark:border-gray-700 ${isRTL ? 'text-right' : 'text-left'}`}>
               <div className="font-bold text-2xl">
                 <span className="bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
                   {t('app.title')}
@@ -87,9 +85,13 @@ export default function DashboardLayout() {
 
             {/* Bottom Section */}
             <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 dark:bg-gray-900">
-                <LanguageSwitcher />
-                <ThemeSwitcher />
+              <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-gray-50 dark:bg-gray-900">
+                <div className="flex-1">
+                  <LanguageSwitcher />
+                </div>
+                <div className="flex-1">
+                  <ThemeSwitcher />
+                </div>
               </div>
               <button className="flex items-center gap-3 text-red-600 dark:text-red-400 w-full hover:bg-red-50 dark:hover:bg-red-900/30 p-3 rounded-xl transition-colors">
                 <LogOut size={20} />
