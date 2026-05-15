@@ -16,10 +16,11 @@
     "subtitle": "إدارة المرضى والحجوزات بكل سهولة",
     "new_patient": "تسجيل مريض جديد",
     "search_patient": "البحث عن مريض",
+    "appointment": "حجز موعد",
     "contact_info": "معلومات التواصل",
     "register": "تسجيل مريض",
     "required_fields": "الرجاء ملء جميع الحقول المطلوبة",
-    "registered_success": "تم التسجيل بنجاح - المعرف:",
+    "registered_success": "تم التسجيل بنجاح",
     "name": "الاسم الكامل",
     "phone": "رقم الجوال (واتساب)",
     "email": "البريد الإلكتروني",
@@ -30,18 +31,96 @@
     "date": "التاريخ",
     "time": "الوقت",
     "book": "تأكيد الحجز",
-    "patient_details": "تفاصيل المريض"
+    "patient_details": "تفاصيل المريض",
+    "visits": "زيارة",
+    "visits_count": "عدد الزيارات",
+    "id": "رقم المريض"
   },
   "doctor": {
     "title": "لوحة الأطباء",
-    "coming": "قريباً - نظام التقييم والعلاج"
+    "subtitle": "إدارة التقييمات والخطط العلاجية",
+    "coming": "قريباً",
+    "description": "نظام التقييم والعلاج",
+    "assessment": "التقييم الطبي",
+    "treatment_plan": "خطة العلاج",
+    "notes": "ملاحظات الطبيب",
+    "sessions": "الجلسات",
+    "save": "حفظ التقييم",
+    "patient_name": "اسم المريض",
+    "diagnosis": "التشخيص",
+    "prescription": "الوصف الطبي"
   },
   "finance": {
     "title": "لوحة المالية",
-    "coming": "قريباً - تتبع المدفوعات والباقات"
+    "subtitle": "تتبع المدفوعات وإدارة الباقات",
+    "coming": "قريباً",
+    "description": "نظام المدفوعات والباقات",
+    "payments": "المدفوعات",
+    "packages": "الباقات",
+    "invoices": "الفواتير",
+    "discounts": "الخصومات",
+    "total_revenue": "إجمالي الإيرادات",
+    "pending_payments": "المدفوعات المعلقة",
+    "paid": "مدفوع",
+    "unpaid": "غير مدفوع"
   },
   "operations": {
     "title": "لوحة العمليات",
-    "coming": "قريباً - الجدولة والتقارير"
+    "subtitle": "جدولة الأطباء ومتابعة الأداء",
+    "coming": "قريباً",
+    "description": "نظام الجدولة والتقارير",
+    "schedule": "الجدولة",
+    "doctors": "الأطباء",
+    "performance": "الأداء",
+    "reports": "التقارير",
+    "attendance": "نسبة الحضور",
+    "utilization": "نسبة الاستخدام"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "search": "بحث",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "success": "تم بنجاح",
+    "back": "رجوع",
+    "next": "التالي",
+    "confirm": "تأكيد",
+    "close": "إغلاق"
+  },
+  "messages": {
+    "welcome": "مرحباً بك في نظام المركز الطبي",
+    "select_patient": "الرجاء اختيار مريض أولاً",
+    "booking_confirmed": "تم تأكيد الحجز بنجاح",
+    "booking_cancelled": "تم إلغاء الحجز",
+    "patient_not_found": "لم يتم العثور على المريض",
+    "payment_success": "تمت عملية الدفع بنجاح",
+    "payment_failed": "فشلت عملية الدفع"
+  },
+  "placeholders": {
+    "enter_name": "أدخل الاسم الكامل",
+    "enter_phone": "أدخل رقم الجوال",
+    "enter_email": "أدخل البريد الإلكتروني",
+    "enter_id": "أدخل رقم الهوية",
+    "search_patient": "ابحث عن مريض..."
+  },
+  "buttons": {
+    "submit": "إرسال",
+    "update": "تحديث",
+    "add": "إضافة",
+    "remove": "إزالة",
+    "print": "طباعة",
+    "export": "تصدير"
+  },
+  "status": {
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "pending": "قيد الانتظار",
+    "completed": "مكتمل",
+    "cancelled": "ملغي",
+    "attended": "حاضر",
+    "absent": "غائب"
   }
 }
