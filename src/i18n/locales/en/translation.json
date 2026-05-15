@@ -1,0 +1,43 @@
+{
+  "app": {
+    "title": "MCSOS",
+    "name": "Medical Center Management System"
+  },
+  "sidebar": {
+    "reception": "Reception",
+    "doctor": "Doctor",
+    "finance": "Finance",
+    "operations": "Operations",
+    "logout": "Logout"
+  },
+  "reception": {
+    "title": "Reception Dashboard",
+    "subtitle": "Manage patient registration, search, and appointments",
+    "new_patient": "New Patient Registration",
+    "search_patient": "Search Patient",
+    "appointment": "Book Appointment",
+    "name": "Full Name",
+    "phone": "Phone (WhatsApp)",
+    "email": "Email",
+    "national_id": "National ID (Optional)",
+    "register": "Register Patient",
+    "search": "Search by name or phone number...",
+    "no_patients": "No patients found",
+    "select_doctor": "Select Doctor",
+    "date": "Date",
+    "time": "Time",
+    "book": "Book Assessment Session"
+  },
+  "doctor": {
+    "title": "Doctor Dashboard",
+    "coming": "Assessment and treatment plan interface coming soon..."
+  },
+  "finance": {
+    "title": "Finance Dashboard",
+    "coming": "Payment tracking and package management coming soon..."
+  },
+  "operations": {
+    "title": "Operations Dashboard",
+    "coming": "Doctor scheduling and performance monitoring coming soon..."
+  }
+}
