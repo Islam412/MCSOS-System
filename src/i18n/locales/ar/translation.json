@@ -9,15 +9,14 @@
     "doctor": "الأطباء",
     "finance": "المالية",
     "operations": "العمليات",
-    "logout": "تسجيل الخروج",
-    "settings": "الإعدادات"
+    "logout": "تسجيل الخروج"
   },
   "reception": {
-    "title": "لوحة التحكم - الاستقبال",
+    "title": "لوحة الاستقبال",
     "subtitle": "إدارة المرضى والحجوزات بكل سهولة",
     "new_patient": "تسجيل مريض جديد",
     "search_patient": "البحث عن مريض",
-    "appointment": "حجز موعد",
+    "contact_info": "معلومات التواصل",
     "register": "تسجيل مريض",
     "required_fields": "الرجاء ملء جميع الحقول المطلوبة",
     "registered_success": "تم التسجيل بنجاح - المعرف:",
@@ -31,9 +30,7 @@
     "date": "التاريخ",
     "time": "الوقت",
     "book": "تأكيد الحجز",
-    "patient_details": "تفاصيل المريض",
-    "contact_info": "معلومات التواصل",
-    "additional_info": "معلومات إضافية"
+    "patient_details": "تفاصيل المريض"
   },
   "doctor": {
     "title": "لوحة الأطباء",
@@ -46,15 +43,5 @@
   "operations": {
     "title": "لوحة العمليات",
     "coming": "قريباً - الجدولة والتقارير"
-  },
-  "common": {
-    "save": "حفظ",
-    "cancel": "إلغاء",
-    "delete": "حذف",
-    "edit": "تعديل",
-    "search": "بحث",
-    "loading": "جاري التحميل...",
-    "error": "حدث خطأ",
-    "success": "تم بنجاح"
   }
 }
