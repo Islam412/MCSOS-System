@@ -1,0 +1,43 @@
+{
+  "app": {
+    "title": "MCSOS",
+    "name": "Système de Gestion de Centre Médical"
+  },
+  "sidebar": {
+    "reception": "Accueil",
+    "doctor": "Médecin",
+    "finance": "Finances",
+    "operations": "Opérations",
+    "logout": "Déconnexion"
+  },
+  "reception": {
+    "title": "Tableau de Bord Accueil",
+    "subtitle": "Gérer l'enregistrement des patients, la recherche et les rendez-vous",
+    "new_patient": "Nouvel Enregistrement Patient",
+    "search_patient": "Rechercher Patient",
+    "appointment": "Prendre Rendez-vous",
+    "name": "Nom Complet",
+    "phone": "Téléphone (WhatsApp)",
+    "email": "Email",
+    "national_id": "CIN (Optionnel)",
+    "register": "Enregistrer Patient",
+    "search": "Rechercher par nom ou numéro...",
+    "no_patients": "Aucun patient trouvé",
+    "select_doctor": "Sélectionner Médecin",
+    "date": "Date",
+    "time": "Heure",
+    "book": "Réserver Séance d'Évaluation"
+  },
+  "doctor": {
+    "title": "Tableau de Bord Médecin",
+    "coming": "Interface d'évaluation et plan de traitement bientôt disponible..."
+  },
+  "finance": {
+    "title": "Tableau de Bord Finances",
+    "coming": "Suivi des paiements et gestion des forfaits bientôt disponible..."
+  },
+  "operations": {
+    "title": "Tableau de Bord Opérations",
+    "coming": "Planification des médecins et suivi des performances bientôt disponible..."
+  }
+}
