@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Stethoscope, ClipboardList, FileText, Calendar, Users, Clock, Activity, Plus, Edit, Save, X, UserPlus } from 'lucide-react'
+import { Users, Activity, Calendar, Clock, Edit, Save, X, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function DoctorDashboard() {
@@ -84,7 +84,6 @@ export default function DoctorDashboard() {
     return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">{t('status.completed')}</span>
   }
   
-  // حساب الإحصائيات
   const totalPatients = patients.length
   const activePatients = patients.filter(p => p.status === 'active').length
   const totalSessions = patients.reduce((sum, p) => sum + p.sessions, 0)
@@ -108,100 +107,65 @@ export default function DoctorDashboard() {
         </button>
       </div>
       
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Users className="text-blue-600" size={20} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalPatients}</div>
-              <div className="text-sm text-gray-500">{t('doctor.total_patients')}</div>
-            </div>
+            <div className="p-2 bg-blue-100 rounded-lg"><Users className="text-blue-600" size={20} /></div>
+            <div><div className="text-2xl font-bold">{totalPatients}</div><div className="text-sm text-gray-500">{t('doctor.total_patients')}</div></div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-              <Activity className="text-green-600" size={20} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{activePatients}</div>
-              <div className="text-sm text-gray-500">{t('doctor.active_treatments')}</div>
-            </div>
+            <div className="p-2 bg-green-100 rounded-lg"><Activity className="text-green-600" size={20} /></div>
+            <div><div className="text-2xl font-bold">{activePatients}</div><div className="text-sm text-gray-500">{t('doctor.active_treatments')}</div></div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-              <Calendar className="text-purple-600" size={20} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSessions}</div>
-              <div className="text-sm text-gray-500">{t('doctor.total_sessions')}</div>
-            </div>
+            <div className="p-2 bg-purple-100 rounded-lg"><Calendar className="text-purple-600" size={20} /></div>
+            <div><div className="text-2xl font-bold">{totalSessions}</div><div className="text-sm text-gray-500">{t('doctor.total_sessions')}</div></div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-              <Clock className="text-orange-600" size={20} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{completedSessions}</div>
-              <div className="text-sm text-gray-500">{t('doctor.completed_sessions')}</div>
-            </div>
+            <div className="p-2 bg-orange-100 rounded-lg"><Clock className="text-orange-600" size={20} /></div>
+            <div><div className="text-2xl font-bold">{completedSessions}</div><div className="text-sm text-gray-500">{t('doctor.completed_sessions')}</div></div>
           </div>
         </div>
       </div>
       
-      {/* Patients Table */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('doctor.my_patients')}</h2>
+        <div className="px-6 py-4 border-b">
+          <h2 className="text-xl font-bold">{t('doctor.my_patients')}</h2>
         </div>
-        
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-900">
-              <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
-                <th className="px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300">{t('reception.patient_details')}</th>
-                <th className="px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300">{t('doctor.diagnosis')}</th>
-                <th className="px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300">{t('doctor.treatment_plan')}</th>
-                <th className="px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300">{t('doctor.sessions_count')}</th>
-                <th className="px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300">{t('status.active')}</th>
-                <th className="px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300">{t('common.actions')}</th>
+              <tr>
+                <th className="px-6 py-3 text-sm font-semibold">{t('reception.patient_details')}</th>
+                <th className="px-6 py-3 text-sm font-semibold">{t('doctor.diagnosis')}</th>
+                <th className="px-6 py-3 text-sm font-semibold">{t('doctor.treatment_plan')}</th>
+                <th className="px-6 py-3 text-sm font-semibold">{t('doctor.sessions_count')}</th>
+                <th className="px-6 py-3 text-sm font-semibold">{t('status.active')}</th>
+                <th className="px-6 py-3 text-sm font-semibold">{t('common.actions')}</th>
                </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y">
               {patients.map(patient => (
-                <tr key={patient.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                <tr key={patient.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">{patient.name}</div>
-                      <div className="text-sm text-gray-500">{patient.age} {t('doctor.years')}</div>
-                    </div>
-                   </td>
-                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{patient.diagnosis}</td>
-                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{patient.treatment}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${(patient.completed / patient.sessions) * 100}%` }}></div>
-                      </div>
-                      <span className="text-sm text-gray-600">{patient.completed}/{patient.sessions}</span>
-                    </div>
-                   </td>
+                    <div className="font-semibold">{patient.name}</div>
+                    <div className="text-sm text-gray-500">{patient.age} {t('doctor.years')}</div>
+                  </td>
+                  <td className="px-6 py-4">{patient.diagnosis}</td>
+                  <td className="px-6 py-4">{patient.treatment}</td>
+                  <td className="px-6 py-4">{patient.completed}/{patient.sessions}</td>
                   <td className="px-6 py-4">{getStatusBadge(patient.status)}</td>
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => handleSelectPatient(patient)}
-                      className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
-                    >
+                    <button onClick={() => handleSelectPatient(patient)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg">
                       <Edit size={18} />
                     </button>
-                   </td>
+                  </td>
                  </tr>
               ))}
             </tbody>
@@ -214,78 +178,18 @@ export default function DoctorDashboard() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('doctor.add_patient')}</h2>
-              <button onClick={() => setShowAddPatientModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                <X size={20} />
-              </button>
+              <h2 className="text-xl font-bold">{t('doctor.add_patient')}</h2>
+              <button onClick={() => setShowAddPatientModal(false)} className="p-1 hover:bg-gray-100 rounded"><X size={20} /></button>
             </div>
-            
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('reception.name')} *</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  value={newPatient.name}
-                  onChange={(e) => setNewPatient({...newPatient, name: e.target.value})}
-                  placeholder="أدخل اسم المريض"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.years')} *</label>
-                <input
-                  type="number"
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  value={newPatient.age}
-                  onChange={(e) => setNewPatient({...newPatient, age: e.target.value})}
-                  placeholder="أدخل العمر"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.diagnosis')}</label>
-                <textarea
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  rows="2"
-                  value={newPatient.diagnosis}
-                  onChange={(e) => setNewPatient({...newPatient, diagnosis: e.target.value})}
-                  placeholder="أدخل التشخيص"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.treatment_plan')}</label>
-                <textarea
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  rows="2"
-                  value={newPatient.treatment}
-                  onChange={(e) => setNewPatient({...newPatient, treatment: e.target.value})}
-                  placeholder="أدخل خطة العلاج"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.sessions_count')}</label>
-                <input
-                  type="number"
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  value={newPatient.sessions}
-                  onChange={(e) => setNewPatient({...newPatient, sessions: e.target.value})}
-                  placeholder="عدد الجلسات"
-                />
-              </div>
-              
+              <div><label className="block text-sm font-semibold mb-1">{t('reception.name')} *</label><input type="text" className="w-full p-2 border rounded-lg" value={newPatient.name} onChange={(e) => setNewPatient({...newPatient, name: e.target.value})} placeholder="أدخل اسم المريض" /></div>
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.years')} *</label><input type="number" className="w-full p-2 border rounded-lg" value={newPatient.age} onChange={(e) => setNewPatient({...newPatient, age: e.target.value})} placeholder="أدخل العمر" /></div>
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.diagnosis')}</label><textarea className="w-full p-2 border rounded-lg" rows="2" value={newPatient.diagnosis} onChange={(e) => setNewPatient({...newPatient, diagnosis: e.target.value})} placeholder="أدخل التشخيص" /></div>
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.treatment_plan')}</label><textarea className="w-full p-2 border rounded-lg" rows="2" value={newPatient.treatment} onChange={(e) => setNewPatient({...newPatient, treatment: e.target.value})} placeholder="أدخل خطة العلاج" /></div>
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.sessions_count')}</label><input type="number" className="w-full p-2 border rounded-lg" value={newPatient.sessions} onChange={(e) => setNewPatient({...newPatient, sessions: e.target.value})} placeholder="عدد الجلسات" /></div>
               <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleAddPatient}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-                >
-                  <UserPlus size={16} />
-                  {t('common.save')}
-                </button>
-                <button
-                  onClick={() => setShowAddPatientModal(false)}
-                  className="flex-1 bg-gray-300 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-400"
-                >
-                  {t('common.cancel')}
-                </button>
+                <button onClick={handleAddPatient} className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">{t('common.save')}</button>
+                <button onClick={() => setShowAddPatientModal(false)} className="flex-1 bg-gray-300 py-2 rounded-lg hover:bg-gray-400">{t('common.cancel')}</button>
               </div>
             </div>
           </div>
@@ -297,69 +201,18 @@ export default function DoctorDashboard() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('doctor.medical_assessment')}</h2>
-              <button onClick={() => setShowAssessmentModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                <X size={20} />
-              </button>
+              <h2 className="text-xl font-bold">{t('doctor.medical_assessment')}</h2>
+              <button onClick={() => setShowAssessmentModal(false)} className="p-1 hover:bg-gray-100 rounded"><X size={20} /></button>
             </div>
-            
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.patient_name')}</label>
-                <input type="text" value={selectedPatient.name} disabled className="w-full p-2 border rounded-lg bg-gray-50 dark:bg-gray-700" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.diagnosis')}</label>
-                <textarea
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  rows="2"
-                  value={assessmentData.diagnosis}
-                  onChange={(e) => setAssessmentData({...assessmentData, diagnosis: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.treatment_plan')}</label>
-                <textarea
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  rows="2"
-                  value={assessmentData.treatment}
-                  onChange={(e) => setAssessmentData({...assessmentData, treatment: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.sessions_count')}</label>
-                <input
-                  type="number"
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  value={assessmentData.sessions}
-                  onChange={(e) => setAssessmentData({...assessmentData, sessions: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('doctor.notes')}</label>
-                <textarea
-                  className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-                  rows="3"
-                  placeholder={t('doctor.notes_placeholder')}
-                  value={assessmentData.notes}
-                  onChange={(e) => setAssessmentData({...assessmentData, notes: e.target.value})}
-                />
-              </div>
-              
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.patient_name')}</label><input type="text" value={selectedPatient.name} disabled className="w-full p-2 border rounded-lg bg-gray-50" /></div>
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.diagnosis')}</label><textarea className="w-full p-2 border rounded-lg" rows="2" value={assessmentData.diagnosis} onChange={(e) => setAssessmentData({...assessmentData, diagnosis: e.target.value})} /></div>
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.treatment_plan')}</label><textarea className="w-full p-2 border rounded-lg" rows="2" value={assessmentData.treatment} onChange={(e) => setAssessmentData({...assessmentData, treatment: e.target.value})} /></div>
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.sessions_count')}</label><input type="number" className="w-full p-2 border rounded-lg" value={assessmentData.sessions} onChange={(e) => setAssessmentData({...assessmentData, sessions: e.target.value})} /></div>
+              <div><label className="block text-sm font-semibold mb-1">{t('doctor.notes')}</label><textarea className="w-full p-2 border rounded-lg" rows="3" placeholder="أضف ملاحظاتك هنا..." value={assessmentData.notes} onChange={(e) => setAssessmentData({...assessmentData, notes: e.target.value})} /></div>
               <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleSaveAssessment}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-                >
-                  <Save size={16} />
-                  {t('common.save')}
-                </button>
-                <button
-                  onClick={() => setShowAssessmentModal(false)}
-                  className="flex-1 bg-gray-300 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-400"
-                >
-                  {t('common.cancel')}
-                </button>
+                <button onClick={handleSaveAssessment} className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"><Save size={16} /> {t('common.save')}</button>
+                <button onClick={() => setShowAssessmentModal(false)} className="flex-1 bg-gray-300 py-2 rounded-lg hover:bg-gray-400">{t('common.cancel')}</button>
               </div>
             </div>
           </div>
