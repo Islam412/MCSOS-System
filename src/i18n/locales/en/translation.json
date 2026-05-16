@@ -1,0 +1,130 @@
+{
+  "app": {
+    "title": "MCSOS",
+    "name": "Medical Center Management System",
+    "tagline": "Complete solution for managing your medical center"
+  },
+  "sidebar": {
+    "reception": "Reception",
+    "doctor": "Doctor",
+    "finance": "Finance",
+    "operations": "Operations",
+    "logout": "Logout"
+  },
+  "reception": {
+    "title": "Reception Dashboard",
+    "subtitle": "Manage patients and appointments easily",
+    "new_patient": "New Patient Registration",
+    "search_patient": "Search Patient",
+    "appointment": "Book Appointment",
+    "contact_info": "Contact Information",
+    "register": "Register Patient",
+    "required_fields": "Please fill all required fields",
+    "registered_success": "Registered successfully",
+    "name": "Full Name",
+    "phone": "Phone Number (WhatsApp)",
+    "email": "Email Address",
+    "national_id": "National ID",
+    "search_placeholder": "Search by name or phone number",
+    "no_patients": "No patients found",
+    "select_doctor": "Select Doctor",
+    "date": "Date",
+    "time": "Time",
+    "book": "Confirm Booking",
+    "patient_details": "Patient Details",
+    "visits": "visit",
+    "visits_count": "Number of visits",
+    "id": "Patient ID"
+  },
+  "doctor": {
+    "title": "Doctor Dashboard",
+    "subtitle": "Manage assessments and treatment plans",
+    "coming": "Coming Soon",
+    "description": "Assessment and Treatment System",
+    "assessment": "Medical Assessment",
+    "treatment_plan": "Treatment Plan",
+    "notes": "Doctor's Notes",
+    "sessions": "Sessions",
+    "save": "Save Assessment",
+    "patient_name": "Patient Name",
+    "diagnosis": "Diagnosis",
+    "prescription": "Prescription"
+  },
+  "finance": {
+    "title": "Finance Dashboard",
+    "subtitle": "Track payments and manage packages",
+    "coming": "Coming Soon",
+    "description": "Payments and Packages System",
+    "payments": "Payments",
+    "packages": "Packages",
+    "invoices": "Invoices",
+    "discounts": "Discounts",
+    "total_revenue": "Total Revenue",
+    "pending_payments": "Pending Payments",
+    "paid": "Paid",
+    "unpaid": "Unpaid"
+  },
+  "operations": {
+    "title": "Operations Dashboard",
+    "subtitle": "Doctor scheduling and performance monitoring",
+    "coming": "Coming Soon",
+    "description": "Scheduling and Reports System",
+    "schedule": "Schedule",
+    "doctors": "Doctors",
+    "performance": "Performance",
+    "reports": "Reports",
+    "attendance": "Attendance Rate",
+    "utilization": "Utilization Rate"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading",
+    "error": "Error occurred",
+    "success": "Success",
+    "back": "Back",
+    "next": "Next",
+    "confirm": "Confirm",
+    "close": "Close",
+    "with": "with",
+    "on": "on",
+    "at": "at",
+    "active": "Active"
+  },
+  "messages": {
+    "welcome": "Welcome to Medical Center System",
+    "select_patient": "Please select a patient first",
+    "booking_confirmed": "Booking confirmed successfully",
+    "booking_cancelled": "Booking cancelled",
+    "patient_not_found": "Patient not found",
+    "payment_success": "Payment successful",
+    "payment_failed": "Payment failed"
+  },
+  "placeholders": {
+    "enter_name": "Enter full name",
+    "enter_phone": "Enter phone number",
+    "enter_email": "Enter email address",
+    "enter_id": "Enter national ID",
+    "search_patient": "Search for patient"
+  },
+  "buttons": {
+    "submit": "Submit",
+    "update": "Update",
+    "add": "Add",
+    "remove": "Remove",
+    "print": "Print",
+    "export": "Export"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "attended": "Attended",
+    "absent": "Absent"
+  }
+}
