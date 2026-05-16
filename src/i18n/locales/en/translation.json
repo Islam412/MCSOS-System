@@ -34,7 +34,7 @@
   },
   "doctor": {
     "title": "Doctor Dashboard",
-    "subtitle": "Manage assessments",
+    "subtitle": "Manage assessments and treatment plans",
     "total_patients": "Total Patients",
     "active_treatments": "Active Treatments",
     "total_sessions": "Total Sessions",
@@ -47,7 +47,8 @@
     "medical_assessment": "Medical Assessment",
     "notes": "Notes",
     "assessment_saved": "Assessment saved",
-    "years": "years"
+    "years": "years",
+    "actions": "Actions"
   },
   "finance": {
     "title": "Finance Dashboard",
@@ -69,7 +70,8 @@
     "reports": "Reports"
   },
   "scheduling": {
-    "title": "Scheduling",
+    "title": "Scheduling System",
+    "subtitle": "Smart appointment scheduling",
     "select_doctor": "Select Doctor",
     "bulk_generate": "Bulk Schedule",
     "dynamic_generate": "Dynamic Schedule",
@@ -77,15 +79,21 @@
     "no_slots": "No slots"
   },
   "packages": {
-    "title": "Packages",
+    "title": "Packages Management",
+    "subtitle": "Create and manage packages",
     "add_package": "Add Package",
     "price": "Price",
-    "currency": "SAR"
+    "currency": "SAR",
+    "sessions": "sessions",
+    "days": "days"
   },
   "whatsapp": {
-    "title": "WhatsApp",
+    "title": "WhatsApp System",
+    "subtitle": "Send messages and reminders",
     "send_now": "Send Now",
-    "message": "Message"
+    "message": "Message",
+    "template": "Template",
+    "statistics": "Statistics"
   },
   "common": {
     "save": "Save",
@@ -95,10 +103,12 @@
     "search": "Search",
     "loading": "Loading",
     "success": "Success",
-    "error": "Error"
+    "error": "Error",
+    "actions": "Actions"
   },
   "status": {
     "active": "Active",
-    "completed": "Completed"
+    "completed": "Completed",
+    "pending": "Pending"
   }
 }
