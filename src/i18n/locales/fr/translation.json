@@ -1,0 +1,56 @@
+{
+  "app": {
+    "title": "Système Médical",
+    "name": "MCSOS"
+  },
+  "sidebar": {
+    "reception": "Accueil",
+    "doctor": "Médecin",
+    "finance": "Finances",
+    "operations": "Opérations",
+    "scheduling": "Planification",
+    "packages": "Forfaits",
+    "whatsapp": "WhatsApp",
+    "logout": "Déconnexion"
+  },
+  "reception": {
+    "title": "Accueil",
+    "new_patient": "Nouveau Patient",
+    "search_patient": "Rechercher",
+    "register": "Enregistrer",
+    "name": "Nom",
+    "phone": "Téléphone",
+    "email": "Email",
+    "search": "Recherche"
+  },
+  "scheduling": {
+    "title": "Planification",
+    "select_doctor": "Sélectionner",
+    "bulk_generate": "Planification groupe",
+    "dynamic_generate": "Planification dynamique"
+  },
+  "packages": {
+    "title": "Forfaits",
+    "add_package": "Ajouter"
+  },
+  "whatsapp": {
+    "title": "WhatsApp",
+    "send_now": "Envoyer",
+    "message": "Message"
+  },
+  "finance": {
+    "title": "Finances"
+  },
+  "doctor": {
+    "title": "Médecin"
+  },
+  "operations": {
+    "title": "Opérations"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier"
+  }
+}
