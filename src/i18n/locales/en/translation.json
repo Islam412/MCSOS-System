@@ -1,0 +1,56 @@
+{
+  "app": {
+    "title": "Medical Center System",
+    "name": "MCSOS"
+  },
+  "sidebar": {
+    "reception": "Reception",
+    "doctor": "Doctor",
+    "finance": "Finance",
+    "operations": "Operations",
+    "scheduling": "Scheduling",
+    "packages": "Packages",
+    "whatsapp": "WhatsApp",
+    "logout": "Logout"
+  },
+  "reception": {
+    "title": "Reception Dashboard",
+    "new_patient": "New Patient",
+    "search_patient": "Search Patient",
+    "register": "Register",
+    "name": "Name",
+    "phone": "Phone",
+    "email": "Email",
+    "search": "Search"
+  },
+  "scheduling": {
+    "title": "Scheduling",
+    "select_doctor": "Select Doctor",
+    "bulk_generate": "Bulk Schedule",
+    "dynamic_generate": "Dynamic Schedule"
+  },
+  "packages": {
+    "title": "Packages",
+    "add_package": "Add Package"
+  },
+  "whatsapp": {
+    "title": "WhatsApp",
+    "send_now": "Send Now",
+    "message": "Message"
+  },
+  "finance": {
+    "title": "Finance"
+  },
+  "doctor": {
+    "title": "Doctor"
+  },
+  "operations": {
+    "title": "Operations"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit"
+  }
+}
