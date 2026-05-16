@@ -1,0 +1,104 @@
+{
+  "app": {
+    "title": "Système Médical",
+    "name": "MCSOS"
+  },
+  "sidebar": {
+    "reception": "Accueil",
+    "doctor": "Médecin",
+    "finance": "Finances",
+    "operations": "Opérations",
+    "scheduling": "Planification",
+    "packages": "Forfaits",
+    "whatsapp": "WhatsApp",
+    "logout": "Déconnexion"
+  },
+  "reception": {
+    "title": "Accueil",
+    "subtitle": "Gérer les patients",
+    "new_patient": "Nouveau Patient",
+    "search_patient": "Rechercher",
+    "register": "Enregistrer",
+    "name": "Nom",
+    "phone": "Téléphone",
+    "email": "Email",
+    "search": "Recherche",
+    "appointment": "Rendez-vous",
+    "book": "Confirmer",
+    "date": "Date",
+    "time": "Heure",
+    "select_doctor": "Sélectionner",
+    "patient_details": "Détails",
+    "contact_info": "Coordonnées",
+    "national_id": "CIN"
+  },
+  "doctor": {
+    "title": "Médecin",
+    "subtitle": "Évaluations",
+    "total_patients": "Total Patients",
+    "active_treatments": "Traitements actifs",
+    "total_sessions": "Total séances",
+    "completed_sessions": "Séances terminées",
+    "my_patients": "Mes patients",
+    "add_patient": "Ajouter",
+    "diagnosis": "Diagnostic",
+    "treatment_plan": "Traitement",
+    "sessions_count": "Séances",
+    "medical_assessment": "Évaluation",
+    "notes": "Notes",
+    "assessment_saved": "Évaluation sauvegardée",
+    "years": "ans"
+  },
+  "finance": {
+    "title": "Finances",
+    "subtitle": "Paiements",
+    "total_revenue": "Revenu Total",
+    "pending_payments": "En Attente",
+    "paid": "Payé",
+    "unpaid": "Impayé",
+    "amount": "Montant",
+    "invoice": "Facture",
+    "print": "Imprimer"
+  },
+  "operations": {
+    "title": "Opérations",
+    "subtitle": "Performance",
+    "schedule": "Planification",
+    "doctors": "Médecins",
+    "performance": "Performance",
+    "reports": "Rapports"
+  },
+  "scheduling": {
+    "title": "Planification",
+    "select_doctor": "Sélectionner",
+    "bulk_generate": "Planification groupe",
+    "dynamic_generate": "Planification dynamique",
+    "available": "Disponible",
+    "no_slots": "Aucun créneau"
+  },
+  "packages": {
+    "title": "Forfaits",
+    "add_package": "Ajouter",
+    "price": "Prix",
+    "currency": "SAR"
+  },
+  "whatsapp": {
+    "title": "WhatsApp",
+    "send_now": "Envoyer",
+    "message": "Message"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "loading": "Chargement",
+    "success": "Succès",
+    "error": "Erreur"
+  },
+  "status": {
+    "active": "Actif",
+    "completed": "Terminé"
+  }
+}
