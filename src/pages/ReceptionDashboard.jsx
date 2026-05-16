@@ -5,12 +5,13 @@ import PatientSearch from '../components/reception/PatientSearch'
 import AppointmentBooking from '../components/reception/AppointmentBooking'
 
 export default function ReceptionDashboard() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [selectedPatient, setSelectedPatient] = useState(null)
+  const isRTL = i18n.language === 'ar'
 
   return (
     <div className="space-y-6">
-      <div className="mb-6">
+      <div className={`mb-6 ${isRTL ? 'text-right' : 'text-left'}`}>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
           {t('reception.title')}
         </h1>
