@@ -1,0 +1,114 @@
+{
+  "app": {
+    "title": "نظام المركز الطبي",
+    "name": "MCSOS"
+  },
+  "sidebar": {
+    "reception": "الاستقبال",
+    "doctor": "الأطباء",
+    "finance": "المالية",
+    "operations": "العمليات",
+    "scheduling": "الجدولة",
+    "packages": "الباقات",
+    "whatsapp": "واتساب",
+    "logout": "تسجيل الخروج"
+  },
+  "reception": {
+    "title": "لوحة الاستقبال",
+    "subtitle": "إدارة المرضى والحجوزات",
+    "new_patient": "تسجيل مريض جديد",
+    "search_patient": "البحث عن مريض",
+    "register": "تسجيل",
+    "name": "الاسم",
+    "phone": "الجوال",
+    "email": "البريد",
+    "search": "بحث",
+    "appointment": "حجز موعد",
+    "book": "تأكيد الحجز",
+    "date": "التاريخ",
+    "time": "الوقت",
+    "select_doctor": "اختر الطبيب",
+    "patient_details": "تفاصيل المريض",
+    "contact_info": "معلومات التواصل",
+    "national_id": "رقم الهوية"
+  },
+  "doctor": {
+    "title": "لوحة الأطباء",
+    "subtitle": "إدارة التقييمات والخطط العلاجية",
+    "total_patients": "إجمالي المرضى",
+    "active_treatments": "علاجات نشطة",
+    "total_sessions": "إجمالي الجلسات",
+    "completed_sessions": "جلسات مكتملة",
+    "my_patients": "مرضاي",
+    "add_patient": "إضافة مريض",
+    "diagnosis": "التشخيص",
+    "treatment_plan": "خطة العلاج",
+    "sessions_count": "عدد الجلسات",
+    "medical_assessment": "التقييم الطبي",
+    "notes": "ملاحظات",
+    "assessment_saved": "تم حفظ التقييم",
+    "years": "سنة",
+    "actions": "الإجراءات"
+  },
+  "finance": {
+    "title": "لوحة المالية",
+    "subtitle": "تتبع المدفوعات",
+    "total_revenue": "إجمالي الإيرادات",
+    "pending_payments": "مدفوعات معلقة",
+    "paid": "مدفوع",
+    "unpaid": "غير مدفوع",
+    "amount": "المبلغ",
+    "invoice": "فاتورة",
+    "print": "طباعة"
+  },
+  "operations": {
+    "title": "لوحة العمليات",
+    "subtitle": "متابعة الأداء",
+    "schedule": "الجدولة",
+    "doctors": "الأطباء",
+    "performance": "الأداء",
+    "reports": "التقارير"
+  },
+  "scheduling": {
+    "title": "نظام الجدولة",
+    "subtitle": "جدولة ذكية للمواعيد",
+    "select_doctor": "اختر الطبيب",
+    "bulk_generate": "جدولة دفعات",
+    "dynamic_generate": "جدولة ديناميكية",
+    "available": "متاح",
+    "no_slots": "لا توجد مواعيد"
+  },
+  "packages": {
+    "title": "إدارة الباقات",
+    "subtitle": "إنشاء وتعديل باقات الخدمات",
+    "add_package": "إضافة باقة",
+    "price": "السعر",
+    "currency": "ر.س",
+    "sessions": "جلسات",
+    "days": "يوم"
+  },
+  "whatsapp": {
+    "title": "نظام واتساب",
+    "subtitle": "إرسال رسائل وتذكيرات",
+    "send_now": "إرسال الآن",
+    "message": "الرسالة",
+    "template": "قالب",
+    "statistics": "إحصائيات"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "search": "بحث",
+    "loading": "جاري التحميل",
+    "success": "تم بنجاح",
+    "error": "خطأ",
+    "actions": "الإجراءات"
+  },
+  "status": {
+    "active": "نشط",
+    "completed": "مكتمل",
+    "pending": "قيد الانتظار"
+  }
+}
