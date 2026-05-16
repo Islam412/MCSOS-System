@@ -146,3 +146,23 @@
     "status_updated": "تم تحديث حالة الباقة",
     "confirm_delete": "هل أنت متأكد من حذف هذه الباقة؟"
   }
+,
+  "sidebar": {
+    "reception": "الاستقبال",
+    "doctor": "الأطباء",
+    "finance": "المالية",
+    "operations": "العمليات",
+    "scheduling": "الجدولة",
+    "packages": "الباقات",
+    "logout": "تسجيل الخروج"
+  }
+,
+  "sidebar": {
+    "reception": "الاستقبال",
+    "doctor": "الأطباء",
+    "finance": "المالية",
+    "operations": "العمليات",
+    "scheduling": "الجدولة",
+    "packages": "الباقات",
+    "logout": "تسجيل الخروج"
+  }

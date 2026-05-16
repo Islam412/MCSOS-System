@@ -146,3 +146,23 @@
     "status_updated": "Package status updated",
     "confirm_delete": "Are you sure you want to delete this package?"
   }
+,
+  "sidebar": {
+    "reception": "Reception",
+    "doctor": "Doctor",
+    "finance": "Finance",
+    "operations": "Operations",
+    "scheduling": "Scheduling",
+    "packages": "Packages",
+    "logout": "Logout"
+  }
+,
+  "sidebar": {
+    "reception": "Reception",
+    "doctor": "Doctor",
+    "finance": "Finance",
+    "operations": "Operations",
+    "scheduling": "Scheduling",
+    "packages": "Packages",
+    "logout": "Logout"
+  }

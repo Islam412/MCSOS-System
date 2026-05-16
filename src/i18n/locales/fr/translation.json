@@ -146,3 +146,23 @@
     "status_updated": "Statut du forfait mis à jour",
     "confirm_delete": "Supprimer ce forfait ?"
   }
+,
+  "sidebar": {
+    "reception": "Accueil",
+    "doctor": "Médecin",
+    "finance": "Finances",
+    "operations": "Opérations",
+    "scheduling": "Planification",
+    "packages": "Forfaits",
+    "logout": "Déconnexion"
+  }
+,
+  "sidebar": {
+    "reception": "Accueil",
+    "doctor": "Médecin",
+    "finance": "Finances",
+    "operations": "Opérations",
+    "scheduling": "Planification",
+    "packages": "Forfaits",
+    "logout": "Déconnexion"
+  }
