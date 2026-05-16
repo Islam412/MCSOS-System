@@ -15,42 +15,90 @@
   },
   "reception": {
     "title": "لوحة الاستقبال",
+    "subtitle": "إدارة المرضى والحجوزات",
     "new_patient": "تسجيل مريض جديد",
     "search_patient": "البحث عن مريض",
     "register": "تسجيل",
     "name": "الاسم",
     "phone": "الجوال",
     "email": "البريد",
-    "search": "بحث"
-  },
-  "scheduling": {
-    "title": "الجدولة",
+    "search": "بحث",
+    "appointment": "حجز موعد",
+    "book": "تأكيد الحجز",
+    "date": "التاريخ",
+    "time": "الوقت",
     "select_doctor": "اختر الطبيب",
-    "bulk_generate": "جدولة دفعات",
-    "dynamic_generate": "جدولة ديناميكية"
-  },
-  "packages": {
-    "title": "الباقات",
-    "add_package": "إضافة باقة"
-  },
-  "whatsapp": {
-    "title": "واتساب",
-    "send_now": "إرسال الآن",
-    "message": "الرسالة"
-  },
-  "finance": {
-    "title": "المالية"
+    "patient_details": "تفاصيل المريض",
+    "contact_info": "معلومات التواصل",
+    "national_id": "رقم الهوية"
   },
   "doctor": {
-    "title": "الأطباء"
+    "title": "لوحة الأطباء",
+    "subtitle": "إدارة التقييمات والخطط العلاجية",
+    "coming": "قريباً",
+    "description": "نظام التقييم والعلاج",
+    "assessment": "التقييم الطبي",
+    "treatment_plan": "خطة العلاج",
+    "sessions": "الجلسات",
+    "patient_name": "اسم المريض"
+  },
+  "finance": {
+    "title": "لوحة المالية",
+    "subtitle": "تتبع المدفوعات",
+    "coming": "قريباً",
+    "total_revenue": "إجمالي الإيرادات",
+    "pending_payments": "المدفوعات المعلقة",
+    "paid": "مدفوع",
+    "unpaid": "غير مدفوع"
   },
   "operations": {
-    "title": "العمليات"
+    "title": "لوحة العمليات",
+    "subtitle": "جدولة الأطباء ومتابعة الأداء",
+    "coming": "قريباً",
+    "description": "نظام الجدولة والتقارير",
+    "schedule": "الجدولة",
+    "doctors": "الأطباء",
+    "performance": "الأداء",
+    "reports": "التقارير"
+  },
+  "scheduling": {
+    "title": "نظام الجدولة",
+    "subtitle": "جدولة ذكية للمواعيد",
+    "select_doctor": "اختر الطبيب",
+    "bulk_generate": "جدولة دفعات",
+    "dynamic_generate": "جدولة ديناميكية",
+    "bulk_slots": "المواعيد الدفعية",
+    "dynamic_slots": "المواعيد الديناميكية",
+    "available": "متاح",
+    "no_slots": "لا توجد مواعيد"
+  },
+  "packages": {
+    "title": "إدارة الباقات",
+    "subtitle": "إنشاء وتعديل باقات الخدمات",
+    "add_package": "إضافة باقة",
+    "price": "السعر",
+    "currency": "ر.س",
+    "sessions": "جلسات",
+    "days": "يوم"
+  },
+  "whatsapp": {
+    "title": "نظام واتساب",
+    "subtitle": "إرسال رسائل وتذكيرات",
+    "send_now": "إرسال الآن",
+    "message": "الرسالة",
+    "template": "قالب الرسالة",
+    "statistics": "الإحصائيات",
+    "messages_sent": "رسالة مرسلة",
+    "scheduled": "مجدولة"
   },
   "common": {
     "save": "حفظ",
     "cancel": "إلغاء",
     "delete": "حذف",
-    "edit": "تعديل"
+    "edit": "تعديل",
+    "search": "بحث",
+    "loading": "جاري التحميل",
+    "success": "تم بنجاح",
+    "error": "حدث خطأ"
   }
 }
