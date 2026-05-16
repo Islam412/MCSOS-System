@@ -1,8 +1,7 @@
 {
   "app": {
-    "title": "MCSOS",
-    "name": "Système Médical",
-    "tagline": "Gestion complète du centre médical"
+    "title": "Système Médical",
+    "name": "MCSOS"
   },
   "sidebar": {
     "reception": "Accueil",
@@ -19,10 +18,7 @@
     "new_patient": "Nouveau Patient",
     "search_patient": "Rechercher",
     "appointment": "Rendez-vous",
-    "contact_info": "Coordonnées",
     "register": "Enregistrer",
-    "required_fields": "Champs requis",
-    "registered_success": "Enregistré",
     "name": "Nom Complet",
     "phone": "Téléphone",
     "email": "Email",
@@ -33,86 +29,32 @@
     "date": "Date",
     "time": "Heure",
     "book": "Confirmer",
-    "patient_details": "Détails",
-    "visits": "visite",
-    "id": "ID Patient"
+    "patient_details": "Détails"
   },
   "doctor": {
     "title": "Médecin",
-    "subtitle": "Évaluations",
-    "coming": "Bientôt",
-    "description": "Système d'évaluation",
-    "assessment": "Évaluation",
-    "treatment_plan": "Traitement",
-    "notes": "Notes",
-    "sessions": "Séances",
-    "save": "Enregistrer",
-    "patient_name": "Nom Patient"
+    "coming": "Bientôt"
   },
   "finance": {
     "title": "Finances",
-    "subtitle": "Paiements",
-    "coming": "Bientôt",
-    "description": "Système de paiements",
-    "payments": "Paiements",
-    "packages": "Forfaits",
-    "invoices": "Factures",
-    "discounts": "Remises",
-    "total_revenue": "Revenu Total",
-    "pending_payments": "En Attente",
-    "paid": "Payé",
-    "unpaid": "Impayé"
+    "coming": "Bientôt"
   },
   "operations": {
     "title": "Opérations",
-    "subtitle": "Performance",
-    "coming": "Bientôt",
-    "description": "Système de rapports",
-    "schedule": "Planification",
-    "doctors": "Médecins",
-    "performance": "Performance",
-    "reports": "Rapports",
-    "attendance": "Présence",
-    "utilization": "Utilisation"
+    "coming": "Bientôt"
   },
   "scheduling": {
     "title": "Planification",
-    "subtitle": "Planification intelligente",
     "select_doctor": "Sélectionner",
-    "bulk_pattern": "Modèle",
-    "select_pattern": "Choisir",
     "bulk_generate": "Planification groupe",
     "dynamic_generate": "Planification dynamique",
-    "bulk_slots": "Créneaux groupe",
-    "dynamic_slots": "Créneaux dynamiques",
-    "available": "Disponible",
-    "no_slots": "Aucun créneau",
-    "generate_first": "Générer créneaux",
-    "select_doctor_pattern": "Sélectionner médecin",
-    "bulk_generated": "Créneaux générés",
-    "dynamic_generated": "Créneaux dynamiques",
-    "slot_deleted": "Créneau supprimé"
+    "no_slots": "Aucun créneau"
   },
   "packages": {
     "title": "Forfaits",
-    "subtitle": "Gérer les forfaits",
     "add_package": "Ajouter",
-    "edit_package": "Modifier",
-    "name_ar": "Nom",
-    "name_en": "Nom anglais",
     "price": "Prix",
-    "sessions_count": "Séances",
-    "expiry_days": "Expiration",
-    "services_list": "Services",
-    "currency": "SAR",
-    "days": "jours",
-    "sessions": "séances",
-    "fill_required": "Champs requis",
-    "added": "Forfait ajouté",
-    "updated": "Forfait modifié",
-    "deleted": "Forfait supprimé",
-    "status_updated": "Statut mis à jour",
-    "confirm_delete": "Supprimer ?"
+    "currency": "SAR"
   },
   "common": {
     "save": "Enregistrer",
@@ -120,45 +62,6 @@
     "delete": "Supprimer",
     "edit": "Modifier",
     "search": "Rechercher",
-    "loading": "Chargement",
-    "error": "Erreur",
-    "success": "Succès",
-    "back": "Retour",
-    "next": "Suivant",
-    "confirm": "Confirmer",
-    "close": "Fermer"
-  },
-  "messages": {
-    "booking_confirmed": "Rendez-vous confirmé",
-    "patient_not_found": "Patient non trouvé"
-  },
-  "placeholders": {
-    "enter_name": "Nom",
-    "enter_phone": "Téléphone",
-    "enter_email": "Email",
-    "search_patient": "Rechercher"
-  },
-  "status": {
-    "active": "Actif",
-    "pending": "En attente",
-    "completed": "Terminé",
-    "attended": "Présent",
-    "absent": "Absent"
+    "loading": "Chargement"
   }
 }
-,
-  "finance": {
-    "title": "Système Financier",
-    "subtitle": "Suivi des paiements",
-    "total_revenue": "Revenu Total",
-    "pending_payments": "Paiements en Attente",
-    "total_transactions": "Total Transactions",
-    "payment_rate": "Taux de Paiement",
-    "recent_transactions": "Transactions Récentes",
-    "amount": "Montant",
-    "invoice": "Facture",
-    "print": "Imprimer",
-    "export_report": "Exporter",
-    "payment_success": "Paiement confirmé",
-    "printing": "Impression..."
-  }

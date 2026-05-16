@@ -27,10 +27,4 @@ i18n
     }
   })
 
-i18n.on('languageChanged', (lng) => {
-  const isRTL = lng === 'ar'
-  document.documentElement.dir = isRTL ? 'rtl' : 'ltr'
-  document.documentElement.lang = lng
-})
-
 export default i18n

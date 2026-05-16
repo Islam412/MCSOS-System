@@ -1,8 +1,7 @@
 {
   "app": {
     "title": "نظام المركز الطبي",
-    "name": "إدارة العمليات",
-    "tagline": "حل متكامل لإدارة مركزك الطبي"
+    "name": "MCSOS"
   },
   "sidebar": {
     "reception": "الاستقبال",
@@ -19,10 +18,7 @@
     "new_patient": "تسجيل مريض جديد",
     "search_patient": "البحث عن مريض",
     "appointment": "حجز موعد",
-    "contact_info": "معلومات التواصل",
     "register": "تسجيل مريض",
-    "required_fields": "الرجاء ملء الحقول المطلوبة",
-    "registered_success": "تم التسجيل بنجاح",
     "name": "الاسم الكامل",
     "phone": "رقم الجوال",
     "email": "البريد الإلكتروني",
@@ -33,86 +29,32 @@
     "date": "التاريخ",
     "time": "الوقت",
     "book": "تأكيد الحجز",
-    "patient_details": "تفاصيل المريض",
-    "visits": "زيارة",
-    "id": "رقم المريض"
+    "patient_details": "تفاصيل المريض"
   },
   "doctor": {
     "title": "لوحة الأطباء",
-    "subtitle": "إدارة التقييمات",
-    "coming": "قريباً",
-    "description": "نظام التقييم والعلاج",
-    "assessment": "التقييم الطبي",
-    "treatment_plan": "خطة العلاج",
-    "notes": "ملاحظات الطبيب",
-    "sessions": "الجلسات",
-    "save": "حفظ التقييم",
-    "patient_name": "اسم المريض"
+    "coming": "قريباً"
   },
   "finance": {
     "title": "لوحة المالية",
-    "subtitle": "تتبع المدفوعات",
-    "coming": "قريباً",
-    "description": "نظام المدفوعات",
-    "payments": "المدفوعات",
-    "packages": "الباقات",
-    "invoices": "الفواتير",
-    "discounts": "الخصومات",
-    "total_revenue": "إجمالي الإيرادات",
-    "pending_payments": "المدفوعات المعلقة",
-    "paid": "مدفوع",
-    "unpaid": "غير مدفوع"
+    "coming": "قريباً"
   },
   "operations": {
     "title": "لوحة العمليات",
-    "subtitle": "متابعة الأداء",
-    "coming": "قريباً",
-    "description": "نظام التقارير",
-    "schedule": "الجدولة",
-    "doctors": "الأطباء",
-    "performance": "الأداء",
-    "reports": "التقارير",
-    "attendance": "نسبة الحضور",
-    "utilization": "نسبة الاستخدام"
+    "coming": "قريباً"
   },
   "scheduling": {
     "title": "نظام الجدولة",
-    "subtitle": "جدولة ذكية للمواعيد",
     "select_doctor": "اختر الطبيب",
-    "bulk_pattern": "نمط الجدولة",
-    "select_pattern": "اختر النمط",
     "bulk_generate": "جدولة دفعات",
     "dynamic_generate": "جدولة ديناميكية",
-    "bulk_slots": "المواعيد الدفعية",
-    "dynamic_slots": "المواعيد الديناميكية",
-    "available": "متاح",
-    "no_slots": "لا توجد مواعيد",
-    "generate_first": "قم بإنشاء مواعيد جديدة",
-    "select_doctor_pattern": "اختر الطبيب والنمط أولاً",
-    "bulk_generated": "تم إنشاء المواعيد",
-    "dynamic_generated": "تم إنشاء المواعيد الديناميكية",
-    "slot_deleted": "تم حذف الموعد"
+    "no_slots": "لا توجد مواعيد"
   },
   "packages": {
     "title": "إدارة الباقات",
-    "subtitle": "إنشاء وتعديل باقات الخدمات",
     "add_package": "إضافة باقة",
-    "edit_package": "تعديل باقة",
-    "name_ar": "الاسم",
-    "name_en": "الاسم بالإنجليزي",
     "price": "السعر",
-    "sessions_count": "عدد الجلسات",
-    "expiry_days": "مدة الصلاحية",
-    "services_list": "الخدمات",
-    "currency": "ر.س",
-    "days": "يوم",
-    "sessions": "جلسات",
-    "fill_required": "الرجاء ملء الحقول المطلوبة",
-    "added": "تم إضافة الباقة",
-    "updated": "تم تحديث الباقة",
-    "deleted": "تم حذف الباقة",
-    "status_updated": "تم تحديث الحالة",
-    "confirm_delete": "هل أنت متأكد من الحذف؟"
+    "currency": "ر.س"
   },
   "common": {
     "save": "حفظ",
@@ -120,45 +62,6 @@
     "delete": "حذف",
     "edit": "تعديل",
     "search": "بحث",
-    "loading": "جاري التحميل",
-    "error": "خطأ",
-    "success": "تم بنجاح",
-    "back": "رجوع",
-    "next": "التالي",
-    "confirm": "تأكيد",
-    "close": "إغلاق"
-  },
-  "messages": {
-    "booking_confirmed": "تم تأكيد الحجز",
-    "patient_not_found": "لم يتم العثور على المريض"
-  },
-  "placeholders": {
-    "enter_name": "أدخل الاسم",
-    "enter_phone": "أدخل رقم الجوال",
-    "enter_email": "أدخل البريد",
-    "search_patient": "ابحث عن مريض"
-  },
-  "status": {
-    "active": "نشط",
-    "pending": "قيد الانتظار",
-    "completed": "مكتمل",
-    "attended": "حاضر",
-    "absent": "غائب"
+    "loading": "جاري التحميل"
   }
 }
-,
-  "finance": {
-    "title": "نظام المالية",
-    "subtitle": "تتبع المدفوعات والفواتير",
-    "total_revenue": "إجمالي الإيرادات",
-    "pending_payments": "المدفوعات المعلقة",
-    "total_transactions": "إجمالي المعاملات",
-    "payment_rate": "نسبة الدفع",
-    "recent_transactions": "أحدث المعاملات",
-    "amount": "المبلغ",
-    "invoice": "فاتورة",
-    "print": "طباعة",
-    "export_report": "تصدير تقرير",
-    "payment_success": "تم تأكيد الدفع",
-    "printing": "جاري الطباعة..."
-  }

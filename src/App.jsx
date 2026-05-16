@@ -3,7 +3,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import DashboardLayout from './components/common/DashboardLayout'
 import ReceptionDashboard from './pages/ReceptionDashboard'
 import DoctorDashboard from './pages/DoctorDashboard'
-import FinanceDashboard from './pages/FinanceDashboard'
+import FinanceManager from './components/finance/FinanceManager'
 import OperationsDashboard from './pages/OperationsDashboard'
 import SchedulingEngine from './components/scheduling/SchedulingEngine'
 import PackagesManager from './components/packages/PackagesManager'
@@ -16,7 +16,7 @@ function App() {
           <Route path="/" element={<DashboardLayout />}>
             <Route index element={<ReceptionDashboard />} />
             <Route path="doctor" element={<DoctorDashboard />} />
-            <Route path="finance" element={<FinanceDashboard />} />
+            <Route path="finance" element={<FinanceManager />} />
             <Route path="operations" element={<OperationsDashboard />} />
             <Route path="scheduling" element={<SchedulingEngine />} />
             <Route path="packages" element={<PackagesManager />} />

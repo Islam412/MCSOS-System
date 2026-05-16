@@ -1,8 +1,7 @@
 {
   "app": {
-    "title": "MCSOS",
-    "name": "Medical Center System",
-    "tagline": "Complete medical center management"
+    "title": "Medical Center System",
+    "name": "MCSOS"
   },
   "sidebar": {
     "reception": "Reception",
@@ -19,10 +18,7 @@
     "new_patient": "New Patient",
     "search_patient": "Search Patient",
     "appointment": "Book Appointment",
-    "contact_info": "Contact Info",
     "register": "Register",
-    "required_fields": "Please fill required fields",
-    "registered_success": "Registered successfully",
     "name": "Full Name",
     "phone": "Phone Number",
     "email": "Email",
@@ -33,86 +29,32 @@
     "date": "Date",
     "time": "Time",
     "book": "Confirm Booking",
-    "patient_details": "Patient Details",
-    "visits": "visit",
-    "id": "Patient ID"
+    "patient_details": "Patient Details"
   },
   "doctor": {
     "title": "Doctor Dashboard",
-    "subtitle": "Manage assessments",
-    "coming": "Coming Soon",
-    "description": "Assessment System",
-    "assessment": "Medical Assessment",
-    "treatment_plan": "Treatment Plan",
-    "notes": "Doctor's Notes",
-    "sessions": "Sessions",
-    "save": "Save Assessment",
-    "patient_name": "Patient Name"
+    "coming": "Coming Soon"
   },
   "finance": {
     "title": "Finance Dashboard",
-    "subtitle": "Track payments",
-    "coming": "Coming Soon",
-    "description": "Payments System",
-    "payments": "Payments",
-    "packages": "Packages",
-    "invoices": "Invoices",
-    "discounts": "Discounts",
-    "total_revenue": "Total Revenue",
-    "pending_payments": "Pending Payments",
-    "paid": "Paid",
-    "unpaid": "Unpaid"
+    "coming": "Coming Soon"
   },
   "operations": {
     "title": "Operations Dashboard",
-    "subtitle": "Performance monitoring",
-    "coming": "Coming Soon",
-    "description": "Reports System",
-    "schedule": "Schedule",
-    "doctors": "Doctors",
-    "performance": "Performance",
-    "reports": "Reports",
-    "attendance": "Attendance Rate",
-    "utilization": "Utilization Rate"
+    "coming": "Coming Soon"
   },
   "scheduling": {
     "title": "Scheduling System",
-    "subtitle": "Smart appointment scheduling",
     "select_doctor": "Select Doctor",
-    "bulk_pattern": "Bulk Pattern",
-    "select_pattern": "Select Pattern",
     "bulk_generate": "Bulk Schedule",
     "dynamic_generate": "Dynamic Schedule",
-    "bulk_slots": "Bulk Slots",
-    "dynamic_slots": "Dynamic Slots",
-    "available": "Available",
-    "no_slots": "No slots",
-    "generate_first": "Generate new slots",
-    "select_doctor_pattern": "Select doctor and pattern",
-    "bulk_generated": "Bulk slots generated",
-    "dynamic_generated": "Dynamic slots generated",
-    "slot_deleted": "Slot deleted"
+    "no_slots": "No slots available"
   },
   "packages": {
     "title": "Packages Management",
-    "subtitle": "Create and manage packages",
     "add_package": "Add Package",
-    "edit_package": "Edit Package",
-    "name_ar": "Name",
-    "name_en": "English Name",
     "price": "Price",
-    "sessions_count": "Sessions",
-    "expiry_days": "Expiry Days",
-    "services_list": "Services",
-    "currency": "SAR",
-    "days": "days",
-    "sessions": "sessions",
-    "fill_required": "Please fill required fields",
-    "added": "Package added",
-    "updated": "Package updated",
-    "deleted": "Package deleted",
-    "status_updated": "Status updated",
-    "confirm_delete": "Are you sure?"
+    "currency": "SAR"
   },
   "common": {
     "save": "Save",
@@ -120,45 +62,6 @@
     "delete": "Delete",
     "edit": "Edit",
     "search": "Search",
-    "loading": "Loading",
-    "error": "Error",
-    "success": "Success",
-    "back": "Back",
-    "next": "Next",
-    "confirm": "Confirm",
-    "close": "Close"
-  },
-  "messages": {
-    "booking_confirmed": "Booking confirmed",
-    "patient_not_found": "Patient not found"
-  },
-  "placeholders": {
-    "enter_name": "Enter name",
-    "enter_phone": "Enter phone",
-    "enter_email": "Enter email",
-    "search_patient": "Search patient"
-  },
-  "status": {
-    "active": "Active",
-    "pending": "Pending",
-    "completed": "Completed",
-    "attended": "Attended",
-    "absent": "Absent"
+    "loading": "Loading"
   }
 }
-,
-  "finance": {
-    "title": "Finance System",
-    "subtitle": "Track payments and invoices",
-    "total_revenue": "Total Revenue",
-    "pending_payments": "Pending Payments",
-    "total_transactions": "Total Transactions",
-    "payment_rate": "Payment Rate",
-    "recent_transactions": "Recent Transactions",
-    "amount": "Amount",
-    "invoice": "Invoice",
-    "print": "Print",
-    "export_report": "Export Report",
-    "payment_success": "Payment confirmed",
-    "printing": "Printing..."
-  }
