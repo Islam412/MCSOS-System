@@ -146,3 +146,19 @@
     "absent": "Absent"
   }
 }
+,
+  "finance": {
+    "title": "Système Financier",
+    "subtitle": "Suivi des paiements",
+    "total_revenue": "Revenu Total",
+    "pending_payments": "Paiements en Attente",
+    "total_transactions": "Total Transactions",
+    "payment_rate": "Taux de Paiement",
+    "recent_transactions": "Transactions Récentes",
+    "amount": "Montant",
+    "invoice": "Facture",
+    "print": "Imprimer",
+    "export_report": "Exporter",
+    "payment_success": "Paiement confirmé",
+    "printing": "Impression..."
+  }

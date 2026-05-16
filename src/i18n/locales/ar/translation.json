@@ -146,3 +146,19 @@
     "absent": "غائب"
   }
 }
+,
+  "finance": {
+    "title": "نظام المالية",
+    "subtitle": "تتبع المدفوعات والفواتير",
+    "total_revenue": "إجمالي الإيرادات",
+    "pending_payments": "المدفوعات المعلقة",
+    "total_transactions": "إجمالي المعاملات",
+    "payment_rate": "نسبة الدفع",
+    "recent_transactions": "أحدث المعاملات",
+    "amount": "المبلغ",
+    "invoice": "فاتورة",
+    "print": "طباعة",
+    "export_report": "تصدير تقرير",
+    "payment_success": "تم تأكيد الدفع",
+    "printing": "جاري الطباعة..."
+  }

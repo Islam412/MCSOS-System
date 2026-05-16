@@ -146,3 +146,19 @@
     "absent": "Absent"
   }
 }
+,
+  "finance": {
+    "title": "Finance System",
+    "subtitle": "Track payments and invoices",
+    "total_revenue": "Total Revenue",
+    "pending_payments": "Pending Payments",
+    "total_transactions": "Total Transactions",
+    "payment_rate": "Payment Rate",
+    "recent_transactions": "Recent Transactions",
+    "amount": "Amount",
+    "invoice": "Invoice",
+    "print": "Print",
+    "export_report": "Export Report",
+    "payment_success": "Payment confirmed",
+    "printing": "Printing..."
+  }
