@@ -47,7 +47,8 @@
     "medical_assessment": "Évaluation",
     "notes": "Notes",
     "assessment_saved": "Évaluation sauvegardée",
-    "years": "ans"
+    "years": "ans",
+    "actions": "Actions"
   },
   "finance": {
     "title": "Finances",
@@ -70,6 +71,7 @@
   },
   "scheduling": {
     "title": "Planification",
+    "subtitle": "Planification intelligente",
     "select_doctor": "Sélectionner",
     "bulk_generate": "Planification groupe",
     "dynamic_generate": "Planification dynamique",
@@ -78,14 +80,20 @@
   },
   "packages": {
     "title": "Forfaits",
+    "subtitle": "Gérer les forfaits",
     "add_package": "Ajouter",
     "price": "Prix",
-    "currency": "SAR"
+    "currency": "SAR",
+    "sessions": "séances",
+    "days": "jours"
   },
   "whatsapp": {
     "title": "WhatsApp",
+    "subtitle": "Messages et rappels",
     "send_now": "Envoyer",
-    "message": "Message"
+    "message": "Message",
+    "template": "Modèle",
+    "statistics": "Statistiques"
   },
   "common": {
     "save": "Enregistrer",
@@ -95,10 +103,12 @@
     "search": "Rechercher",
     "loading": "Chargement",
     "success": "Succès",
-    "error": "Erreur"
+    "error": "Erreur",
+    "actions": "Actions"
   },
   "status": {
     "active": "Actif",
-    "completed": "Terminé"
+    "completed": "Terminé",
+    "pending": "En attente"
   }
 }
