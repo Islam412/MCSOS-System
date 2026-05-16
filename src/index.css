@@ -3,138 +3,87 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --primary: 37, 99, 235;
-    --primary-dark: 29, 78, 216;
-  }
-
-  * {
-    border-color: theme('colors.gray.200');
-  }
-
   body {
-    @apply bg-gray-50 dark:bg-gray-900;
     font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   }
 }
 
-@layer utilities {
-  /* RTL Support */
-  .rtl {
-    direction: rtl;
-  }
-  
-  .ltr {
-    direction: ltr;
-  }
-  
-  /* RTL specific spacing */
-  .rtl .space-x-reverse {
-    --tw-space-x-reverse: 1;
-  }
-  
-  /* Icon margins for RTL */
-  .rtl svg.icon {
-    margin-left: 0.5rem;
-    margin-right: 0;
-  }
-  
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100 dark:bg-gray-800 rounded-full;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-500;
-  }
-  
-  /* Animations */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
-  }
-  
-  /* Glass effect */
-  .glass {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-  
-  .dark .glass {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+/* تحسين عرض الجدول */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th, td {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  th, td {
+    white-space: normal;
+    word-break: break-word;
   }
 }
 
-/* RTL Improvements */
+/* RTL Support */
+.rtl {
+  direction: rtl;
+}
+
+.ltr {
+  direction: ltr;
+}
+
+/* تحسين الشريط الجانبي */
 .rtl .ml-auto {
   margin-left: 0;
   margin-right: auto;
 }
 
-.rtl .mr-auto {
-  margin-right: 0;
-  margin-left: auto;
+/* أنيميشن */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.rtl .space-x-2 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 1;
-  margin-right: calc(0.5rem * var(--tw-space-x-reverse));
-  margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
 }
 
-/* Input RTL */
-.rtl input,
-.rtl textarea,
-.rtl select {
-  text-align: right;
+/* سكرول بار مخصص */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.rtl input[type="email"],
-.rtl input[type="tel"] {
-  direction: rtl;
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
 }
 
-/* Form labels RTL */
-.rtl label {
-  text-align: right;
-  display: block;
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
 }
 
-/* Fix for Lucide icons in RTL */
-.rtl svg {
-  margin-left: 0.5rem;
-  margin-right: 0;
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
-/* Better dark mode support */
-.dark {
-  color-scheme: dark;
+.dark ::-webkit-scrollbar-track {
+  background: #2d2d2d;
 }
 
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+.dark ::-webkit-scrollbar-thumb {
+  background: #555;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #666;
 }
