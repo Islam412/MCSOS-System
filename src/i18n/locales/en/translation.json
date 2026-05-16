@@ -1,0 +1,104 @@
+{
+  "app": {
+    "title": "Medical Center System",
+    "name": "MCSOS"
+  },
+  "sidebar": {
+    "reception": "Reception",
+    "doctor": "Doctor",
+    "finance": "Finance",
+    "operations": "Operations",
+    "scheduling": "Scheduling",
+    "packages": "Packages",
+    "whatsapp": "WhatsApp",
+    "logout": "Logout"
+  },
+  "reception": {
+    "title": "Reception Dashboard",
+    "subtitle": "Manage patients and appointments",
+    "new_patient": "New Patient",
+    "search_patient": "Search Patient",
+    "register": "Register",
+    "name": "Name",
+    "phone": "Phone",
+    "email": "Email",
+    "search": "Search",
+    "appointment": "Book Appointment",
+    "book": "Confirm",
+    "date": "Date",
+    "time": "Time",
+    "select_doctor": "Select Doctor",
+    "patient_details": "Patient Details",
+    "contact_info": "Contact Info",
+    "national_id": "National ID"
+  },
+  "doctor": {
+    "title": "Doctor Dashboard",
+    "subtitle": "Manage assessments",
+    "total_patients": "Total Patients",
+    "active_treatments": "Active Treatments",
+    "total_sessions": "Total Sessions",
+    "completed_sessions": "Completed Sessions",
+    "my_patients": "My Patients",
+    "add_patient": "Add Patient",
+    "diagnosis": "Diagnosis",
+    "treatment_plan": "Treatment Plan",
+    "sessions_count": "Sessions",
+    "medical_assessment": "Medical Assessment",
+    "notes": "Notes",
+    "assessment_saved": "Assessment saved",
+    "years": "years"
+  },
+  "finance": {
+    "title": "Finance Dashboard",
+    "subtitle": "Track payments",
+    "total_revenue": "Total Revenue",
+    "pending_payments": "Pending Payments",
+    "paid": "Paid",
+    "unpaid": "Unpaid",
+    "amount": "Amount",
+    "invoice": "Invoice",
+    "print": "Print"
+  },
+  "operations": {
+    "title": "Operations Dashboard",
+    "subtitle": "Performance monitoring",
+    "schedule": "Schedule",
+    "doctors": "Doctors",
+    "performance": "Performance",
+    "reports": "Reports"
+  },
+  "scheduling": {
+    "title": "Scheduling",
+    "select_doctor": "Select Doctor",
+    "bulk_generate": "Bulk Schedule",
+    "dynamic_generate": "Dynamic Schedule",
+    "available": "Available",
+    "no_slots": "No slots"
+  },
+  "packages": {
+    "title": "Packages",
+    "add_package": "Add Package",
+    "price": "Price",
+    "currency": "SAR"
+  },
+  "whatsapp": {
+    "title": "WhatsApp",
+    "send_now": "Send Now",
+    "message": "Message"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading",
+    "success": "Success",
+    "error": "Error"
+  },
+  "status": {
+    "active": "Active",
+    "completed": "Completed"
+  }
+}
