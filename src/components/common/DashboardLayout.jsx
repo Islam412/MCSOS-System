@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/operations', label: 'sidebar.operations', icon: Calendar },
   { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
   { to: '/packages', label: 'sidebar.packages', icon: Package },
+  { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
 ]
 
 export default function DashboardLayout() {
@@ -34,17 +35,13 @@ export default function DashboardLayout() {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} ${isRTL ? 'rtl' : 'ltr'}`}>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        {/* Mobile Header */}
         <div className="lg:hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-40">
           <div className="font-bold text-xl">
             <span className="bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
               {t('app.title')}
             </span>
           </div>
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-          >
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -59,7 +56,7 @@ export default function DashboardLayout() {
                   {t('app.title')}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t('app.tagline')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t('app.name')}</p>
             </div>
 
             <nav className="flex-1 p-4 space-y-2">
@@ -108,8 +105,3 @@ export default function DashboardLayout() {
     </div>
   )
 }
-// أضف داخل imports
-import { MessageCircle } from 'lucide-react'
-
-// أضف داخل navItems
-  { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
