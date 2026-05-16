@@ -1,7 +1,7 @@
 {
   "app": {
     "title": "نظام المركز الطبي",
-    "name": "إدارة العمليات والجدولة",
+    "name": "إدارة العمليات",
     "tagline": "حل متكامل لإدارة مركزك الطبي"
   },
   "sidebar": {
@@ -10,17 +10,18 @@
     "finance": "المالية",
     "operations": "العمليات",
     "scheduling": "الجدولة",
+    "packages": "الباقات",
     "logout": "تسجيل الخروج"
   },
   "reception": {
     "title": "لوحة الاستقبال",
-    "subtitle": "إدارة المرضى والحجوزات بكل سهولة",
+    "subtitle": "إدارة المرضى والحجوزات",
     "new_patient": "تسجيل مريض جديد",
     "search_patient": "البحث عن مريض",
     "appointment": "حجز موعد",
     "contact_info": "معلومات التواصل",
     "register": "تسجيل مريض",
-    "required_fields": "الرجاء ملء جميع الحقول المطلوبة",
+    "required_fields": "الرجاء ملء الحقول المطلوبة",
     "registered_success": "تم التسجيل بنجاح",
     "name": "الاسم الكامل",
     "phone": "رقم الجوال",
@@ -38,7 +39,7 @@
   },
   "doctor": {
     "title": "لوحة الأطباء",
-    "subtitle": "إدارة التقييمات والخطط العلاجية",
+    "subtitle": "إدارة التقييمات",
     "coming": "قريباً",
     "description": "نظام التقييم والعلاج",
     "assessment": "التقييم الطبي",
@@ -50,9 +51,9 @@
   },
   "finance": {
     "title": "لوحة المالية",
-    "subtitle": "تتبع المدفوعات وإدارة الباقات",
+    "subtitle": "تتبع المدفوعات",
     "coming": "قريباً",
-    "description": "نظام المدفوعات والباقات",
+    "description": "نظام المدفوعات",
     "payments": "المدفوعات",
     "packages": "الباقات",
     "invoices": "الفواتير",
@@ -64,9 +65,9 @@
   },
   "operations": {
     "title": "لوحة العمليات",
-    "subtitle": "جدولة الأطباء ومتابعة الأداء",
+    "subtitle": "متابعة الأداء",
     "coming": "قريباً",
-    "description": "نظام الجدولة والتقارير",
+    "description": "نظام التقارير",
     "schedule": "الجدولة",
     "doctors": "الأطباء",
     "performance": "الأداء",
@@ -92,6 +93,27 @@
     "dynamic_generated": "تم إنشاء المواعيد الديناميكية",
     "slot_deleted": "تم حذف الموعد"
   },
+  "packages": {
+    "title": "إدارة الباقات",
+    "subtitle": "إنشاء وتعديل باقات الخدمات",
+    "add_package": "إضافة باقة",
+    "edit_package": "تعديل باقة",
+    "name_ar": "الاسم",
+    "name_en": "الاسم بالإنجليزي",
+    "price": "السعر",
+    "sessions_count": "عدد الجلسات",
+    "expiry_days": "مدة الصلاحية",
+    "services_list": "الخدمات",
+    "currency": "ر.س",
+    "days": "يوم",
+    "sessions": "جلسات",
+    "fill_required": "الرجاء ملء الحقول المطلوبة",
+    "added": "تم إضافة الباقة",
+    "updated": "تم تحديث الباقة",
+    "deleted": "تم حذف الباقة",
+    "status_updated": "تم تحديث الحالة",
+    "confirm_delete": "هل أنت متأكد من الحذف؟"
+  },
   "common": {
     "save": "حفظ",
     "cancel": "إلغاء",
@@ -99,7 +121,7 @@
     "edit": "تعديل",
     "search": "بحث",
     "loading": "جاري التحميل",
-    "error": "حدث خطأ",
+    "error": "خطأ",
     "success": "تم بنجاح",
     "back": "رجوع",
     "next": "التالي",
@@ -111,9 +133,9 @@
     "patient_not_found": "لم يتم العثور على المريض"
   },
   "placeholders": {
-    "enter_name": "أدخل الاسم الكامل",
+    "enter_name": "أدخل الاسم",
     "enter_phone": "أدخل رقم الجوال",
-    "enter_email": "أدخل البريد الإلكتروني",
+    "enter_email": "أدخل البريد",
     "search_patient": "ابحث عن مريض"
   },
   "status": {
@@ -124,45 +146,3 @@
     "absent": "غائب"
   }
 }
-,
-  "packages": {
-    "title": "إدارة الباقات",
-    "subtitle": "إنشاء وتعديل باقات الخدمات",
-    "add_package": "إضافة باقة",
-    "edit_package": "تعديل باقة",
-    "name_ar": "الاسم (عربي)",
-    "name_en": "الاسم (إنجليزي)",
-    "price": "السعر",
-    "sessions_count": "عدد الجلسات",
-    "expiry_days": "صلاحية (يوم)",
-    "services_list": "الخدمات (مفصولة بفواصل)",
-    "currency": "ر.س",
-    "days": "يوم",
-    "sessions": "جلسات",
-    "fill_required": "الرجاء ملء الحقول المطلوبة",
-    "added": "تم إضافة الباقة بنجاح",
-    "updated": "تم تحديث الباقة بنجاح",
-    "deleted": "تم حذف الباقة بنجاح",
-    "status_updated": "تم تحديث حالة الباقة",
-    "confirm_delete": "هل أنت متأكد من حذف هذه الباقة؟"
-  }
-,
-  "sidebar": {
-    "reception": "الاستقبال",
-    "doctor": "الأطباء",
-    "finance": "المالية",
-    "operations": "العمليات",
-    "scheduling": "الجدولة",
-    "packages": "الباقات",
-    "logout": "تسجيل الخروج"
-  }
-,
-  "sidebar": {
-    "reception": "الاستقبال",
-    "doctor": "الأطباء",
-    "finance": "المالية",
-    "operations": "العمليات",
-    "scheduling": "الجدولة",
-    "packages": "الباقات",
-    "logout": "تسجيل الخروج"
-  }
