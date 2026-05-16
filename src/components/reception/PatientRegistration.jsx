@@ -16,11 +16,11 @@ export default function PatientRegistration() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.name || !form.phone) {
-      toast.error(t('reception.required_fields'))
+      toast.error('الرجاء ملء الحقول المطلوبة')
       return
     }
     const patientId = 'P' + Math.floor(Math.random() * 10000)
-    toast.success(`${form.name} ${t('reception.registered_success')} - ${t('reception.id')}: ${patientId}`)
+    toast.success(`${form.name} تم التسجيل بنجاح - ID: ${patientId}`)
     setForm({ name: '', phone: '', email: '', idNumber: '' })
   }
 
@@ -32,10 +32,10 @@ export default function PatientRegistration() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            {t('reception.new_patient')}
+            تسجيل مريض جديد
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {t('reception.contact_info')}
+            معلومات التواصل
           </p>
         </div>
       </div>
@@ -43,14 +43,14 @@ export default function PatientRegistration() {
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            {t('reception.name')} <span className="text-red-500">*</span>
+            الاسم الكامل <span className="text-red-500">*</span>
           </label>
           <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
             <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="text"
               required
-              placeholder={t('placeholders.enter_name')}
+              placeholder="أدخل الاسم الكامل"
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -60,14 +60,14 @@ export default function PatientRegistration() {
 
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            {t('reception.phone')} <span className="text-red-500">*</span>
+            رقم الجوال <span className="text-red-500">*</span>
           </label>
           <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
             <Phone className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="tel"
               required
-              placeholder={t('placeholders.enter_phone')}
+              placeholder="أدخل رقم الجوال"
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -77,13 +77,13 @@ export default function PatientRegistration() {
 
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            {t('reception.email')}
+            البريد الإلكتروني
           </label>
           <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
             <Mail className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="email"
-              placeholder={t('placeholders.enter_email')}
+              placeholder="أدخل البريد الإلكتروني"
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -93,13 +93,13 @@ export default function PatientRegistration() {
 
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            {t('reception.national_id')}
+            رقم الهوية
           </label>
           <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
             <IdCard className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="text"
-              placeholder={t('placeholders.enter_id')}
+              placeholder="أدخل رقم الهوية"
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.idNumber}
               onChange={(e) => setForm({ ...form, idNumber: e.target.value })}
@@ -112,7 +112,7 @@ export default function PatientRegistration() {
           className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
         >
           <Sparkles size={18} />
-          {t('reception.register')}
+          تسجيل مريض
         </button>
       </form>
     </div>

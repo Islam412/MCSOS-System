@@ -3,31 +3,24 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const dummyPatients = [
-  { id: 'P001', nameAr: 'أحمد محمد', nameEn: 'Ahmed Mohamed', nameFr: 'Ahmed Mohamed', phone: '0501234567', email: 'ahmed@example.com', visits: 12 },
-  { id: 'P002', nameAr: 'سارة حسن', nameEn: 'Sara Hassan', nameFr: 'Sara Hassan', phone: '0507654321', email: 'sara@example.com', visits: 8 },
-  { id: 'P003', nameAr: 'محمود علي', nameEn: 'Mahmoud Ali', nameFr: 'Mahmoud Ali', phone: '0505566778', email: 'mahmoud@example.com', visits: 5 },
-  { id: 'P004', nameAr: 'نورة عبدالله', nameEn: 'Noura Abdullah', nameFr: 'Noura Abdullah', phone: '0509988776', email: 'noura@example.com', visits: 15 },
+  { id: 'P001', name: 'أحمد محمد', phone: '0501234567', email: 'ahmed@example.com', visits: 12 },
+  { id: 'P002', name: 'سارة حسن', phone: '0507654321', email: 'sara@example.com', visits: 8 },
+  { id: 'P003', name: 'محمود علي', phone: '0505566778', email: 'mahmoud@example.com', visits: 5 },
+  { id: 'P004', name: 'نورة عبدالله', phone: '0509988776', email: 'noura@example.com', visits: 15 },
 ]
 
 export default function PatientSearch({ onSelectPatient }) {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
-  const currentLang = i18n.language
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
-
-  const getPatientName = (patient) => {
-    if (currentLang === 'ar') return patient.nameAr
-    if (currentLang === 'fr') return patient.nameFr
-    return patient.nameEn
-  }
 
   const handleSearch = (e) => {
     const value = e.target.value
     setQuery(value)
     if (value.length > 1) {
       const filtered = dummyPatients.filter(p => 
-        getPatientName(p).toLowerCase().includes(value.toLowerCase()) || 
+        p.name.includes(value) || 
         p.phone.includes(value)
       )
       setResults(filtered)
@@ -44,10 +37,10 @@ export default function PatientSearch({ onSelectPatient }) {
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            {t('reception.search_patient')}
+            البحث عن مريض
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {t('reception.search_placeholder')}
+            ابحث بالاسم أو رقم الجوال
           </p>
         </div>
       </div>
@@ -56,7 +49,7 @@ export default function PatientSearch({ onSelectPatient }) {
         <Search className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
         <input
           type="text"
-          placeholder={t('placeholders.search_patient')}
+          placeholder="ابحث بالاسم أو رقم الجوال..."
           className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
           value={query}
           onChange={handleSearch}
@@ -68,24 +61,24 @@ export default function PatientSearch({ onSelectPatient }) {
           {results.map(p => (
             <li
               key={p.id}
-              className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all duration-200 transform hover:scale-[1.02]"
-              onClick={() => onSelectPatient({ ...p, name: getPatientName(p) })}
+              className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all duration-200"
+              onClick={() => onSelectPatient(p)}
             >
               <div className={`flex items-center justify-between mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <User size={18} className="text-blue-500" />
-                  <span className="font-bold text-gray-900 dark:text-white text-lg">{getPatientName(p)}</span>
+                  <span className="font-bold text-gray-900 dark:text-white text-lg">{p.name}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{p.visits} {t('reception.visits')}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{p.visits} زيارة</span>
                 </div>
               </div>
               <div className={`flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <Phone size={14} />
                 <span>{p.phone}</span>
                 <span className="text-gray-300 mx-2">|</span>
-                <span className="text-xs">{t('reception.id')}: {p.id}</span>
+                <span className="text-xs">{p.id}</span>
               </div>
             </li>
           ))}
@@ -94,7 +87,7 @@ export default function PatientSearch({ onSelectPatient }) {
 
       {query.length > 1 && results.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-500 dark:text-gray-400">{t('reception.no_patients')}</p>
+          <p className="text-gray-500 dark:text-gray-400">لا يوجد مرضى</p>
         </div>
       )}
     </div>

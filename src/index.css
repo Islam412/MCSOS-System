@@ -87,3 +87,36 @@ th, td {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #666;
 }
+/* إصلاح مشكلة السايد بار في الموبايل والعربية */
+@media (max-width: 1023px) {
+  .fixed {
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  /* التأكد من عدم وجود أي أجزاء ظاهرة من السايد بار */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* منع التمرير الأفقي */
+  #root {
+    overflow-x: hidden;
+    position: relative;
+  }
+}
+
+/* إصلاح للغة العربية في الموبايل */
+@media (max-width: 1023px) {
+  html[dir="rtl"] .fixed {
+    transform: translateX(0);
+  }
+  
+  /* منع ظهور أي جزء من السايد بار عند الإغلاق */
+  html[dir="rtl"] .fixed.-translate-x-full {
+    transform: translateX(100%) !important;
+  }
+  
+  html[dir="ltr"] .fixed.-translate-x-full {
+    transform: translateX(-100%) !important;
+  }
+}
