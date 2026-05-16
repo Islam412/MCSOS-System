@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/doctor', label: 'sidebar.doctor', icon: Activity },
   { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
   { to: '/operations', label: 'sidebar.operations', icon: Calendar },
+  { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
 ]
 
 export default function DashboardLayout() {

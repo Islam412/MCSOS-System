@@ -9,6 +9,7 @@
     "doctor": "الأطباء",
     "finance": "المالية",
     "operations": "العمليات",
+    "scheduling": "الجدولة",
     "logout": "تسجيل الخروج"
   },
   "reception": {
@@ -22,18 +23,17 @@
     "required_fields": "الرجاء ملء جميع الحقول المطلوبة",
     "registered_success": "تم التسجيل بنجاح",
     "name": "الاسم الكامل",
-    "phone": "رقم الجوال (واتساب)",
+    "phone": "رقم الجوال",
     "email": "البريد الإلكتروني",
-    "national_id": "رقم الهوية الوطنية",
+    "national_id": "رقم الهوية",
     "search_placeholder": "ابحث بالاسم أو رقم الجوال",
-    "no_patients": "لا يوجد مرضى مطابقين للبحث",
+    "no_patients": "لا يوجد مرضى",
     "select_doctor": "اختر الطبيب",
     "date": "التاريخ",
     "time": "الوقت",
     "book": "تأكيد الحجز",
     "patient_details": "تفاصيل المريض",
     "visits": "زيارة",
-    "visits_count": "عدد الزيارات",
     "id": "رقم المريض"
   },
   "doctor": {
@@ -46,9 +46,7 @@
     "notes": "ملاحظات الطبيب",
     "sessions": "الجلسات",
     "save": "حفظ التقييم",
-    "patient_name": "اسم المريض",
-    "diagnosis": "التشخيص",
-    "prescription": "الوصف الطبي"
+    "patient_name": "اسم المريض"
   },
   "finance": {
     "title": "لوحة المالية",
@@ -76,6 +74,24 @@
     "attendance": "نسبة الحضور",
     "utilization": "نسبة الاستخدام"
   },
+  "scheduling": {
+    "title": "نظام الجدولة",
+    "subtitle": "جدولة ذكية للمواعيد",
+    "select_doctor": "اختر الطبيب",
+    "bulk_pattern": "نمط الجدولة",
+    "select_pattern": "اختر النمط",
+    "bulk_generate": "جدولة دفعات",
+    "dynamic_generate": "جدولة ديناميكية",
+    "bulk_slots": "المواعيد الدفعية",
+    "dynamic_slots": "المواعيد الديناميكية",
+    "available": "متاح",
+    "no_slots": "لا توجد مواعيد",
+    "generate_first": "قم بإنشاء مواعيد جديدة",
+    "select_doctor_pattern": "اختر الطبيب والنمط أولاً",
+    "bulk_generated": "تم إنشاء المواعيد",
+    "dynamic_generated": "تم إنشاء المواعيد الديناميكية",
+    "slot_deleted": "تم حذف الموعد"
+  },
   "common": {
     "save": "حفظ",
     "cancel": "إلغاء",
@@ -88,42 +104,22 @@
     "back": "رجوع",
     "next": "التالي",
     "confirm": "تأكيد",
-    "close": "إغلاق",
-    "with": "مع",
-    "on": "في",
-    "at": "الساعة",
-    "active": "نشط"
+    "close": "إغلاق"
   },
   "messages": {
-    "welcome": "مرحباً بك في نظام المركز الطبي",
-    "select_patient": "الرجاء اختيار مريض أولاً",
-    "booking_confirmed": "تم تأكيد الحجز بنجاح",
-    "booking_cancelled": "تم إلغاء الحجز",
-    "patient_not_found": "لم يتم العثور على المريض",
-    "payment_success": "تمت عملية الدفع بنجاح",
-    "payment_failed": "فشلت عملية الدفع"
+    "booking_confirmed": "تم تأكيد الحجز",
+    "patient_not_found": "لم يتم العثور على المريض"
   },
   "placeholders": {
     "enter_name": "أدخل الاسم الكامل",
     "enter_phone": "أدخل رقم الجوال",
     "enter_email": "أدخل البريد الإلكتروني",
-    "enter_id": "أدخل رقم الهوية",
     "search_patient": "ابحث عن مريض"
-  },
-  "buttons": {
-    "submit": "إرسال",
-    "update": "تحديث",
-    "add": "إضافة",
-    "remove": "إزالة",
-    "print": "طباعة",
-    "export": "تصدير"
   },
   "status": {
     "active": "نشط",
-    "inactive": "غير نشط",
     "pending": "قيد الانتظار",
     "completed": "مكتمل",
-    "cancelled": "ملغي",
     "attended": "حاضر",
     "absent": "غائب"
   }
