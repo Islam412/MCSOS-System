@@ -124,3 +124,25 @@
     "absent": "Absent"
   }
 }
+,
+  "packages": {
+    "title": "Packages Management",
+    "subtitle": "Create and manage service packages",
+    "add_package": "Add Package",
+    "edit_package": "Edit Package",
+    "name_ar": "Name (Arabic)",
+    "name_en": "Name (English)",
+    "price": "Price",
+    "sessions_count": "Number of Sessions",
+    "expiry_days": "Expiry (Days)",
+    "services_list": "Services (comma separated)",
+    "currency": "SAR",
+    "days": "days",
+    "sessions": "sessions",
+    "fill_required": "Please fill required fields",
+    "added": "Package added successfully",
+    "updated": "Package updated successfully",
+    "deleted": "Package deleted successfully",
+    "status_updated": "Package status updated",
+    "confirm_delete": "Are you sure you want to delete this package?"
+  }

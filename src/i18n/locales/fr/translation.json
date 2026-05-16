@@ -124,3 +124,25 @@
     "absent": "Absent"
   }
 }
+,
+  "packages": {
+    "title": "Gestion des Forfaits",
+    "subtitle": "Créer et gérer les forfaits",
+    "add_package": "Ajouter Forfait",
+    "edit_package": "Modifier Forfait",
+    "name_ar": "Nom (Arabe)",
+    "name_en": "Nom (Anglais)",
+    "price": "Prix",
+    "sessions_count": "Nombre de Séances",
+    "expiry_days": "Expiration (Jours)",
+    "services_list": "Services (séparés par des virgules)",
+    "currency": "SAR",
+    "days": "jours",
+    "sessions": "séances",
+    "fill_required": "Veuillez remplir les champs requis",
+    "added": "Forfait ajouté",
+    "updated": "Forfait modifié",
+    "deleted": "Forfait supprimé",
+    "status_updated": "Statut du forfait mis à jour",
+    "confirm_delete": "Supprimer ce forfait ?"
+  }
