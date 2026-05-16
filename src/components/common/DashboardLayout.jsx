@@ -108,3 +108,8 @@ export default function DashboardLayout() {
     </div>
   )
 }
+// أضف داخل imports
+import { MessageCircle } from 'lucide-react'
+
+// أضف داخل navItems
+  { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
