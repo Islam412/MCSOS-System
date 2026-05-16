@@ -7,6 +7,7 @@ import FinanceManager from './components/finance/FinanceManager'
 import OperationsDashboard from './pages/OperationsDashboard'
 import SchedulingEngine from './components/scheduling/SchedulingEngine'
 import PackagesManager from './components/packages/PackagesManager'
+import WhatsAppManager from './components/whatsapp/WhatsAppManager'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
             <Route path="operations" element={<OperationsDashboard />} />
             <Route path="scheduling" element={<SchedulingEngine />} />
             <Route path="packages" element={<PackagesManager />} />
+            <Route path="whatsapp" element={<WhatsAppManager />} />
           </Route>
         </Routes>
       </Router>

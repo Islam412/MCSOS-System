@@ -65,3 +65,36 @@
     "loading": "Chargement"
   }
 }
+,
+  "whatsapp": {
+    "title": "WhatsApp Automatique",
+    "subtitle": "Envoyer des messages automatiques",
+    "compose_message": "Nouveau message",
+    "template": "Modèle",
+    "select_template": "Choisir modèle",
+    "message": "Message",
+    "type_message": "Écrivez votre message...",
+    "send_now": "Envoyer",
+    "schedule": "Programmer",
+    "statistics": "Statistiques",
+    "messages_sent": "Messages envoyés",
+    "scheduled": "Programmés",
+    "active_chats": "Discussions actives",
+    "automated": "Automatisés",
+    "automated_flows": "Flux automatiques",
+    "booking_confirmation": "Confirmation RDV",
+    "auto_after_booking": "Auto après réservation",
+    "reminder_before": "Rappel RDV",
+    "auto_24h_before": "Auto 24h avant",
+    "missed_followup": "Relance absence",
+    "auto_after_missed": "Auto après absence",
+    "message_history": "Historique",
+    "no_messages": "Aucun message",
+    "enter_phone": "Entrez le numéro",
+    "enter_message": "Entrez le message",
+    "message_sent": "Message envoyé",
+    "fill_fields": "Remplissez tous les champs",
+    "message_scheduled": "Message programmé",
+    "schedule_time": "Heure d'envoi (ex: 2024-01-20 14:30)",
+    "settings": "Paramètres"
+  }

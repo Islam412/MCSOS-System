@@ -65,3 +65,36 @@
     "loading": "Loading"
   }
 }
+,
+  "whatsapp": {
+    "title": "WhatsApp Automation",
+    "subtitle": "Send automatic messages and reminders",
+    "compose_message": "Compose Message",
+    "template": "Message Template",
+    "select_template": "Select Template",
+    "message": "Message",
+    "type_message": "Type your message here...",
+    "send_now": "Send Now",
+    "schedule": "Schedule",
+    "statistics": "Statistics",
+    "messages_sent": "Messages Sent",
+    "scheduled": "Scheduled",
+    "active_chats": "Active Chats",
+    "automated": "Automated",
+    "automated_flows": "Automated Flows",
+    "booking_confirmation": "Booking Confirmation",
+    "auto_after_booking": "Auto-sent after booking",
+    "reminder_before": "Appointment Reminder",
+    "auto_24h_before": "Auto-sent 24h before",
+    "missed_followup": "Missed Follow-up",
+    "auto_after_missed": "Auto-sent after missed",
+    "message_history": "Message History",
+    "no_messages": "No messages yet",
+    "enter_phone": "Please enter phone number",
+    "enter_message": "Please enter message",
+    "message_sent": "Message sent successfully",
+    "fill_fields": "Please fill all fields",
+    "message_scheduled": "Message scheduled",
+    "schedule_time": "Enter scheduled time (e.g., 2024-01-20 14:30)",
+    "settings": "Settings"
+  }
