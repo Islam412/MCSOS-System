@@ -183,3 +183,53 @@ export const getDoctorName = (doctorId, lang = 'ar') => {
   if (!doctor) return lang === 'ar' ? 'غير محدد' : 'Not assigned'
   return lang === 'ar' ? doctor.nameAr : doctor.nameEn
 }
+
+// إضافة صورة جديدة للمريض
+export const addImageToPatient = (patientId, imageFile, type, title, description = '') => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const patients = getPatients()
+      const patient = patients.find(p => p.id === patientId)
+      if (patient) {
+        const newImage = {
+          id: Date.now(),
+          type: type, // 'xray' or 'report'
+          title: title,
+          description: description,
+          data: reader.result, // base64 string
+          fileName: imageFile.name,
+          fileSize: imageFile.size,
+          date: new Date().toISOString()
+        }
+        patient.images = [newImage, ...(patient.images || [])]
+        savePatients(patients)
+        resolve(patients)
+      }
+      resolve(null)
+    }
+    reader.readAsDataURL(imageFile)
+  })
+}
+
+// حذف صورة
+export const deleteImage = (patientId, imageId) => {
+  const patients = getPatients()
+  const patient = patients.find(p => p.id === patientId)
+  if (patient && patient.images) {
+    patient.images = patient.images.filter(img => img.id !== imageId)
+    savePatients(patients)
+  }
+  return patients
+}
+
+// الحصول على صور المريض
+export const getPatientImages = (patientId, type = null) => {
+  const patients = getPatients()
+  const patient = patients.find(p => p.id === patientId)
+  if (!patient || !patient.images) return []
+  if (type) {
+    return patient.images.filter(img => img.type === type)
+  }
+  return patient.images
+}
