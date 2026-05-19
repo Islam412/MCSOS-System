@@ -13,6 +13,7 @@ import {
 export default function OperationsDashboard() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
+  const currentLang = i18n.language
   
   const [stats, setStats] = useState({})
   const [doctors, setDoctors] = useState([])
@@ -29,6 +30,26 @@ export default function OperationsDashboard() {
   const [newSchedule, setNewSchedule] = useState({ day: '', date: '', morning: 0, evening: 0 })
   const [editDoctor, setEditDoctor] = useState({})
   const [newDoctor, setNewDoctor] = useState({ nameAr: '', nameEn: '', specializationAr: '', specializationEn: '', patients: '', sessions: '', attendance: '', utilization: '' })
+  
+  // أيام الأسبوع بالعربية للبيانات
+  const daysMap = {
+    'السبت': 'saturday',
+    'الأحد': 'sunday',
+    'الإثنين': 'monday',
+    'الثلاثاء': 'tuesday',
+    'الأربعاء': 'wednesday',
+    'الخميس': 'thursday',
+    'الجمعة': 'friday'
+  }
+  
+  // دالة ترجمة اليوم
+  const translateDay = (dayAr) => {
+    const dayKey = daysMap[dayAr]
+    if (dayKey && t(`days.${dayKey}`) !== `days.${dayKey}`) {
+      return t(`days.${dayKey}`)
+    }
+    return dayAr
+  }
   
   useEffect(() => {
     loadData()
@@ -156,6 +177,15 @@ export default function OperationsDashboard() {
     return 'text-red-400'
   }
   
+  // قائمة أيام الأسبوع للاختيار (مترجمة)
+  const getDayOptions = () => {
+    const days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    return days.map(day => ({
+      value: t(`days.${day}`),
+      label: t(`days.${day}`)
+    }))
+  }
+  
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="text-white">{t('common.loading')}</div></div>
   }
@@ -208,7 +238,7 @@ export default function OperationsDashboard() {
         </div>
       </div>
       
-      {/* Weekly Schedule Table */}
+      {/* Weekly Schedule Table with translated days */}
       <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
         <div className="px-6 py-4 border-b border-gray-700/50 flex justify-between items-center">
           <h2 className="text-xl font-bold text-white flex items-center gap-2"><CalendarIcon size={20} className="text-purple-400" /> {t('operations.weekly_schedule')}</h2>
@@ -217,23 +247,43 @@ export default function OperationsDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-800/80">
-              <tr><th className="px-6 py-3 text-sm text-gray-300">{t('operations.day')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.date')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.morning')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.evening')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.total')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.actions')}</th></tr></thead>
+              <tr>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.day')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.date')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.morning')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.evening')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.total')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.actions')}</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-gray-700/50">
               {weeklySchedule.map((day) => (
                 <tr key={day.id}>
-                  <td className="px-6 py-4 font-semibold text-white">{day.day}</td>
+                  <td className="px-6 py-4 font-semibold text-white">{translateDay(day.day)}</td>
                   <td className="px-6 py-4 text-gray-400">{day.date}</td>
                   <td className="px-6 py-4 text-gray-300">{day.morning} {t('operations.appointments')}</td>
                   <td className="px-6 py-4 text-gray-300">{day.evening} {t('operations.appointments')}</td>
                   <td className="px-6 py-4 font-semibold text-blue-400">{day.total}</td>
-                  <td className="px-6 py-4"><div className="flex gap-2"><button onClick={() => { setEditSchedule(day); setShowEditScheduleModal(true); }} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => handleDeleteSchedule(day.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditSchedule(day); setShowEditScheduleModal(true); }} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded">
+                        <Edit size={16} />
+                      </button>
+                      <button onClick={() => handleDeleteSchedule(day.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <div className="px-6 py-3 border-t border-gray-700/50 bg-gray-800/30">
-          <div className="flex justify-between items-center"><span className="text-gray-400">{t('operations.total_week')}</span><span className="text-xl font-bold text-white">{weeklySchedule.reduce((sum, d) => sum + d.total, 0)} {t('operations.appointments')}</span></div>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400">{t('operations.total_week')}</span>
+            <span className="text-xl font-bold text-white">{weeklySchedule.reduce((sum, d) => sum + d.total, 0)} {t('operations.appointments')}</span>
+          </div>
         </div>
       </div>
       
@@ -246,7 +296,16 @@ export default function OperationsDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-800/80">
-              <tr><th className="px-6 py-3 text-sm text-gray-300">{t('operations.doctor')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.specialization')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.patients')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.sessions')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.attendance')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.utilization')}</th><th className="px-6 py-3 text-sm text-gray-300">{t('operations.actions')}</th></tr></thead>
+              <tr>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.doctor')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.specialization')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.patients')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.sessions')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.attendance')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.utilization')}</th>
+                <th className="px-6 py-3 text-sm text-gray-300">{t('operations.actions')}</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-gray-700/50">
               {doctors.map((doctor) => (
                 <tr key={doctor.id}>
@@ -255,8 +314,24 @@ export default function OperationsDashboard() {
                   <td className="px-6 py-4 text-gray-300">{doctor.patients}</td>
                   <td className="px-6 py-4 text-gray-300">{doctor.sessions}</td>
                   <td className={`px-6 py-4 font-semibold ${getAttendanceColor(doctor.attendance)}`}>{doctor.attendance}%</td>
-                  <td className="px-6 py-4"><div className="flex items-center gap-2"><div className="w-24 bg-gray-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${doctor.utilization}%` }}></div></div><span className="text-sm text-gray-400">{doctor.utilization}%</span></div></td>
-                  <td className="px-6 py-4"><div className="flex gap-2"><button onClick={() => { setEditDoctor(doctor); setShowEditDoctorModal(true); }} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => handleDeleteDoctor(doctor.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><XCircle size={16} /></button></div></td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-700 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${doctor.utilization}%` }}></div>
+                      </div>
+                      <span className="text-sm text-gray-400">{doctor.utilization}%</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditDoctor(doctor); setShowEditDoctorModal(true); }} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded">
+                        <Edit size={16} />
+                      </button>
+                      <button onClick={() => handleDeleteDoctor(doctor.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded">
+                        <XCircle size={16} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -264,16 +339,117 @@ export default function OperationsDashboard() {
         </div>
       </div>
       
-      {/* Modals - same as before */}
-      {showEditScheduleModal && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"><div className="bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-xl font-bold text-white mb-4">{t('operations.edit')} {t('operations.weekly_schedule')}</h2><div className="space-y-3"><input type="text" placeholder={t('operations.day')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSchedule.day} onChange={(e) => setEditSchedule({...editSchedule, day: e.target.value})} /><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSchedule.date} onChange={(e) => setEditSchedule({...editSchedule, date: e.target.value})} /><input type="number" placeholder={t('operations.morning')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSchedule.morning} onChange={(e) => setEditSchedule({...editSchedule, morning: parseInt(e.target.value), total: updateScheduleTotal(e.target.value, editSchedule.evening)})} /><input type="number" placeholder={t('operations.evening')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSchedule.evening} onChange={(e) => setEditSchedule({...editSchedule, evening: parseInt(e.target.value), total: updateScheduleTotal(editSchedule.morning, e.target.value)})} /><div className="flex gap-3"><button onClick={handleSaveSchedule} className="flex-1 bg-blue-500 py-2 rounded-lg">{t('common.save')}</button><button onClick={() => setShowEditScheduleModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button></div></div></div></div>)}
+      {/* Modal Edit Schedule */}
+      {showEditScheduleModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-white mb-4">{t('operations.edit')} {t('operations.weekly_schedule')}</h2>
+            <div className="space-y-3">
+              <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSchedule.day} onChange={(e) => setEditSchedule({...editSchedule, day: e.target.value})}>
+                <option value="">{t('operations.day')}</option>
+                <option value="السبت">{t('days.saturday')}</option>
+                <option value="الأحد">{t('days.sunday')}</option>
+                <option value="الإثنين">{t('days.monday')}</option>
+                <option value="الثلاثاء">{t('days.tuesday')}</option>
+                <option value="الأربعاء">{t('days.wednesday')}</option>
+                <option value="الخميس">{t('days.thursday')}</option>
+                <option value="الجمعة">{t('days.friday')}</option>
+              </select>
+              <input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSchedule.date} onChange={(e) => setEditSchedule({...editSchedule, date: e.target.value})} />
+              <input type="number" placeholder={t('operations.morning')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSchedule.morning} onChange={(e) => setEditSchedule({...editSchedule, morning: parseInt(e.target.value), total: updateScheduleTotal(e.target.value, editSchedule.evening)})} />
+              <input type="number" placeholder={t('operations.evening')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSchedule.evening} onChange={(e) => setEditSchedule({...editSchedule, evening: parseInt(e.target.value), total: updateScheduleTotal(editSchedule.morning, e.target.value)})} />
+              <div className="flex gap-3">
+                <button onClick={handleSaveSchedule} className="flex-1 bg-blue-500 py-2 rounded-lg">{t('common.save')}</button>
+                <button onClick={() => setShowEditScheduleModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {showAddScheduleModal && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"><div className="bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-xl font-bold text-white mb-4">{t('operations.add_day')}</h2><div className="space-y-3"><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSchedule.day} onChange={(e) => setNewSchedule({...newSchedule, day: e.target.value})}><option value="">{t('operations.day')}</option><option>السبت</option><option>الأحد</option><option>الإثنين</option><option>الثلاثاء</option><option>الأربعاء</option><option>الخميس</option></select><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSchedule.date} onChange={(e) => setNewSchedule({...newSchedule, date: e.target.value})} /><input type="number" placeholder={t('operations.morning')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSchedule.morning} onChange={(e) => setNewSchedule({...newSchedule, morning: parseInt(e.target.value)})} /><input type="number" placeholder={t('operations.evening')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSchedule.evening} onChange={(e) => setNewSchedule({...newSchedule, evening: parseInt(e.target.value)})} /><div className="flex gap-3"><button onClick={handleAddSchedule} className="flex-1 bg-green-500 py-2 rounded-lg">{t('common.save')}</button><button onClick={() => setShowAddScheduleModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button></div></div></div></div>)}
+      {/* Modal Add Schedule */}
+      {showAddScheduleModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-white mb-4">{t('operations.add_day')}</h2>
+            <div className="space-y-3">
+              <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSchedule.day} onChange={(e) => setNewSchedule({...newSchedule, day: e.target.value})}>
+                <option value="">{t('operations.day')}</option>
+                <option value="السبت">{t('days.saturday')}</option>
+                <option value="الأحد">{t('days.sunday')}</option>
+                <option value="الإثنين">{t('days.monday')}</option>
+                <option value="الثلاثاء">{t('days.tuesday')}</option>
+                <option value="الأربعاء">{t('days.wednesday')}</option>
+                <option value="الخميس">{t('days.thursday')}</option>
+                <option value="الجمعة">{t('days.friday')}</option>
+              </select>
+              <input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSchedule.date} onChange={(e) => setNewSchedule({...newSchedule, date: e.target.value})} />
+              <input type="number" placeholder={t('operations.morning')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSchedule.morning} onChange={(e) => setNewSchedule({...newSchedule, morning: parseInt(e.target.value)})} />
+              <input type="number" placeholder={t('operations.evening')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSchedule.evening} onChange={(e) => setNewSchedule({...newSchedule, evening: parseInt(e.target.value)})} />
+              <div className="flex gap-3">
+                <button onClick={handleAddSchedule} className="flex-1 bg-green-500 py-2 rounded-lg">{t('common.save')}</button>
+                <button onClick={() => setShowAddScheduleModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {showEditDoctorModal && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"><div className="bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-xl font-bold text-white mb-4">{t('operations.edit')} {t('operations.doctor')}</h2><div className="space-y-3"><input type="text" placeholder={t('operations.doctor')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.nameAr} onChange={(e) => setEditDoctor({...editDoctor, nameAr: e.target.value})} /><input type="text" placeholder={t('operations.specialization')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.specializationAr} onChange={(e) => setEditDoctor({...editDoctor, specializationAr: e.target.value})} /><input type="number" placeholder={t('operations.patients')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.patients} onChange={(e) => setEditDoctor({...editDoctor, patients: parseInt(e.target.value)})} /><input type="number" placeholder={t('operations.sessions')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.sessions} onChange={(e) => setEditDoctor({...editDoctor, sessions: parseInt(e.target.value)})} /><input type="number" placeholder={t('operations.attendance')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.attendance} onChange={(e) => setEditDoctor({...editDoctor, attendance: parseInt(e.target.value)})} /><input type="number" placeholder={t('operations.utilization')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.utilization} onChange={(e) => setEditDoctor({...editDoctor, utilization: parseInt(e.target.value)})} /><div className="flex gap-3"><button onClick={handleSaveDoctor} className="flex-1 bg-blue-500 py-2 rounded-lg">{t('common.save')}</button><button onClick={() => setShowEditDoctorModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button></div></div></div></div>)}
+      {/* Modal Edit Doctor */}
+      {showEditDoctorModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-white mb-4">{t('operations.edit')} {t('operations.doctor')}</h2>
+            <div className="space-y-3">
+              <input type="text" placeholder={t('operations.doctor')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.nameAr} onChange={(e) => setEditDoctor({...editDoctor, nameAr: e.target.value})} />
+              <input type="text" placeholder={t('operations.specialization')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.specializationAr} onChange={(e) => setEditDoctor({...editDoctor, specializationAr: e.target.value})} />
+              <input type="number" placeholder={t('operations.patients')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.patients} onChange={(e) => setEditDoctor({...editDoctor, patients: parseInt(e.target.value)})} />
+              <input type="number" placeholder={t('operations.sessions')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.sessions} onChange={(e) => setEditDoctor({...editDoctor, sessions: parseInt(e.target.value)})} />
+              <input type="number" placeholder={t('operations.attendance')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.attendance} onChange={(e) => setEditDoctor({...editDoctor, attendance: parseInt(e.target.value)})} />
+              <input type="number" placeholder={t('operations.utilization')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editDoctor.utilization} onChange={(e) => setEditDoctor({...editDoctor, utilization: parseInt(e.target.value)})} />
+              <div className="flex gap-3">
+                <button onClick={handleSaveDoctor} className="flex-1 bg-blue-500 py-2 rounded-lg">{t('common.save')}</button>
+                <button onClick={() => setShowEditDoctorModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {showAddDoctorModal && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"><div className="bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-xl font-bold text-white mb-4">إضافة طبيب جديد</h2><div className="space-y-3"><input type="text" placeholder={t('operations.doctor')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.nameAr} onChange={(e) => setNewDoctor({...newDoctor, nameAr: e.target.value})} /><input type="text" placeholder={t('operations.specialization')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.specializationAr} onChange={(e) => setNewDoctor({...newDoctor, specializationAr: e.target.value})} /><input type="number" placeholder={t('operations.patients')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.patients} onChange={(e) => setNewDoctor({...newDoctor, patients: e.target.value})} /><input type="number" placeholder={t('operations.sessions')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.sessions} onChange={(e) => setNewDoctor({...newDoctor, sessions: e.target.value})} /><input type="number" placeholder={t('operations.attendance')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.attendance} onChange={(e) => setNewDoctor({...newDoctor, attendance: e.target.value})} /><input type="number" placeholder={t('operations.utilization')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.utilization} onChange={(e) => setNewDoctor({...newDoctor, utilization: e.target.value})} /><div className="flex gap-3"><button onClick={handleAddDoctor} className="flex-1 bg-green-500 py-2 rounded-lg">{t('common.save')}</button><button onClick={() => setShowAddDoctorModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button></div></div></div></div>)}
+      {/* Modal Add Doctor */}
+      {showAddDoctorModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-white mb-4">إضافة طبيب جديد</h2>
+            <div className="space-y-3">
+              <input type="text" placeholder={t('operations.doctor')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.nameAr} onChange={(e) => setNewDoctor({...newDoctor, nameAr: e.target.value})} />
+              <input type="text" placeholder={t('operations.specialization')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.specializationAr} onChange={(e) => setNewDoctor({...newDoctor, specializationAr: e.target.value})} />
+              <input type="number" placeholder={t('operations.patients')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.patients} onChange={(e) => setNewDoctor({...newDoctor, patients: e.target.value})} />
+              <input type="number" placeholder={t('operations.sessions')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.sessions} onChange={(e) => setNewDoctor({...newDoctor, sessions: e.target.value})} />
+              <input type="number" placeholder={t('operations.attendance')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.attendance} onChange={(e) => setNewDoctor({...newDoctor, attendance: e.target.value})} />
+              <input type="number" placeholder={t('operations.utilization')} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.utilization} onChange={(e) => setNewDoctor({...newDoctor, utilization: e.target.value})} />
+              <div className="flex gap-3">
+                <button onClick={handleAddDoctor} className="flex-1 bg-green-500 py-2 rounded-lg">{t('common.save')}</button>
+                <button onClick={() => setShowAddDoctorModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {showResetModal && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"><div className="bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-xl font-bold text-white mb-4">{t('operations.reset_data')}</h2><p className="text-gray-400 mb-4">هل أنت متأكد؟ سيتم فقدان جميع التغييرات التي قمت بها.</p><div className="flex gap-3"><button onClick={handleResetData} className="flex-1 bg-red-500 py-2 rounded-lg">نعم، إعادة تعيين</button><button onClick={() => setShowResetModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button></div></div></div>)}
+      {/* Modal Reset */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-white mb-4">{t('operations.reset_data')}</h2>
+            <p className="text-gray-400 mb-4">هل أنت متأكد؟ سيتم فقدان جميع التغييرات التي قمت بها.</p>
+            <div className="flex gap-3">
+              <button onClick={handleResetData} className="flex-1 bg-red-500 py-2 rounded-lg">نعم، إعادة تعيين</button>
+              <button onClick={() => setShowResetModal(false)} className="flex-1 bg-gray-600 py-2 rounded-lg">{t('common.cancel')}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
