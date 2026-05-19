@@ -27,4 +27,13 @@ i18n
     }
   })
 
+// تحديث اتجاه الصفحة حسب اللغة
+i18n.on('languageChanged', (lng) => {
+  const isRTL = lng === 'ar'
+  document.documentElement.dir = isRTL ? 'rtl' : 'ltr'
+  document.documentElement.lang = lng
+  document.body.style.direction = isRTL ? 'rtl' : 'ltr'
+  document.body.style.textAlign = isRTL ? 'right' : 'left'
+})
+
 export default i18n
