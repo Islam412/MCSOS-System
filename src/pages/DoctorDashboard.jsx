@@ -4,7 +4,8 @@ import {
   Users, Activity, Calendar, Clock, Edit, Save, X, UserPlus, 
   Trash2, CheckCircle, FileText, Image, Pill, Stethoscope,
   Calendar as CalendarIcon, Phone, Mail, Plus, Eye, Upload,
-  Image as ImageIcon, FileImage, XCircle
+  Image as ImageIcon, FileImage, XCircle, AlertCircle, Check,
+  CalendarDays, Timer, TrendingUp, ListChecks, Ban
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ImageViewer from '../components/doctor/ImageViewer'
@@ -24,6 +25,7 @@ export default function DoctorDashboard() {
   const [showPatientModal, setShowPatientModal] = useState(false)
   const [showAddPatientModal, setShowAddPatientModal] = useState(false)
   const [showSessionModal, setShowSessionModal] = useState(false)
+  const [showSessionDetailsModal, setShowSessionDetailsModal] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
   const [showMedicationModal, setShowMedicationModal] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
@@ -35,6 +37,7 @@ export default function DoctorDashboard() {
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadDesc, setUploadDesc] = useState('')
   const [selectedFile, setSelectedFile] = useState(null)
+  const [selectedSession, setSelectedSession] = useState(null)
   
   const [formData, setFormData] = useState({
     nameAr: '', nameEn: '', nameFr: '', age: '', phone: '', email: '',
@@ -43,7 +46,7 @@ export default function DoctorDashboard() {
     medications: [], medicalRecommendations: '', notes: ''
   })
   
-  const [newSession, setNewSession] = useState({ date: '', time: '', notes: '' })
+  const [newSession, setNewSession] = useState({ date: '', time: '', notes: '', status: 'scheduled' })
   const [newReport, setNewReport] = useState({ title: '', content: '' })
   const [newMedication, setNewMedication] = useState({ name: '', dosage: '', frequency: '', startDate: '', endDate: '' })
   
@@ -68,6 +71,18 @@ export default function DoctorDashboard() {
   
   const getSeverityColor = (severity) => {
     return severityLevels[severity]?.color || 'text-gray-400'
+  }
+  
+  // حساب الإحصائيات للمريض
+  const getPatientStats = (patient) => {
+    const completed = patient.sessionsHistory?.filter(s => s.status === 'attended').length || 0
+    const scheduled = patient.sessionsHistory?.filter(s => s.status === 'scheduled').length || 0
+    const absent = patient.sessionsHistory?.filter(s => s.status === 'absent').length || 0
+    const cancelled = patient.sessionsHistory?.filter(s => s.status === 'cancelled').length || 0
+    const remaining = patient.totalSessions - completed
+    const progress = patient.totalSessions > 0 ? (completed / patient.totalSessions) * 100 : 0
+    
+    return { completed, scheduled, absent, cancelled, remaining, progress }
   }
   
   const handleFileSelect = (e) => {
@@ -127,12 +142,19 @@ export default function DoctorDashboard() {
     setShowImageViewer(true)
   }
   
-  const handleMarkAttendance = (patientId, sessionId) => {
-    const updated = updateSessionStatus(patientId, sessionId, 'attended')
+  // تسجيل حضور جلسة
+  const handleMarkAttendance = (sessionId, status) => {
+    const updated = updateSessionStatus(selectedPatient.id, sessionId, status)
     setPatients(updated)
-    toast.success('تم تسجيل الحضور بنجاح')
+    const updatedPatient = updated.find(p => p.id === selectedPatient.id)
+    setSelectedPatient(updatedPatient)
+    
+    const statusText = status === 'attended' ? 'حضور' : status === 'absent' ? 'غياب' : 'إلغاء'
+    toast.success(`تم تسجيل ${statusText} الجلسة بنجاح`)
+    setShowSessionDetailsModal(false)
   }
   
+  // إضافة جلسة جديدة
   const handleAddSession = () => {
     if (!newSession.date || !newSession.time) {
       toast.error('الرجاء إدخال التاريخ والوقت')
@@ -140,9 +162,38 @@ export default function DoctorDashboard() {
     }
     const updated = addSession(selectedPatient.id, { ...newSession, status: 'scheduled' })
     setPatients(updated)
+    const updatedPatient = updated.find(p => p.id === selectedPatient.id)
+    setSelectedPatient(updatedPatient)
     setShowSessionModal(false)
-    setNewSession({ date: '', time: '', notes: '' })
+    setNewSession({ date: '', time: '', notes: '', status: 'scheduled' })
     toast.success('تم إضافة الجلسة بنجاح')
+  }
+  
+  // إضافة جلسات متعددة دفعة واحدة
+  const handleAddMultipleSessions = () => {
+    const sessionsToAdd = []
+    const startDate = new Date(newSession.date)
+    for (let i = 0; i < 4; i++) {
+      const sessionDate = new Date(startDate)
+      sessionDate.setDate(startDate.getDate() + (i * 7)) // كل أسبوع
+      sessionsToAdd.push({
+        date: sessionDate.toISOString().split('T')[0],
+        time: newSession.time,
+        notes: newSession.notes,
+        status: 'scheduled'
+      })
+    }
+    
+    let updated = [...patients]
+    for (const session of sessionsToAdd) {
+      updated = addSession(selectedPatient.id, session)
+    }
+    setPatients(updated)
+    const updatedPatient = updated.find(p => p.id === selectedPatient.id)
+    setSelectedPatient(updatedPatient)
+    setShowSessionModal(false)
+    setNewSession({ date: '', time: '', notes: '', status: 'scheduled' })
+    toast.success('تم إضافة 4 جلسات أسبوعية بنجاح')
   }
   
   const handleAddReport = () => {
@@ -196,7 +247,17 @@ export default function DoctorDashboard() {
   
   const getSessionStatusBadge = (status) => {
     const s = sessionStatus[status]
-    return <span className={`text-xs px-2 py-1 rounded-full ${s?.color} bg-opacity-20 bg-current`}>{currentLang === 'ar' ? s?.ar : s?.en}</span>
+    const bgColor = status === 'attended' ? 'bg-green-500/20' : status === 'scheduled' ? 'bg-blue-500/20' : status === 'absent' ? 'bg-red-500/20' : 'bg-gray-500/20'
+    return <span className={`text-xs px-2 py-1 rounded-full ${bgColor} ${s?.color}`}>{currentLang === 'ar' ? s?.ar : s?.en}</span>
+  }
+  
+  const getSessionStatusIcon = (status) => {
+    switch(status) {
+      case 'attended': return <Check size={14} className="text-green-400" />
+      case 'scheduled': return <Calendar size={14} className="text-blue-400" />
+      case 'absent': return <Ban size={14} className="text-red-400" />
+      default: return <XCircle size={14} className="text-gray-400" />
+    }
   }
   
   if (loading) {
@@ -210,7 +271,7 @@ export default function DoctorDashboard() {
         <button onClick={() => setShowAddPatientModal(true)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30"><UserPlus size={18} /> إضافة مريض</button>
       </div>
       
-      {/* إحصائيات */}
+      {/* إحصائيات عامة */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl p-4 border border-blue-500/30">
           <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-xl"><Users className="text-blue-400" size={20} /></div><div><div className="text-2xl font-bold text-white">{patients.length}</div><div className="text-sm text-gray-400">إجمالي المرضى</div></div></div>
@@ -219,35 +280,38 @@ export default function DoctorDashboard() {
           <div className="flex items-center gap-3"><div className="p-2 bg-green-500/20 rounded-xl"><Activity className="text-green-400" size={20} /></div><div><div className="text-2xl font-bold text-white">{patients.filter(p => p.status === 'active').length}</div><div className="text-sm text-gray-400">مرضى نشطين</div></div></div>
         </div>
         <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl p-4 border border-purple-500/30">
-          <div className="flex items-center gap-3"><div className="p-2 bg-purple-500/20 rounded-xl"><Calendar className="text-purple-400" size={20} /></div><div><div className="text-2xl font-bold text-white">{patients.reduce((sum, p) => sum + p.totalSessions, 0)}</div><div className="text-sm text-gray-400">إجمالي الجلسات</div></div></div>
+          <div className="flex items-center gap-3"><div className="p-2 bg-purple-500/20 rounded-xl"><Calendar className="text-purple-400" size={20} /></div><div><div className="text-2xl font-bold text-white">{patients.reduce((sum, p) => sum + (p.sessionsHistory?.length || 0), 0)}</div><div className="text-sm text-gray-400">إجمالي الجلسات</div></div></div>
         </div>
         <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 rounded-2xl p-4 border border-orange-500/30">
-          <div className="flex items-center gap-3"><div className="p-2 bg-orange-500/20 rounded-xl"><Clock className="text-orange-400" size={20} /></div><div><div className="text-2xl font-bold text-white">{patients.reduce((sum, p) => sum + p.completedSessions, 0)}</div><div className="text-sm text-gray-400">جلسات مكتملة</div></div></div>
+          <div className="flex items-center gap-3"><div className="p-2 bg-orange-500/20 rounded-xl"><CheckCircle className="text-orange-400" size={20} /></div><div><div className="text-2xl font-bold text-white">{patients.reduce((sum, p) => sum + (p.sessionsHistory?.filter(s => s.status === 'attended').length || 0), 0)}</div><div className="text-sm text-gray-400">جلسات مكتملة</div></div></div>
         </div>
       </div>
       
       {/* قائمة المرضى */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {patients.map((patient) => (
-          <div key={patient.id} className="bg-gray-800/50 rounded-2xl border border-gray-700/50 overflow-hidden hover:border-blue-500/30 transition-all duration-300">
-            <div className="p-4 border-b border-gray-700/50 bg-gradient-to-r from-gray-800 to-gray-800/50">
-              <div className="flex justify-between items-start">
-                <div><h3 className="text-lg font-bold text-white">{getPatientName(patient)}</h3><p className="text-sm text-gray-400">{patient.age} سنة</p></div>
-                <span className={`text-xs px-2 py-1 rounded-full ${getSeverityColor(patient.severity)} bg-opacity-20 bg-current`}>{getSeverityText(patient.severity)}</span>
+        {patients.map((patient) => {
+          const stats = getPatientStats(patient)
+          return (
+            <div key={patient.id} className="bg-gray-800/50 rounded-2xl border border-gray-700/50 overflow-hidden hover:border-blue-500/30 transition-all duration-300">
+              <div className="p-4 border-b border-gray-700/50 bg-gradient-to-r from-gray-800 to-gray-800/50">
+                <div className="flex justify-between items-start">
+                  <div><h3 className="text-lg font-bold text-white">{getPatientName(patient)}</h3><p className="text-sm text-gray-400">{patient.age} سنة</p></div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${getSeverityColor(patient.severity)} bg-opacity-20 bg-current`}>{getSeverityText(patient.severity)}</span>
+                </div>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm"><Stethoscope size={14} className="text-blue-400" /><span className="text-gray-300">الدكتور: {getDoctorName(patient.mainDoctorId, currentLang)}</span></div>
+                <div className="flex items-center gap-2 text-sm"><CalendarDays size={14} className="text-purple-400" /><span className="text-gray-300">الجلسات المتبقية: {stats.remaining}</span></div>
+                <div className="flex items-center gap-2 text-sm"><ListChecks size={14} className="text-green-400" /><span className="text-gray-300">التقدم: {Math.round(stats.progress)}%</span></div>
+                <div className="w-full bg-gray-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${stats.progress}%` }}></div></div>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => { setSelectedPatient(patient); setActiveTab('info'); setShowPatientModal(true); }} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg text-sm hover:bg-blue-500/30">تفاصيل</button>
+                  <button onClick={() => { setSelectedPatient(patient); setShowSessionModal(true); }} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg text-sm hover:bg-green-500/30">جلسة جديدة</button>
+                </div>
               </div>
             </div>
-            <div className="p-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm"><Stethoscope size={14} className="text-blue-400" /><span className="text-gray-300">الدكتور: {getDoctorName(patient.mainDoctorId, currentLang)}</span></div>
-              <div className="flex items-center gap-2 text-sm"><CalendarIcon size={14} className="text-purple-400" /><span className="text-gray-300">الموعد القادم: {patient.nextSession?.date || 'غير محدد'}</span></div>
-              <div className="flex items-center gap-2 text-sm"><Activity size={14} className="text-green-400" /><span className="text-gray-300">التقدم: {Math.round(patient.progress)}%</span></div>
-              <div className="w-full bg-gray-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${patient.progress}%` }}></div></div>
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => { setSelectedPatient(patient); setActiveTab('info'); setShowPatientModal(true); }} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg text-sm hover:bg-blue-500/30">تفاصيل</button>
-                <button onClick={() => { setSelectedPatient(patient); setShowSessionModal(true); }} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg text-sm hover:bg-green-500/30">إضافة جلسة</button>
-              </div>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
       
       {/* Modal تفاصيل المريض الكامل */}
@@ -283,20 +347,49 @@ export default function DoctorDashboard() {
                   <div className="md:col-span-2"><label className="block text-sm text-gray-400">التوصيات الطبية</label><p className="text-white">{selectedPatient.medicalRecommendations || 'لا توجد توصيات'}</p></div>
                   <div className="md:col-span-2"><label className="block text-sm text-gray-400">ملاحظات</label><p className="text-white">{selectedPatient.notes || 'لا توجد ملاحظات'}</p></div>
                 </div>
-                <div className="bg-gray-700/30 p-3 rounded-lg"><div className="flex justify-between items-center"><span className="text-gray-400">نسبة التقدم العلاجي</span><span className="text-white font-bold">{Math.round(selectedPatient.progress)}%</span></div><div className="w-full bg-gray-600 rounded-full h-2 mt-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${selectedPatient.progress}%` }}></div></div></div>
+                <div className="bg-gray-700/30 p-3 rounded-lg">
+                  <div className="flex justify-between items-center"><span className="text-gray-400">نسبة التقدم العلاجي</span><span className="text-white font-bold">{Math.round(getPatientStats(selectedPatient).progress)}%</span></div>
+                  <div className="w-full bg-gray-600 rounded-full h-2 mt-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${getPatientStats(selectedPatient).progress}%` }}></div></div>
+                </div>
               </div>
             )}
             
-            {/* Tab: الجلسات */}
+            {/* Tab: الجلسات - نظام متكامل */}
             {activeTab === 'sessions' && (
-              <div className="space-y-3">
-                <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-semibold text-white">سجل الجلسات</h3><button onClick={() => setShowSessionModal(true)} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Plus size={14} /> جلسة جديدة</button></div>
-                {selectedPatient.sessionsHistory?.length > 0 ? selectedPatient.sessionsHistory.map((session) => (
-                  <div key={session.id} className="bg-gray-700/30 rounded-lg p-3 flex justify-between items-center">
-                    <div><p className="text-white">{session.date} - {session.time}</p>{session.notes && <p className="text-sm text-gray-400">{session.notes}</p>}</div>
-                    <div className="flex items-center gap-2">{getSessionStatusBadge(session.status)}</div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2"><CalendarDays size={18} className="text-purple-400" /> سجل الجلسات</h3>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowSessionModal(true)} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Plus size={14} /> جلسة مفردة</button>
                   </div>
-                )) : <p className="text-gray-400 text-center py-8">لا توجد جلسات مسجلة</p>}
+                </div>
+                
+                {/* إحصائيات الجلسات */}
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="bg-green-500/10 rounded-lg p-2 text-center"><CheckCircle size={20} className="text-green-400 mx-auto mb-1" /><div className="text-lg font-bold text-white">{getPatientStats(selectedPatient).completed}</div><div className="text-xs text-gray-400">حاضر</div></div>
+                  <div className="bg-blue-500/10 rounded-lg p-2 text-center"><Calendar size={20} className="text-blue-400 mx-auto mb-1" /><div className="text-lg font-bold text-white">{getPatientStats(selectedPatient).scheduled}</div><div className="text-xs text-gray-400">مجدول</div></div>
+                  <div className="bg-red-500/10 rounded-lg p-2 text-center"><Ban size={20} className="text-red-400 mx-auto mb-1" /><div className="text-lg font-bold text-white">{getPatientStats(selectedPatient).absent}</div><div className="text-xs text-gray-400">غائب</div></div>
+                  <div className="bg-gray-500/10 rounded-lg p-2 text-center"><XCircle size={20} className="text-gray-400 mx-auto mb-1" /><div className="text-lg font-bold text-white">{getPatientStats(selectedPatient).cancelled}</div><div className="text-xs text-gray-400">ملغي</div></div>
+                </div>
+                
+                {/* قائمة الجلسات */}
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {selectedPatient.sessionsHistory?.length > 0 ? (
+                    [...selectedPatient.sessionsHistory].sort((a, b) => new Date(b.date) - new Date(a.date)).map((session) => (
+                      <div key={session.id} className="bg-gray-700/30 rounded-lg p-3 hover:bg-gray-700/50 transition cursor-pointer" onClick={() => { setSelectedSession(session); setShowSessionDetailsModal(true); }}>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            {getSessionStatusIcon(session.status)}
+                            <div><p className="text-white font-medium">{session.date} - {session.time}</p>{session.notes && <p className="text-sm text-gray-400 mt-1">{session.notes.substring(0, 50)}</p>}</div>
+                          </div>
+                          {getSessionStatusBadge(session.status)}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-400 text-center py-8">لا توجد جلسات مسجلة. أضف جلسة جديدة باستخدام الزر أعلاه.</p>
+                  )}
+                </div>
               </div>
             )}
             
@@ -325,7 +418,6 @@ export default function DoctorDashboard() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-semibold text-white">الصور والأشعة</h3><button onClick={() => { setUploadType('xray'); setUploadTitle(''); setUploadDesc(''); setSelectedFile(null); setShowImageModal(true); }} className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Upload size={14} /> رفع صورة</button></div>
                 
-                {/* أشعة */}
                 {selectedPatient.images?.filter(i => i.type === 'xray').length > 0 && (
                   <div><h4 className="text-md font-semibold text-white mb-2 flex items-center gap-2"><ImageIcon size={16} className="text-blue-400" /> الأشعة</h4><div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {selectedPatient.images.filter(i => i.type === 'xray').map((img, idx) => (
@@ -337,7 +429,6 @@ export default function DoctorDashboard() {
                   </div></div>
                 )}
                 
-                {/* تقارير مصورة */}
                 {selectedPatient.images?.filter(i => i.type === 'report').length > 0 && (
                   <div><h4 className="text-md font-semibold text-white mb-2 flex items-center gap-2"><FileImage size={16} className="text-green-400" /> التقارير المصورة</h4><div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {selectedPatient.images.filter(i => i.type === 'report').map((img, idx) => (
@@ -358,7 +449,75 @@ export default function DoctorDashboard() {
         </div>
       )}
       
-      {/* Modal رفع صورة */}
+      {/* Modal تفاصيل الجلسة - لتسجيل الحضور/الغياب */}
+      {showSessionDetailsModal && selectedSession && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">تفاصيل الجلسة</h2>
+              <button onClick={() => setShowSessionDetailsModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-gray-700/30 rounded-lg p-3 text-center"><p className="text-2xl font-bold text-white">{selectedSession.date}</p><p className="text-gray-400">{selectedSession.time}</p></div>
+              {selectedSession.notes && <div><label className="block text-sm text-gray-400">ملاحظات</label><p className="text-white bg-gray-700/30 p-2 rounded-lg">{selectedSession.notes}</p></div>}
+              
+              <div className="border-t border-gray-700 pt-4">
+                <label className="block text-sm text-gray-400 mb-2">حالة الجلسة الحالية</label>
+                <div className="flex items-center gap-2 mb-4">{getSessionStatusIcon(selectedSession.status)}<span className="text-white">{currentLang === 'ar' ? sessionStatus[selectedSession.status]?.ar : sessionStatus[selectedSession.status]?.en}</span></div>
+                
+                <label className="block text-sm text-gray-400 mb-2">تحديث الحالة</label>
+                <div className="flex gap-2">
+                  <button onClick={() => handleMarkAttendance(selectedSession.id, 'attended')} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 flex items-center justify-center gap-2"><Check size={16} /> حضور</button>
+                  <button onClick={() => handleMarkAttendance(selectedSession.id, 'absent')} className="flex-1 bg-red-500/20 text-red-400 py-2 rounded-lg hover:bg-red-500/30 flex items-center justify-center gap-2"><Ban size={16} /> غياب</button>
+                  <button onClick={() => handleMarkAttendance(selectedSession.id, 'cancelled')} className="flex-1 bg-gray-500/20 text-gray-400 py-2 rounded-lg hover:bg-gray-500/30 flex items-center justify-center gap-2"><XCircle size={16} /> إلغاء</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal إضافة جلسة جديدة */}
+      {showSessionModal && selectedPatient && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+            <h2 className="text-xl font-bold text-white mb-4">إضافة جلسة جديدة</h2>
+            <div className="space-y-3">
+              <input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSession.date} onChange={(e) => setNewSession({...newSession, date: e.target.value})} />
+              <input type="time" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSession.time} onChange={(e) => setNewSession({...newSession, time: e.target.value})} />
+              <textarea placeholder="ملاحظات الجلسة (اختياري)" className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={newSession.notes} onChange={(e) => setNewSession({...newSession, notes: e.target.value})} />
+              <div className="flex gap-2 pt-2">
+                <button onClick={handleAddSession} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">إضافة جلسة</button>
+                <button onClick={handleAddMultipleSessions} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 text-sm">إضافة 4 جلسات أسبوعية</button>
+              </div>
+              <button onClick={() => setShowSessionModal(false)} className="w-full bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* باقي المودالات (Add Patient, Upload Image, Add Medication, Add Report) */}
+      {showAddPatientModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+            <h2 className="text-xl font-bold text-white mb-4">إضافة مريض جديد</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="block text-sm text-gray-400">الاسم (عربي) *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400">الاسم (English)</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400">العمر *</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.age} onChange={(e) => setFormData({...formData, age: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400">رقم الجوال</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400">البريد الإلكتروني</label><input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400">عدد الجلسات المطلوبة</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.totalSessions} onChange={(e) => setFormData({...formData, totalSessions: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400">التشخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400">درجة الحالة</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.severity} onChange={(e) => setFormData({...formData, severity: e.target.value})}><option value="mild">بسيط</option><option value="moderate">متوسط</option><option value="severe">شديد</option></select></div>
+              <div className="md:col-span-2"><label className="block text-sm text-gray-400">الدكتور المعالج</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.mainDoctorId} onChange={(e) => setFormData({...formData, mainDoctorId: e.target.value})}><option value="">اختر الدكتور</option>{availableDoctors.map(d => <option key={d.id} value={d.id}>{currentLang === 'ar' ? d.nameAr : d.nameEn}</option>)}</select></div>
+              <div className="md:col-span-2"><label className="block text-sm text-gray-400">التوصيات الطبية</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.medicalRecommendations} onChange={(e) => setFormData({...formData, medicalRecommendations: e.target.value})} /></div>
+            </div>
+            <div className="flex gap-3 pt-4 mt-4 border-t border-gray-700"><button onClick={handleAddPatient} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">إضافة</button><button onClick={() => setShowAddPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button></div>
+          </div>
+        </div>
+      )}
+      
       {showImageModal && selectedPatient && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
@@ -371,39 +530,6 @@ export default function DoctorDashboard() {
               {selectedFile && <p className="text-sm text-green-400">✓ تم اختيار: {selectedFile.name}</p>}
               <div className="flex gap-3 pt-4"><button onClick={handleUploadImage} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">رفع</button><button onClick={() => setShowImageModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button></div>
             </div>
-          </div>
-        </div>
-      )}
-      
-      {/* باقي المودالات */}
-      {showAddPatientModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">إضافة مريض جديد</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="block text-sm text-gray-400">الاسم (عربي) *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400">الاسم (English)</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400">العمر *</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.age} onChange={(e) => setFormData({...formData, age: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400">رقم الجوال</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400">البريد الإلكتروني</label><input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400">التشخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400">تاريخ التشخيص</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.diagnosisDate} onChange={(e) => setFormData({...formData, diagnosisDate: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400">درجة الحالة</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.severity} onChange={(e) => setFormData({...formData, severity: e.target.value})}><option value="mild">بسيط</option><option value="moderate">متوسط</option><option value="severe">شديد</option></select></div>
-              <div><label className="block text-sm text-gray-400">الدكتور المعالج</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.mainDoctorId} onChange={(e) => setFormData({...formData, mainDoctorId: e.target.value})}><option value="">اختر الدكتور</option>{availableDoctors.map(d => <option key={d.id} value={d.id}>{currentLang === 'ar' ? d.nameAr : d.nameEn}</option>)}</select></div>
-              <div><label className="block text-sm text-gray-400">عدد الجلسات المطلوبة</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.totalSessions} onChange={(e) => setFormData({...formData, totalSessions: e.target.value})} /></div>
-              <div className="md:col-span-2"><label className="block text-sm text-gray-400">التوصيات الطبية</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.medicalRecommendations} onChange={(e) => setFormData({...formData, medicalRecommendations: e.target.value})} /></div>
-              <div className="md:col-span-2"><label className="block text-sm text-gray-400">ملاحظات إضافية</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} /></div>
-            </div>
-            <div className="flex gap-3 pt-4 mt-4 border-t border-gray-700"><button onClick={handleAddPatient} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">إضافة</button><button onClick={() => setShowAddPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button></div>
-          </div>
-        </div>
-      )}
-      
-      {showSessionModal && selectedPatient && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">إضافة جلسة جديدة</h2>
-            <div className="space-y-3"><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSession.date} onChange={(e) => setNewSession({...newSession, date: e.target.value})} /><input type="time" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newSession.time} onChange={(e) => setNewSession({...newSession, time: e.target.value})} /><textarea placeholder="ملاحظات الجلسة" className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="3" value={newSession.notes} onChange={(e) => setNewSession({...newSession, notes: e.target.value})} /><div className="flex gap-3"><button onClick={handleAddSession} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">إضافة</button><button onClick={() => setShowSessionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div>
           </div>
         </div>
       )}
@@ -426,13 +552,8 @@ export default function DoctorDashboard() {
         </div>
       )}
       
-      {/* Image Viewer Modal */}
       {showImageViewer && (
-        <ImageViewer 
-          images={viewerImages}
-          onDelete={(imageId) => handleDeleteImage(imageId)}
-          onClose={() => setShowImageViewer(false)}
-        />
+        <ImageViewer images={viewerImages} onDelete={(imageId) => handleDeleteImage(imageId)} onClose={() => setShowImageViewer(false)} />
       )}
     </div>
   )
