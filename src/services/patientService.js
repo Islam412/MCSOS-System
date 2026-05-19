@@ -16,17 +16,26 @@ export const availableDoctors = [
 
 // درجات الحالة
 export const severityLevels = {
-  mild: { ar: 'بسيط', en: 'Mild', color: 'text-green-400' },
-  moderate: { ar: 'متوسط', en: 'Moderate', color: 'text-yellow-400' },
-  severe: { ar: 'شديد', en: 'Severe', color: 'text-red-400' }
+  mild: { ar: 'بسيط', en: 'Mild', color: 'text-green-400', weight: 1 },
+  moderate: { ar: 'متوسط', en: 'Moderate', color: 'text-yellow-400', weight: 2 },
+  severe: { ar: 'شديد', en: 'Severe', color: 'text-red-400', weight: 3 }
 }
 
 // حالة الجلسة
 export const sessionStatus = {
-  scheduled: { ar: 'مجدول', en: 'Scheduled', color: 'text-blue-400' },
-  attended: { ar: 'حاضر', en: 'Attended', color: 'text-green-400' },
-  absent: { ar: 'غائب', en: 'Absent', color: 'text-red-400' },
-  cancelled: { ar: 'ملغي', en: 'Cancelled', color: 'text-gray-400' }
+  scheduled: { ar: 'مجدول', en: 'Scheduled', color: 'text-blue-400', weight: 0 },
+  attended: { ar: 'حاضر', en: 'Attended', color: 'text-green-400', weight: 10 },
+  absent: { ar: 'غائب', en: 'Absent', color: 'text-red-400', weight: 0 },
+  cancelled: { ar: 'ملغي', en: 'Cancelled', color: 'text-gray-400', weight: 0 }
+}
+
+// حالة المريض العامة
+export const patientStatus = {
+  active: { ar: 'نشط', en: 'Active', color: 'text-green-400', progressBonus: 5 },
+  improving: { ar: 'يتحسن', en: 'Improving', color: 'text-blue-400', progressBonus: 10 },
+  stable: { ar: 'مستقر', en: 'Stable', color: 'text-yellow-400', progressBonus: 0 },
+  declining: { ar: 'متدهور', en: 'Declining', color: 'text-red-400', progressBonus: -10 },
+  completed: { ar: 'مكتمل', en: 'Completed', color: 'text-gray-400', progressBonus: 0 }
 }
 
 // البيانات الافتراضية
@@ -46,7 +55,7 @@ const defaultPatients = [
     secondaryDoctorId: 2,
     totalSessions: 8,
     completedSessions: 3,
-    status: 'active',
+    status: 'improving',
     medications: [
       { name: 'بروفين', dosage: '500mg', frequency: 'مرتين يومياً', startDate: '2024-01-15', endDate: '2024-02-15' }
     ],
@@ -56,9 +65,15 @@ const defaultPatients = [
       { id: 2, date: '2024-05-17', time: '10:00', status: 'attended', notes: 'لا يوجد شكوى', doctorNotes: '' },
       { id: 3, date: '2024-05-20', time: '10:00', status: 'scheduled', notes: '', doctorNotes: '' }
     ],
-    nextSession: { date: '2024-05-22', time: '10:00' },
     reports: [],
     images: [],
+    progressHistory: [
+      { date: '2024-05-01', progress: 0, note: 'بداية العلاج' },
+      { date: '2024-05-15', progress: 25, note: 'تحسن بعد أول جلسة' },
+      { date: '2024-05-17', progress: 37.5, note: 'استمرار التحسن' }
+    ],
+    lastAssessmentDate: '2024-05-17',
+    doctorAssessment: 'يستجيب بشكل جيد للعلاج، يوصى بالاستمرار',
     progress: 37.5,
     notes: 'يستجيب بشكل جيد للعلاج'
   },
@@ -77,7 +92,7 @@ const defaultPatients = [
     secondaryDoctorId: null,
     totalSessions: 12,
     completedSessions: 5,
-    status: 'active',
+    status: 'improving',
     medications: [
       { name: 'مرخي عضلات', dosage: 'قرص', frequency: '3 مرات يومياً', startDate: '2024-01-20', endDate: '2024-02-20' }
     ],
@@ -87,13 +102,114 @@ const defaultPatients = [
       { id: 2, date: '2024-05-16', time: '11:00', status: 'attended', notes: 'تحسن طفيف', doctorNotes: '' },
       { id: 3, date: '2024-05-19', time: '11:00', status: 'scheduled', notes: '', doctorNotes: '' }
     ],
-    nextSession: { date: '2024-05-21', time: '11:00' },
     reports: [],
     images: [],
+    progressHistory: [
+      { date: '2024-05-01', progress: 0, note: 'بداية العلاج' },
+      { date: '2024-05-16', progress: 41.7, note: 'تحسن ملحوظ' }
+    ],
+    lastAssessmentDate: '2024-05-16',
+    doctorAssessment: 'تحسن تدريجي، يوصى بمواصلة التمارين',
     progress: 41.7,
     notes: 'تحسن تدريجي'
   }
 ]
+
+// حساب التقدم العلاجي
+export const calculateProgress = (patient) => {
+  let progress = 0
+  let factors = []
+  
+  // 1. حساب من الجلسات المكتملة (70% من التقدم)
+  const sessionProgress = (patient.completedSessions / patient.totalSessions) * 70
+  factors.push({ name: 'الجلسات المكتملة', value: sessionProgress, weight: 70 })
+  progress += sessionProgress
+  
+  // 2. حساب من حالة المريض (15% من التقدم)
+  const statusProgress = patientStatus[patient.status]?.progressBonus || 0
+  let statusValue = 0
+  if (patient.status === 'improving') statusValue = 15
+  else if (patient.status === 'active') statusValue = 10
+  else if (patient.status === 'stable') statusValue = 5
+  else if (patient.status === 'declining') statusValue = -10
+  factors.push({ name: 'حالة المريض', value: statusValue, weight: 15 })
+  progress += statusValue
+  
+  // 3. حساب من درجة الحالة (10% من التقدم)
+  const severityWeight = severityLevels[patient.severity]?.weight || 2
+  let severityValue = 0
+  if (patient.severity === 'mild') severityValue = 10
+  else if (patient.severity === 'moderate') severityValue = 5
+  else if (patient.severity === 'severe') severityValue = 0
+  factors.push({ name: 'درجة الحالة', value: severityValue, weight: 10 })
+  progress += severityValue
+  
+  // 4. حساب من عدد التقارير الإيجابية (5% من التقدم)
+  const positiveReports = patient.reports?.filter(r => r.type === 'positive').length || 0
+  const reportValue = Math.min(5, positiveReports * 2)
+  factors.push({ name: 'التقارير الإيجابية', value: reportValue, weight: 5 })
+  progress += reportValue
+  
+  // التأكد من أن النسبة بين 0 و 100
+  progress = Math.min(100, Math.max(0, Math.round(progress)))
+  
+  // حفظ تاريخ التقدم
+  if (progress !== patient.progress) {
+    const progressHistory = patient.progressHistory || []
+    progressHistory.push({
+      date: new Date().toISOString().split('T')[0],
+      progress: progress,
+      note: `تحديث التقدم من ${patient.progress}% إلى ${progress}%`,
+      factors: factors
+    })
+    patient.progressHistory = progressHistory
+    patient.progress = progress
+    
+    // تحديث حالة المريض بناءً على التقدم
+    if (progress >= 90) patient.status = 'completed'
+    else if (progress >= 70) patient.status = 'improving'
+    else if (progress >= 40) patient.status = 'active'
+    else if (progress >= 20) patient.status = 'stable'
+    else patient.status = 'declining'
+  }
+  
+  return { progress, factors }
+}
+
+// تحديث تقدم المريض بعد كل تغيير
+export const updatePatientProgress = (patientId) => {
+  const patients = getPatients()
+  const patient = patients.find(p => p.id === patientId)
+  if (patient) {
+    const { progress, factors } = calculateProgress(patient)
+    patient.progress = progress
+    savePatients(patients)
+    return { progress, factors }
+  }
+  return null
+}
+
+// إضافة تقييم تقدم من الطبيب
+export const addProgressAssessment = (patientId, assessment) => {
+  const patients = getPatients()
+  const patient = patients.find(p => p.id === patientId)
+  if (patient) {
+    const progressHistory = patient.progressHistory || []
+    progressHistory.push({
+      date: new Date().toISOString().split('T')[0],
+      progress: patient.progress,
+      note: assessment.note,
+      doctorName: assessment.doctorName,
+      nextSteps: assessment.nextSteps
+    })
+    patient.progressHistory = progressHistory
+    patient.lastAssessmentDate = new Date().toISOString().split('T')[0]
+    patient.doctorAssessment = assessment.note
+    savePatients(patients)
+    updatePatientProgress(patientId)
+  }
+  return patients
+}
 
 export const getPatients = () => {
   const saved = localStorage.getItem(STORAGE_KEYS.PATIENTS)
@@ -107,7 +223,7 @@ export const savePatients = (patients) => {
 export const addPatient = (patient) => {
   const patients = getPatients()
   const newId = Math.max(...patients.map(p => p.id), 0) + 1
-  const newPatient = { ...patient, id: newId, sessionsHistory: [], reports: [], images: [], completedSessions: 0, progress: 0 }
+  const newPatient = { ...patient, id: newId, sessionsHistory: [], reports: [], images: [], progressHistory: [], completedSessions: 0, progress: 0 }
   const updated = [...patients, newPatient]
   savePatients(updated)
   return updated
@@ -117,6 +233,7 @@ export const updatePatient = (id, updatedData) => {
   const patients = getPatients()
   const updated = patients.map(p => p.id === id ? { ...p, ...updatedData } : p)
   savePatients(updated)
+  updatePatientProgress(id)
   return updated
 }
 
@@ -132,8 +249,9 @@ export const addSession = (patientId, sessionData) => {
   const patient = patients.find(p => p.id === patientId)
   if (patient) {
     const newSession = { id: Date.now(), ...sessionData }
-    patient.sessionsHistory = [newSession, ...patient.sessionsHistory]
+    patient.sessionsHistory = [newSession, ...(patient.sessionsHistory || [])]
     savePatients(patients)
+    updatePatientProgress(patientId)
   }
   return patients
 }
@@ -144,13 +262,19 @@ export const updateSessionStatus = (patientId, sessionId, status, notes = '') =>
   if (patient) {
     const session = patient.sessionsHistory.find(s => s.id === sessionId)
     if (session) {
+      const oldStatus = session.status
       session.status = status
-      session.notes = notes
-      if (status === 'attended') {
+      session.notes = notes || session.notes
+      
+      // تحديث عدد الجلسات المكتملة
+      if (status === 'attended' && oldStatus !== 'attended') {
         patient.completedSessions = (patient.completedSessions || 0) + 1
-        patient.progress = (patient.completedSessions / patient.totalSessions) * 100
+      } else if (oldStatus === 'attended' && status !== 'attended') {
+        patient.completedSessions = Math.max(0, (patient.completedSessions || 0) - 1)
       }
+      
       savePatients(patients)
+      updatePatientProgress(patientId)
     }
   }
   return patients
@@ -163,28 +287,11 @@ export const addReport = (patientId, reportData) => {
     const newReport = { id: Date.now(), date: new Date().toISOString(), ...reportData }
     patient.reports = [newReport, ...(patient.reports || [])]
     savePatients(patients)
+    updatePatientProgress(patientId)
   }
   return patients
 }
 
-export const addImage = (patientId, imageData) => {
-  const patients = getPatients()
-  const patient = patients.find(p => p.id === patientId)
-  if (patient) {
-    const newImage = { id: Date.now(), date: new Date().toISOString(), ...imageData }
-    patient.images = [newImage, ...(patient.images || [])]
-    savePatients(patients)
-  }
-  return patients
-}
-
-export const getDoctorName = (doctorId, lang = 'ar') => {
-  const doctor = availableDoctors.find(d => d.id === doctorId)
-  if (!doctor) return lang === 'ar' ? 'غير محدد' : 'Not assigned'
-  return lang === 'ar' ? doctor.nameAr : doctor.nameEn
-}
-
-// إضافة صورة جديدة للمريض
 export const addImageToPatient = (patientId, imageFile, type, title, description = '') => {
   return new Promise((resolve) => {
     const reader = new FileReader()
@@ -194,10 +301,10 @@ export const addImageToPatient = (patientId, imageFile, type, title, description
       if (patient) {
         const newImage = {
           id: Date.now(),
-          type: type, // 'xray' or 'report'
+          type: type,
           title: title,
           description: description,
-          data: reader.result, // base64 string
+          data: reader.result,
           fileName: imageFile.name,
           fileSize: imageFile.size,
           date: new Date().toISOString()
@@ -212,7 +319,6 @@ export const addImageToPatient = (patientId, imageFile, type, title, description
   })
 }
 
-// حذف صورة
 export const deleteImage = (patientId, imageId) => {
   const patients = getPatients()
   const patient = patients.find(p => p.id === patientId)
@@ -223,13 +329,35 @@ export const deleteImage = (patientId, imageId) => {
   return patients
 }
 
-// الحصول على صور المريض
-export const getPatientImages = (patientId, type = null) => {
+export const getDoctorName = (doctorId, lang = 'ar') => {
+  const doctor = availableDoctors.find(d => d.id === doctorId)
+  if (!doctor) return lang === 'ar' ? 'غير محدد' : 'Not assigned'
+  return lang === 'ar' ? doctor.nameAr : doctor.nameEn
+}
+
+// دالة للحصول على تفاصيل التقدم
+export const getProgressDetails = (patientId) => {
   const patients = getPatients()
   const patient = patients.find(p => p.id === patientId)
-  if (!patient || !patient.images) return []
-  if (type) {
-    return patient.images.filter(img => img.type === type)
+  if (!patient) return null
+  
+  const sessionProgress = (patient.completedSessions / patient.totalSessions) * 70
+  const statusBonus = patientStatus[patient.status]?.progressBonus || 0
+  const severityBonus = patient.severity === 'mild' ? 10 : patient.severity === 'moderate' ? 5 : 0
+  const reportBonus = Math.min(5, (patient.reports?.filter(r => r.type === 'positive').length || 0) * 2)
+  
+  return {
+    currentProgress: patient.progress,
+    sessionProgress,
+    statusBonus,
+    severityBonus,
+    reportBonus,
+    totalCalculated: sessionProgress + statusBonus + severityBonus + reportBonus,
+    factors: [
+      { name: 'الجلسات المكتملة', value: sessionProgress, max: 70 },
+      { name: 'حالة المريض', value: statusBonus, max: 15 },
+      { name: 'درجة الحالة', value: severityBonus, max: 10 },
+      { name: 'التقارير الإيجابية', value: reportBonus, max: 5 }
+    ]
   }
-  return patient.images
 }
