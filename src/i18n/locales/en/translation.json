@@ -30,7 +30,11 @@
     "select_doctor": "Select Doctor",
     "patient_details": "Patient Details",
     "contact_info": "Contact Info",
-    "national_id": "National ID"
+    "national_id": "National ID",
+    "search_placeholder": "Search by name or phone",
+    "no_patients": "No patients found",
+    "visits": "visit",
+    "id": "Patient ID"
   },
   "doctor": {
     "title": "Doctor Dashboard",
@@ -52,18 +56,27 @@
   },
   "finance": {
     "title": "Finance Dashboard",
-    "subtitle": "Track payments",
+    "subtitle": "Track payments and invoices",
     "total_revenue": "Total Revenue",
     "pending_payments": "Pending Payments",
-    "paid": "Paid",
-    "unpaid": "Unpaid",
+    "total_transactions": "Total Transactions",
+    "payment_rate": "Payment Rate",
+    "recent_transactions": "Recent Transactions",
     "amount": "Amount",
     "invoice": "Invoice",
-    "print": "Print"
+    "print": "Print",
+    "export_report": "Export Report",
+    "payment_success": "Payment confirmed",
+    "printing": "Printing",
+    "exporting": "Exporting report",
+    "paid": "Paid",
+    "unpaid": "Unpaid"
   },
   "operations": {
     "title": "Operations Dashboard",
     "subtitle": "Performance monitoring",
+    "coming": "Coming Soon",
+    "description": "Reports System",
     "schedule": "Schedule",
     "doctors": "Doctors",
     "performance": "Performance",
@@ -76,7 +89,9 @@
     "bulk_generate": "Bulk Schedule",
     "dynamic_generate": "Dynamic Schedule",
     "available": "Available",
-    "no_slots": "No slots"
+    "no_slots": "No slots",
+    "bulk_slots": "Bulk Slots",
+    "dynamic_slots": "Dynamic Slots"
   },
   "packages": {
     "title": "Packages Management",
@@ -93,7 +108,9 @@
     "send_now": "Send Now",
     "message": "Message",
     "template": "Template",
-    "statistics": "Statistics"
+    "statistics": "Statistics",
+    "messages_sent": "Messages Sent",
+    "scheduled": "Scheduled"
   },
   "common": {
     "save": "Save",
@@ -104,11 +121,23 @@
     "loading": "Loading",
     "success": "Success",
     "error": "Error",
-    "actions": "Actions"
+    "actions": "Actions",
+    "close": "Close"
   },
   "status": {
     "active": "Active",
     "completed": "Completed",
     "pending": "Pending"
+  },
+  "placeholders": {
+    "enter_name": "Enter full name",
+    "enter_phone": "Enter phone number",
+    "enter_email": "Enter email",
+    "enter_id": "Enter national ID",
+    "search_patient": "Search for patient"
+  },
+  "messages": {
+    "booking_confirmed": "Booking confirmed",
+    "patient_not_found": "Patient not found"
   }
 }

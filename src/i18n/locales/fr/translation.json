@@ -30,7 +30,11 @@
     "select_doctor": "Sélectionner",
     "patient_details": "Détails",
     "contact_info": "Coordonnées",
-    "national_id": "CIN"
+    "national_id": "CIN",
+    "search_placeholder": "Rechercher par nom ou numéro",
+    "no_patients": "Aucun patient",
+    "visits": "visite",
+    "id": "ID Patient"
   },
   "doctor": {
     "title": "Médecin",
@@ -51,19 +55,28 @@
     "actions": "Actions"
   },
   "finance": {
-    "title": "Finances",
-    "subtitle": "Paiements",
+    "title": "Tableau de Bord Finances",
+    "subtitle": "Suivi des paiements et factures",
     "total_revenue": "Revenu Total",
-    "pending_payments": "En Attente",
-    "paid": "Payé",
-    "unpaid": "Impayé",
+    "pending_payments": "Paiements en Attente",
+    "total_transactions": "Total Transactions",
+    "payment_rate": "Taux de Paiement",
+    "recent_transactions": "Transactions Récentes",
     "amount": "Montant",
     "invoice": "Facture",
-    "print": "Imprimer"
+    "print": "Imprimer",
+    "export_report": "Exporter Rapport",
+    "payment_success": "Paiement confirmé",
+    "printing": "Impression",
+    "exporting": "Exportation du rapport",
+    "paid": "Payé",
+    "unpaid": "Impayé"
   },
   "operations": {
     "title": "Opérations",
     "subtitle": "Performance",
+    "coming": "Bientôt",
+    "description": "Système de rapports",
     "schedule": "Planification",
     "doctors": "Médecins",
     "performance": "Performance",
@@ -76,7 +89,9 @@
     "bulk_generate": "Planification groupe",
     "dynamic_generate": "Planification dynamique",
     "available": "Disponible",
-    "no_slots": "Aucun créneau"
+    "no_slots": "Aucun créneau",
+    "bulk_slots": "Créneaux groupe",
+    "dynamic_slots": "Créneaux dynamiques"
   },
   "packages": {
     "title": "Forfaits",
@@ -93,7 +108,9 @@
     "send_now": "Envoyer",
     "message": "Message",
     "template": "Modèle",
-    "statistics": "Statistiques"
+    "statistics": "Statistiques",
+    "messages_sent": "Messages envoyés",
+    "scheduled": "Programmés"
   },
   "common": {
     "save": "Enregistrer",
@@ -104,11 +121,23 @@
     "loading": "Chargement",
     "success": "Succès",
     "error": "Erreur",
-    "actions": "Actions"
+    "actions": "Actions",
+    "close": "Fermer"
   },
   "status": {
     "active": "Actif",
     "completed": "Terminé",
     "pending": "En attente"
+  },
+  "placeholders": {
+    "enter_name": "Nom complet",
+    "enter_phone": "Numéro téléphone",
+    "enter_email": "Email",
+    "enter_id": "CIN",
+    "search_patient": "Rechercher patient"
+  },
+  "messages": {
+    "booking_confirmed": "Rendez-vous confirmé",
+    "patient_not_found": "Patient non trouvé"
   }
 }

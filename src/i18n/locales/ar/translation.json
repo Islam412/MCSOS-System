@@ -30,7 +30,11 @@
     "select_doctor": "اختر الطبيب",
     "patient_details": "تفاصيل المريض",
     "contact_info": "معلومات التواصل",
-    "national_id": "رقم الهوية"
+    "national_id": "رقم الهوية",
+    "search_placeholder": "ابحث بالاسم أو رقم الجوال",
+    "no_patients": "لا يوجد مرضى",
+    "visits": "زيارة",
+    "id": "رقم المريض"
   },
   "doctor": {
     "title": "لوحة الأطباء",
@@ -52,18 +56,27 @@
   },
   "finance": {
     "title": "لوحة المالية",
-    "subtitle": "تتبع المدفوعات",
+    "subtitle": "تتبع المدفوعات والفواتير",
     "total_revenue": "إجمالي الإيرادات",
     "pending_payments": "مدفوعات معلقة",
-    "paid": "مدفوع",
-    "unpaid": "غير مدفوع",
+    "total_transactions": "إجمالي المعاملات",
+    "payment_rate": "نسبة الدفع",
+    "recent_transactions": "أحدث المعاملات",
     "amount": "المبلغ",
     "invoice": "فاتورة",
-    "print": "طباعة"
+    "print": "طباعة",
+    "export_report": "تصدير تقرير",
+    "payment_success": "تم تأكيد الدفع",
+    "printing": "جاري الطباعة",
+    "exporting": "جاري تصدير التقرير",
+    "paid": "مدفوع",
+    "unpaid": "غير مدفوع"
   },
   "operations": {
     "title": "لوحة العمليات",
     "subtitle": "متابعة الأداء",
+    "coming": "قريباً",
+    "description": "نظام التقارير",
     "schedule": "الجدولة",
     "doctors": "الأطباء",
     "performance": "الأداء",
@@ -76,7 +89,9 @@
     "bulk_generate": "جدولة دفعات",
     "dynamic_generate": "جدولة ديناميكية",
     "available": "متاح",
-    "no_slots": "لا توجد مواعيد"
+    "no_slots": "لا توجد مواعيد",
+    "bulk_slots": "المواعيد الدفعية",
+    "dynamic_slots": "المواعيد الديناميكية"
   },
   "packages": {
     "title": "إدارة الباقات",
@@ -93,7 +108,9 @@
     "send_now": "إرسال الآن",
     "message": "الرسالة",
     "template": "قالب",
-    "statistics": "إحصائيات"
+    "statistics": "إحصائيات",
+    "messages_sent": "رسالة مرسلة",
+    "scheduled": "مجدولة"
   },
   "common": {
     "save": "حفظ",
@@ -104,11 +121,23 @@
     "loading": "جاري التحميل",
     "success": "تم بنجاح",
     "error": "خطأ",
-    "actions": "الإجراءات"
+    "actions": "الإجراءات",
+    "close": "إغلاق"
   },
   "status": {
     "active": "نشط",
     "completed": "مكتمل",
     "pending": "قيد الانتظار"
+  },
+  "placeholders": {
+    "enter_name": "أدخل الاسم الكامل",
+    "enter_phone": "أدخل رقم الجوال",
+    "enter_email": "أدخل البريد الإلكتروني",
+    "enter_id": "أدخل رقم الهوية",
+    "search_patient": "ابحث عن مريض"
+  },
+  "messages": {
+    "booking_confirmed": "تم تأكيد الحجز",
+    "patient_not_found": "لم يتم العثور على المريض"
   }
 }
