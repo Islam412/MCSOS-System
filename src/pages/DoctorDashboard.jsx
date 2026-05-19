@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Users, Activity, Calendar, Clock, Edit, Save, X, UserPlus, TrendingUp, Sparkles, Trash2 } from 'lucide-react'
+import { Users, Activity, Calendar, Clock, Edit, Save, X, UserPlus, TrendingUp, Sparkles, Trash2, CheckCircle, PlusCircle, MinusCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // خدمة تخزين البيانات في LocalStorage
@@ -15,7 +15,6 @@ const defaultPatients = [
   { id: 4, nameAr: 'نورة عبدالله', nameEn: 'Noura Abdullah', nameFr: 'Noura Abdullah', age: 30, diagnosisAr: 'شد عضلي', diagnosisEn: 'Muscle Strain', diagnosisFr: 'Déchirure musculaire', treatmentAr: 'راحة وعلاج طبيعي', treatmentEn: 'Rest & Therapy', treatmentFr: 'Repos et thérapie', sessions: 10, completed: 0, status: 'active' }
 ]
 
-// دوال حفظ واسترجاع البيانات
 const getPatients = () => {
   const saved = localStorage.getItem(STORAGE_KEYS.PATIENTS)
   return saved ? JSON.parse(saved) : defaultPatients
@@ -34,7 +33,9 @@ export default function DoctorDashboard() {
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
   const [showAddPatientModal, setShowAddPatientModal] = useState(false)
+  const [showEditSessionsModal, setShowEditSessionsModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [editSessionsData, setEditSessionsData] = useState({ completed: 0, total: 0 })
   
   const [assessmentData, setAssessmentData] = useState({
     diagnosis: '',
@@ -51,7 +52,6 @@ export default function DoctorDashboard() {
     sessions: ''
   })
   
-  // تحميل البيانات
   useEffect(() => {
     loadData()
   }, [])
@@ -79,6 +79,69 @@ export default function DoctorDashboard() {
     return patient.treatmentEn
   }
   
+  // دالة تسجيل الحضور - تزيد الجلسات المكتملة بمقدار 1
+  const handleMarkAttendance = (patientId) => {
+    const patient = patients.find(p => p.id === patientId)
+    if (!patient) return
+    
+    if (patient.completed >= patient.sessions) {
+      toast.error('لقد أكمل المريض جميع الجلسات المطلوبة!')
+      return
+    }
+    
+    const updatedPatients = patients.map(p => 
+      p.id === patientId 
+        ? { ...p, completed: p.completed + 1 }
+        : p
+    )
+    
+    // التحقق إذا اكتملت جميع الجلسات
+    const updatedPatient = updatedPatients.find(p => p.id === patientId)
+    if (updatedPatient.completed === updatedPatient.sessions) {
+      updatedPatient.status = 'completed'
+      toast.success('🎉 مبروك! اكتملت جميع جلسات المريض!')
+    } else {
+      toast.success(`تم تسجيل حضور الجلسة ${updatedPatient.completed}/${updatedPatient.sessions}`)
+    }
+    
+    setPatients(updatedPatients)
+    savePatients(updatedPatients)
+  }
+  
+  // دالة تعديل الجلسات يدوياً
+  const handleEditSessions = (patient) => {
+    setSelectedPatient(patient)
+    setEditSessionsData({
+      completed: patient.completed,
+      total: patient.sessions
+    })
+    setShowEditSessionsModal(true)
+  }
+  
+  // حفظ التعديلات اليدوية
+  const handleSaveSessionsEdit = () => {
+    if (editSessionsData.completed > editSessionsData.total) {
+      toast.error('لا يمكن أن يتجاوز عدد الجلسات المكتملة إجمالي الجلسات')
+      return
+    }
+    
+    const updatedPatients = patients.map(p => 
+      p.id === selectedPatient.id 
+        ? { 
+            ...p, 
+            completed: editSessionsData.completed,
+            sessions: editSessionsData.total,
+            status: editSessionsData.completed === editSessionsData.total ? 'completed' : 'active'
+          }
+        : p
+    )
+    
+    setPatients(updatedPatients)
+    savePatients(updatedPatients)
+    setShowEditSessionsModal(false)
+    toast.success('تم تحديث الجلسات بنجاح')
+  }
+  
   const handleSelectPatient = (patient) => {
     setSelectedPatient(patient)
     setAssessmentData({
@@ -94,7 +157,12 @@ export default function DoctorDashboard() {
     if (selectedPatient) {
       const updatedPatients = patients.map(p => 
         p.id === selectedPatient.id 
-          ? { ...p, sessions: parseInt(assessmentData.sessions) }
+          ? { 
+              ...p, 
+              diagnosisAr: assessmentData.diagnosis,
+              treatmentAr: assessmentData.treatment,
+              sessions: parseInt(assessmentData.sessions)
+            }
           : p
       )
       setPatients(updatedPatients)
@@ -221,7 +289,7 @@ export default function DoctorDashboard() {
           <h2 className="text-xl font-bold text-white">مرضاي</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px]">
+          <table className="w-full min-w-[900px]">
             <thead className="bg-gray-800/80">
               <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
                 <th className="px-6 py-3 text-sm font-semibold text-gray-300">تفاصيل المريض</th>
@@ -230,6 +298,7 @@ export default function DoctorDashboard() {
                 <th className="px-6 py-3 text-sm font-semibold text-gray-300">الجلسات</th>
                 <th className="px-6 py-3 text-sm font-semibold text-gray-300">الحالة</th>
                 <th className="px-6 py-3 text-sm font-semibold text-gray-300">إجراءات</th>
+                <th className="px-6 py-3 text-sm font-semibold text-gray-300">حضور</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700/50">
@@ -242,11 +311,28 @@ export default function DoctorDashboard() {
                   <td className="px-6 py-4 text-gray-300">{getDiagnosis(patient)}</td>
                   <td className="px-6 py-4 text-gray-300">{getTreatment(patient)}</td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 bg-gray-700 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(patient.completed / patient.sessions) * 100}%` }}></div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 bg-gray-700 rounded-full h-2">
+                          <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(patient.completed / patient.sessions) * 100}%` }}></div>
+                        </div>
+                        <span className="text-sm font-semibold text-blue-400">{patient.completed}/{patient.sessions}</span>
                       </div>
-                      <span className="text-sm text-gray-400">{patient.completed}/{patient.sessions}</span>
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => handleMarkAttendance(patient.id)}
+                          disabled={patient.completed >= patient.sessions}
+                          className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${patient.completed >= patient.sessions ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}
+                        >
+                          <CheckCircle size={12} /> تسجيل حضور
+                        </button>
+                        <button 
+                          onClick={() => handleEditSessions(patient)}
+                          className="text-xs px-2 py-0.5 rounded flex items-center gap-1 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
+                        >
+                          <Edit size={12} /> تعديل
+                        </button>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -269,16 +355,44 @@ export default function DoctorDashboard() {
                       </button>
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="text-sm text-gray-400">{patient.completed} / {patient.sessions}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+           </table>
         </div>
       </div>
       
-      {/* Modal إضافة مريض - كامل */}
+      {/* Modal تعديل الجلسات يدوياً */}
+      {showEditSessionsModal && selectedPatient && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">تعديل الجلسات</h2>
+              <button onClick={() => setShowEditSessionsModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
+            </div>
+            <div className="space-y-4">
+              <div><label className="block text-sm font-semibold mb-1 text-gray-300">اسم المريض</label><input type="text" value={getPatientName(selectedPatient)} disabled className="w-full p-2 bg-gray-700/50 rounded-lg text-white" /></div>
+              <div><label className="block text-sm font-semibold mb-1 text-gray-300">إجمالي عدد الجلسات</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSessionsData.total} onChange={(e) => setEditSessionsData({...editSessionsData, total: parseInt(e.target.value)})} /></div>
+              <div><label className="block text-sm font-semibold mb-1 text-gray-300">الجلسات المكتملة</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editSessionsData.completed} onChange={(e) => setEditSessionsData({...editSessionsData, completed: parseInt(e.target.value)})} /></div>
+              <div className="bg-blue-500/10 p-3 rounded-lg">
+                <p className="text-sm text-gray-300">المتبقي: <span className="text-blue-400 font-bold">{editSessionsData.total - editSessionsData.completed}</span> جلسة</p>
+                <p className="text-sm text-gray-300">نسبة الإنجاز: <span className="text-green-400 font-bold">{Math.round((editSessionsData.completed / editSessionsData.total) * 100)}%</span></p>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleSaveSessionsEdit} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 border border-blue-500/30">حفظ</button>
+                <button onClick={() => setShowEditSessionsModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal إضافة مريض */}
       {showAddPatientModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-white">إضافة مريض جديد</h2>
@@ -302,7 +416,7 @@ export default function DoctorDashboard() {
       
       {/* Modal التقييم الطبي */}
       {showAssessmentModal && selectedPatient && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-lg w-full p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-white">التقييم الطبي</h2>
