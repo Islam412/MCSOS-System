@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, Calendar, Clock, Pill, FileText, Hospital, Phone, Mail, MapPin, Building, Syringe, ClipboardList, AlertCircle } from 'lucide-react'
+import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, Calendar, Clock, Pill, FileText, Hospital, Phone, Mail, MapPin, Building, Syringe, ClipboardList, AlertCircle, Signature, PenTool, UserCheck, Stamp, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function PrescriptionManager() {
@@ -11,6 +11,9 @@ export default function PrescriptionManager() {
   const [prescriptions, setPrescriptions] = useState([])
   const [selectedPrescription, setSelectedPrescription] = useState(null)
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false)
+  const [showSignatureModal, setShowSignatureModal] = useState(false)
+  const [showHospitalSettings, setShowHospitalSettings] = useState(false)
+  const [signatureType, setSignatureType] = useState('patient')
   const [loading, setLoading] = useState(true)
   const [patients, setPatients] = useState([])
   const [doctors, setDoctors] = useState([])
@@ -22,8 +25,11 @@ export default function PrescriptionManager() {
     addressEn: 'King Abdulaziz Road, Riyadh',
     phone: '+966 12 345 6788',
     email: 'info@alsalamhospital.com',
+    licenseNumber: 'HOS-123456',
     logo: null,
-    logoPreview: null
+    logoPreview: null,
+    stamp: null,
+    stampPreview: null
   })
 
   const [formData, setFormData] = useState({
@@ -34,9 +40,18 @@ export default function PrescriptionManager() {
     patientAge: '',
     patientPhone: '',
     patientAddress: '',
+    patientSignature: '',
+    patientSignatureDate: '',
     doctorId: '',
     doctorName: '',
     doctorSpecialization: '',
+    doctorSignature: '',
+    doctorSignatureDate: '',
+    hospitalStamp: '',
+    hospitalStampDate: '',
+    showDoctorSignature: true,
+    showPatientSignature: true,
+    showHospitalStamp: true,
     diagnosis: '',
     notes: '',
     medications: [{ id: 1, name: '', dosage: '', frequency: '', duration: '', durationUnit: 'days', quantity: '', instructions: '', timeOfDay: [] }],
@@ -80,6 +95,39 @@ export default function PrescriptionManager() {
     setPrescriptions(data)
   }
 
+  const saveHospitalInfo = (data) => {
+    localStorage.setItem('mcsos_hospital_info', JSON.stringify(data))
+    setHospitalInfo(data)
+  }
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const updated = { ...hospitalInfo, logoPreview: reader.result, logo: reader.result }
+        setHospitalInfo(updated)
+        saveHospitalInfo(updated)
+        toast.success('تم رفع شعار المستشفى بنجاح')
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleStampUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const updated = { ...hospitalInfo, stampPreview: reader.result, stamp: reader.result }
+        setHospitalInfo(updated)
+        saveHospitalInfo(updated)
+        toast.success('تم رفع ختم المستشفى بنجاح')
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSelectPatient = (patientId) => {
     const patient = patients.find(p => p.id == patientId)
     if (patient) {
@@ -103,6 +151,37 @@ export default function PrescriptionManager() {
         doctorSpecialization: (currentLang === 'ar' ? doctor.specializationAr : doctor.specializationEn) || ''
       }))
     }
+  }
+
+  const handleAddSignature = (type) => {
+    setSignatureType(type)
+    setShowSignatureModal(true)
+  }
+
+  const handleSaveSignature = (signatureData) => {
+    const currentDate = new Date().toISOString().split('T')[0]
+    if (signatureType === 'patient') {
+      setFormData(prev => ({ ...prev, patientSignature: signatureData, patientSignatureDate: currentDate }))
+    } else if (signatureType === 'doctor') {
+      setFormData(prev => ({ ...prev, doctorSignature: signatureData, doctorSignatureDate: currentDate }))
+    } else {
+      setFormData(prev => ({ ...prev, hospitalStamp: signatureData, hospitalStampDate: currentDate }))
+    }
+    setShowSignatureModal(false)
+    let name = signatureType === 'patient' ? 'المريض' : signatureType === 'doctor' ? 'الطبيب' : 'المستشفى'
+    toast.success(`تم إضافة ${name}`)
+  }
+
+  const handleRemoveSignature = (type) => {
+    if (type === 'patient') {
+      setFormData(prev => ({ ...prev, patientSignature: '', patientSignatureDate: '' }))
+    } else if (type === 'doctor') {
+      setFormData(prev => ({ ...prev, doctorSignature: '', doctorSignatureDate: '' }))
+    } else {
+      setFormData(prev => ({ ...prev, hospitalStamp: '', hospitalStampDate: '' }))
+    }
+    let name = type === 'patient' ? 'المريض' : type === 'doctor' ? 'الطبيب' : 'المستشفى'
+    toast.success(`تم إزالة ${name}`)
   }
 
   const handleAddMedication = () => {
@@ -151,6 +230,7 @@ export default function PrescriptionManager() {
       hospitalAddress: hospitalInfo.addressAr,
       hospitalPhone: hospitalInfo.phone,
       hospitalLogo: hospitalInfo.logoPreview,
+      hospitalStampImage: hospitalInfo.stampPreview,
       createdAt: selectedPrescription?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -184,7 +264,13 @@ export default function PrescriptionManager() {
       prescriptionNumber: `RX-${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
       prescriptionDate: new Date().toISOString().split('T')[0],
       patientId: '', patientName: '', patientAge: '', patientPhone: '', patientAddress: '',
+      patientSignature: '', patientSignatureDate: '',
       doctorId: '', doctorName: '', doctorSpecialization: '',
+      doctorSignature: '', doctorSignatureDate: '',
+      hospitalStamp: '', hospitalStampDate: '',
+      showDoctorSignature: true,
+      showPatientSignature: true,
+      showHospitalStamp: true,
       diagnosis: '', notes: '',
       medications: [{ id: 1, name: '', dosage: '', frequency: '', duration: '', durationUnit: 'days', quantity: '', instructions: '', timeOfDay: [] }],
       refillCount: 0, isRefillable: false, expiryDate: ''
@@ -199,6 +285,81 @@ export default function PrescriptionManager() {
       printWindow.print()
     }
     toast.success('جاري الطباعة...')
+  }
+
+  const SignatureDraw = ({ onSave, onClose }) => {
+    const [isDrawing, setIsDrawing] = useState(false)
+    const [ctx, setCtx] = useState(null)
+    const [canvas, setCanvas] = useState(null)
+
+    useEffect(() => {
+      if (canvas) {
+        const context = canvas.getContext('2d')
+        context.strokeStyle = '#000'
+        context.lineWidth = 2
+        context.lineCap = 'round'
+        setCtx(context)
+      }
+    }, [canvas])
+
+    const startDrawing = (e) => {
+      setIsDrawing(true)
+      const rect = canvas.getBoundingClientRect()
+      const x = (e.clientX - rect.left) * (canvas.width / rect.width)
+      const y = (e.clientY - rect.top) * (canvas.height / rect.height)
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+    }
+
+    const draw = (e) => {
+      if (!isDrawing) return
+      const rect = canvas.getBoundingClientRect()
+      const x = (e.clientX - rect.left) * (canvas.width / rect.width)
+      const y = (e.clientY - rect.top) * (canvas.height / rect.height)
+      ctx.lineTo(x, y)
+      ctx.stroke()
+    }
+
+    const stopDrawing = () => {
+      setIsDrawing(false)
+      ctx.beginPath()
+    }
+
+    const clearCanvas = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+    }
+
+    const saveSignature = () => {
+      const signatureData = canvas.toDataURL()
+      onSave(signatureData)
+    }
+
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 rounded-2xl max-w-lg w-full p-6 border border-gray-700">
+          <h2 className="text-xl font-bold text-white mb-4">
+            {signatureType === 'patient' ? 'توقيع المريض' : signatureType === 'doctor' ? 'توقيع الطبيب' : 'ختم المستشفى'}
+          </h2>
+          <div className="bg-white rounded-lg p-2">
+            <canvas
+              ref={ref => setCanvas(ref)}
+              width={500}
+              height={200}
+              style={{ width: '100%', height: '150px', border: '1px solid #ccc', borderRadius: '8px', cursor: 'crosshair' }}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+            />
+          </div>
+          <div className="flex gap-3 mt-4">
+            <button onClick={clearCanvas} className="flex-1 bg-yellow-500/20 text-yellow-400 py-2 rounded-lg">مسح</button>
+            <button onClick={saveSignature} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">حفظ</button>
+            <button onClick={onClose} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const getPrintHTML = (prescription) => {
@@ -231,8 +392,10 @@ export default function PrescriptionManager() {
           th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:${isRTLPrint ? 'right' : 'left'};vertical-align:top;}
           th{background:#f1f5f9;font-weight:600;}
           .medication-name{font-weight:bold;color:#1e3a5f;}
-          .signatures{display:grid;grid-template-columns:1fr 1fr;gap:30px;padding:15px 30px;text-align:center;border-top:1px solid #e5e7eb;margin-top:10px;}
-          .sign-line{border-top:1px solid #94a3b8;width:140px;margin:8px auto 0;}
+          .signatures-section{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px 25px;text-align:center;border-top:1px solid #e5e7eb;margin-top:10px;background:#f8fafc;}
+          .sign-line{border-top:1px solid #94a3b8;width:120px;margin:8px auto 0;}
+          .signature-img{max-width:120px;max-height:50px;margin:5px auto;display:block;}
+          .hospital-stamp-img{max-width:100px;max-height:80px;margin:5px auto;display:block;}
           .footer{text-align:center;padding:8px;background:#1e3a5f;color:white;font-size:8px;}
           .doctor-stamp{border:1px dashed #2563eb;padding:5px;border-radius:8px;margin-top:5px;}
           @media print{body{background:white;padding:0;margin:0;}.prescription{box-shadow:none;border-radius:0;}}
@@ -244,7 +407,7 @@ export default function PrescriptionManager() {
             <div class="header-content">
               <div class="logo-area">
                 ${prescription.hospitalLogo ? `<img src="${prescription.hospitalLogo}" style="width:45px;height:45px;object-fit:contain;background:white;border-radius:8px;">` : '<div class="logo-img">🏥</div>'}
-                <div><div class="hospital-name">${prescription.hospitalName || hospitalInfo.nameAr}</div><div class="hospital-details">${prescription.hospitalAddress || hospitalInfo.addressAr}<br>هاتف: ${prescription.hospitalPhone || hospitalInfo.phone}</div></div>
+                <div><div class="hospital-name">${prescription.hospitalName || hospitalInfo.nameAr}</div><div class="hospital-details">${prescription.hospitalAddress || hospitalInfo.addressAr}<br>هاتف: ${prescription.hospitalPhone || hospitalInfo.phone}<br>ترخيص: ${hospitalInfo.licenseNumber}</div></div>
               </div>
               <div class="prescription-box">
                 <div class="prescription-title">روشتة طبية</div>
@@ -263,22 +426,45 @@ export default function PrescriptionManager() {
           
           <div class="section-title">📋 الأدوية الموصوفة</div>
           <table>
-            <thead>
-              <tr><th style="width:5%">#</th><th style="width:30%">اسم الدواء</th><th style="width:15%">الجرعة</th><th style="width:20%">عدد المرات</th><th style="width:15%">المدة</th><th style="width:15%">تعليمات</th></tr></thead>
+            <thead><tr><th style="width:5%">#</th><th style="width:30%">اسم الدواء</th><th style="width:15%">الجرعة</th><th style="width:20%">عدد المرات</th><th style="width:15%">المدة</th><th style="width:15%">تعليمات</th></tr></thead>
             <tbody>
               ${prescription.medications.map((med, idx) => `
-              <tr><td style="text-align:center">${idx+1}</td><td class="medication-name">${med.name} ${med.quantity ? `(${med.quantity})` : ''}</td><td>${med.dosage || '-'}</td><td>${med.frequency || '-'}</td><td>${med.duration || '-'} ${med.durationUnit === 'days' ? 'يوم' : med.durationUnit === 'weeks' ? 'أسبوع' : 'شهر'}</td><td>${med.instructions || '-'}</td> `).join('')}
+              <tr><td style="text-align:center">${idx+1}</td><td class="medication-name">${med.name} ${med.quantity ? `(${med.quantity})` : ''}</td><td>${med.dosage || '-'}</td><td>${med.frequency || '-'}</td><td>${med.duration || '-'} ${med.durationUnit === 'days' ? 'يوم' : med.durationUnit === 'weeks' ? 'أسبوع' : 'شهر'}</td><td>${med.instructions || '-'}</td></tr>
+              `).join('')}
             </tbody>
           </table>
           
           ${prescription.notes ? `<div class="diagnosis-box" style="background:#f0fdf4;">📝 ملاحظات: ${prescription.notes}</div>` : ''}
           
-          <div class="signatures">
-            <div><div class="sign-line"></div><p style="margin-top:5px;font-size:10px;">توقيع المريض</p></div>
-            <div><div class="sign-line"></div><p style="margin-top:5px;font-size:10px;">توقيع الطبيب</p><div class="doctor-stamp"><p style="font-size:9px;">${prescription.doctorName}</p><p style="font-size:8px;color:#2563eb;">${prescription.doctorSpecialization || ''}</p></div></div>
+          <div class="signatures-section">
+            <div>
+              <div class="sign-line"></div>
+              <p style="margin-top:5px;font-size:10px;">توقيع المريض</p>
+              ${prescription.showPatientSignature && prescription.patientSignature ? `<img src="${prescription.patientSignature}" class="signature-img" alt="توقيع المريض">` : '<div style="height:40px;"></div>'}
+              ${prescription.patientSignatureDate ? `<p style="font-size:8px;color:#666;">${prescription.patientSignatureDate}</p>` : ''}
+            </div>
+            <div>
+              <div class="sign-line"></div>
+              <p style="margin-top:5px;font-size:10px;">توقيع الطبيب</p>
+              ${prescription.showDoctorSignature && prescription.doctorSignature ? `<img src="${prescription.doctorSignature}" class="signature-img" alt="توقيع الطبيب">` : '<div style="height:40px;"></div>'}
+              ${prescription.doctorSignatureDate ? `<p style="font-size:8px;color:#666;">${prescription.doctorSignatureDate}</p>` : ''}
+              <div class="doctor-stamp"><p style="font-size:9px;">${prescription.doctorName}</p><p style="font-size:8px;color:#2563eb;">${prescription.doctorSpecialization || ''}</p></div>
+            </div>
+            <div>
+              <div class="sign-line"></div>
+              <p style="margin-top:5px;font-size:10px;">ختم المستشفى</p>
+              ${prescription.showHospitalStamp && (prescription.hospitalStamp || prescription.hospitalStampImage) ? 
+                `<img src="${prescription.hospitalStamp || prescription.hospitalStampImage}" class="hospital-stamp-img" alt="ختم المستشفى">` : 
+                '<div style="height:40px;"></div>'}
+              ${prescription.hospitalStampDate ? `<p style="font-size:8px;color:#666;">${prescription.hospitalStampDate}</p>` : ''}
+              <p style="font-size:8px;color:#2563eb;">${hospitalInfo.licenseNumber}</p>
+            </div>
           </div>
           
-          <div class="footer"><p>${prescription.isRefillable ? `🔄 قابل لإعادة الصرف - عدد المرات: ${prescription.refillCount}` : '❌ لا يعاد صرف الروشتة'}</p><p style="margin-top:3px;">تم إنشاء هذه الروشتة بواسطة نظام المركز الطبي MCSOS</p></div>
+          <div class="footer">
+            <p>${prescription.isRefillable ? `🔄 قابل لإعادة الصرف - عدد المرات: ${prescription.refillCount}` : '❌ لا يعاد صرف الروشتة'}</p>
+            <p style="margin-top:3px;">تم إنشاء هذه الروشتة بواسطة نظام المركز الطبي MCSOS</p>
+          </div>
         </div>
       </body>
       </html>
@@ -292,9 +478,8 @@ export default function PrescriptionManager() {
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
         <div><h1 className="text-3xl font-bold gradient-text">الروشتات الطبية</h1><p className="text-gray-400 mt-1">إدارة الروشتات والأدوية الموصوفة</p></div>
         <div className="flex gap-2">
-          <button onClick={() => { resetForm(); setShowPrescriptionModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30">
-            <Plus size={18} /> روشتة جديدة
-          </button>
+          <button onClick={() => setShowHospitalSettings(true)} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30"><Hospital size={18} /> إعدادات المستشفى</button>
+          <button onClick={() => { resetForm(); setShowPrescriptionModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30"><Plus size={18} /> روشتة جديدة</button>
         </div>
       </div>
 
@@ -304,20 +489,39 @@ export default function PrescriptionManager() {
           <table className="w-full">
             <thead className="bg-gray-800/80"><tr className={`${isRTL ? 'text-right' : 'text-left'}`}><th className="px-4 py-2 text-sm text-gray-300">الرقم</th><th className="px-4 py-2 text-sm text-gray-300">المريض</th><th className="px-4 py-2 text-sm text-gray-300">الطبيب</th><th className="px-4 py-2 text-sm text-gray-300">التاريخ</th><th className="px-4 py-2 text-sm text-gray-300">الأدوية</th><th className="px-4 py-2 text-sm text-gray-300">إجراءات</th></tr></thead>
             <tbody className="divide-y divide-gray-700/50">
-              {prescriptions.length === 0 ? <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">لا توجد روشتات</td></tr> : prescriptions.map((pres) => (
-                <tr key={pres.id} className="hover:bg-gray-700/30">
-                  <td className="px-4 py-2 text-blue-400 text-sm">{pres.prescriptionNumber}</td>
-                  <td className="px-4 py-2"><div className="font-semibold text-white">{pres.patientName}</div><div className="text-xs text-gray-400">{pres.patientAge} سنة</div></td>
-                  <td className="px-4 py-2 text-gray-300 text-sm">{pres.doctorName}</td>
-                  <td className="px-4 py-2 text-gray-400 text-sm">{new Date(pres.prescriptionDate).toLocaleDateString()}</td>
-                  <td className="px-4 py-2 text-gray-300 text-sm">{pres.medications.filter(m => m.name).length} أدوية</td>
-                  <td className="px-4 py-2"><div className="flex gap-2"><button onClick={() => handleEditPrescription(pres)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => handlePrint(pres)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button><button onClick={() => handleDeletePrescription(pres.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
-                </tr>
-              ))}
+              {prescriptions.length === 0 ? (
+                <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">لا توجد روشتات</td></tr>
+              ) : (
+                prescriptions.map((pres) => (
+                  <tr key={pres.id} className="hover:bg-gray-700/30">
+                    <td className="px-4 py-2 text-blue-400 text-sm">{pres.prescriptionNumber}</td>
+                    <td className="px-4 py-2"><div className="font-semibold text-white">{pres.patientName}</div><div className="text-xs text-gray-400">{pres.patientAge} سنة</div></td>
+                    <td className="px-4 py-2 text-gray-300 text-sm">{pres.doctorName}</td>
+                    <td className="px-4 py-2 text-gray-400 text-sm">{new Date(pres.prescriptionDate).toLocaleDateString()}</td>
+                    <td className="px-4 py-2 text-gray-300 text-sm">{pres.medications.filter(m => m.name).length} أدوية</td>
+                    <td className="px-4 py-2"><div className="flex gap-2"><button onClick={() => handleEditPrescription(pres)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => handlePrint(pres)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button><button onClick={() => handleDeletePrescription(pres.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Modal إعدادات المستشفى */}
+      {showHospitalSettings && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">إعدادات المستشفى</h2><button onClick={() => setShowHospitalSettings(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
+            <div className="space-y-4">
+              <div className="bg-gray-700/30 rounded-lg p-3"><label className="block text-sm text-gray-400 mb-2">شعار المستشفى</label><div className="flex items-center gap-4">{hospitalInfo.logoPreview && <img src={hospitalInfo.logoPreview} alt="الشعار" className="w-20 h-20 object-contain border rounded p-1 bg-white" />}<label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2"><Upload size={18} /> رفع شعار</label><input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" /></div></div>
+              <div className="bg-gray-700/30 rounded-lg p-3"><label className="block text-sm text-gray-400 mb-2">ختم المستشفى</label><div className="flex items-center gap-4">{hospitalInfo.stampPreview && <img src={hospitalInfo.stampPreview} alt="الختم" className="w-20 h-20 object-contain border rounded p-1 bg-white" />}<label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2"><Stamp size={18} /> رفع ختم</label><input type="file" accept="image/*" onChange={handleStampUpload} className="hidden" /></div></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm text-gray-400 mb-1">اسم المستشفى</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.nameAr} onChange={(e) => setHospitalInfo({...hospitalInfo, nameAr: e.target.value})} /></div><div><label className="block text-sm text-gray-400 mb-1">العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.addressAr} onChange={(e) => setHospitalInfo({...hospitalInfo, addressAr: e.target.value})} /></div><div><label className="block text-sm text-gray-400 mb-1">رقم الهاتف</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.phone} onChange={(e) => setHospitalInfo({...hospitalInfo, phone: e.target.value})} /></div><div><label className="block text-sm text-gray-400 mb-1">رقم الترخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.licenseNumber} onChange={(e) => setHospitalInfo({...hospitalInfo, licenseNumber: e.target.value})} /></div></div>
+              <div className="flex gap-3 pt-4"><button onClick={() => { saveHospitalInfo(hospitalInfo); setShowHospitalSettings(false); }} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">حفظ</button><button onClick={() => setShowHospitalSettings(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showPrescriptionModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -333,6 +537,13 @@ export default function PrescriptionManager() {
               <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientAddress} onChange={(e) => setFormData({...formData, patientAddress: e.target.value})} /></div>
               <div><label className="block text-sm text-gray-400 mb-1">تاريخ الروشتة</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.prescriptionDate} onChange={(e) => setFormData({...formData, prescriptionDate: e.target.value})} /></div>
               <div><label className="block text-sm text-gray-400 mb-1">تاريخ الصلاحية</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} /></div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <h3 className="col-span-3 font-bold text-white text-lg mb-2">التوقيعات والأختام</h3>
+              <div className="border border-gray-600 rounded-lg p-3"><div className="flex justify-between items-center mb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={formData.showPatientSignature} onChange={(e) => setFormData({...formData, showPatientSignature: e.target.checked})} className="w-4 h-4" /><span className="text-white">توقيع المريض</span></label><button onClick={() => handleAddSignature('patient')} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><PenTool size={14} /> إضافة</button></div>{formData.patientSignature && (<div className="mt-2 p-2 bg-gray-700 rounded-lg"><img src={formData.patientSignature} alt="توقيع المريض" className="h-12 object-contain" /><button onClick={() => handleRemoveSignature('patient')} className="text-red-400 text-xs mt-1">إزالة</button></div>)}</div>
+              <div className="border border-gray-600 rounded-lg p-3"><div className="flex justify-between items-center mb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={formData.showDoctorSignature} onChange={(e) => setFormData({...formData, showDoctorSignature: e.target.checked})} className="w-4 h-4" /><span className="text-white">توقيع الطبيب</span></label><button onClick={() => handleAddSignature('doctor')} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><PenTool size={14} /> إضافة</button></div>{formData.doctorSignature && (<div className="mt-2 p-2 bg-gray-700 rounded-lg"><img src={formData.doctorSignature} alt="توقيع الطبيب" className="h-12 object-contain" /><button onClick={() => handleRemoveSignature('doctor')} className="text-red-400 text-xs mt-1">إزالة</button></div>)}</div>
+              <div className="border border-gray-600 rounded-lg p-3"><div className="flex justify-between items-center mb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={formData.showHospitalStamp} onChange={(e) => setFormData({...formData, showHospitalStamp: e.target.checked})} className="w-4 h-4" /><span className="text-white">ختم المستشفى</span></label><button onClick={() => handleAddSignature('hospital')} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Stamp size={14} /> إضافة</button></div>{formData.hospitalStamp && (<div className="mt-2 p-2 bg-gray-700 rounded-lg"><img src={formData.hospitalStamp} alt="ختم المستشفى" className="h-12 object-contain" /><button onClick={() => handleRemoveSignature('hospital')} className="text-red-400 text-xs mt-1">إزالة</button></div>)}</div>
             </div>
 
             <div className="mb-6 p-4 bg-gray-700/30 rounded-lg"><label className="block text-sm text-gray-400 mb-1">التشخيص</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} placeholder="أدخل التشخيص الطبي..." /></div>
@@ -364,6 +575,13 @@ export default function PrescriptionManager() {
             <div className="flex gap-3 pt-4 border-t border-gray-700"><button onClick={handleSavePrescription} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">حفظ الروشتة</button><button onClick={() => setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button></div>
           </div>
         </div>
+      )}
+
+      {showSignatureModal && (
+        <SignatureDraw 
+          onSave={handleSaveSignature}
+          onClose={() => setShowSignatureModal(false)}
+        />
       )}
     </div>
   )
