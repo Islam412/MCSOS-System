@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, DollarSign, FileText, Calendar, Stamp, Building, UserPlus, Upload } from 'lucide-react'
+import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, DollarSign, FileText, Calendar, Stamp, Building, UserPlus, Upload, Hospital, Settings, Copy, FileCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function InvoiceManager() {
@@ -12,27 +12,22 @@ export default function InvoiceManager() {
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [showPrintPreview, setShowPrintPreview] = useState(false)
+  const [showHospitalSettings, setShowHospitalSettings] = useState(false)
   const [loading, setLoading] = useState(true)
   const [patients, setPatients] = useState([])
   const [doctors, setDoctors] = useState([])
   const [showAddDoctorModal, setShowAddDoctorModal] = useState(false)
   const [newDoctor, setNewDoctor] = useState({ nameAr: '', nameEn: '', specializationAr: '', specializationEn: '' })
 
-  const [clinicInfo, setClinicInfo] = useState({
-    nameAr: 'مركز الطب الحديث',
-    nameEn: 'Modern Medical Center',
-    addressAr: 'شارع الملك فهد، الرياض، المملكة العربية السعودية',
-    addressEn: 'King Fahd Road, Riyadh, Saudi Arabia',
-    phone: '+966 12 345 6789',
-    email: 'info@modernmedical.com'
-  })
-
-  const [hospitalStamp, setHospitalStamp] = useState({
+  // بيانات العيادة/المستشفى
+  const [hospitalInfo, setHospitalInfo] = useState({
     nameAr: 'مستشفى السلام',
     nameEn: 'Al Salam Hospital',
-    addressAr: 'شارع الملك عبدالعزيز، الرياض',
-    addressEn: 'King Abdulaziz Road, Riyadh',
+    addressAr: 'شارع الملك عبدالعزيز، الرياض، المملكة العربية السعودية',
+    addressEn: 'King Abdulaziz Road, Riyadh, Saudi Arabia',
     phone: '+966 12 345 6788',
+    email: 'info@alsalamhospital.com',
+    licenseNumber: 'HOS-123456',
     logo: null,
     logoPreview: null
   })
@@ -59,12 +54,12 @@ export default function InvoiceManager() {
     notes: ''
   })
 
+  // تحميل البيانات
   useEffect(() => {
     loadPatients()
     loadInvoices()
     loadDoctors()
-    loadClinicInfo()
-    loadHospitalLogo()
+    loadHospitalInfo()
   }, [])
 
   const loadPatients = () => {
@@ -97,14 +92,12 @@ export default function InvoiceManager() {
     if (saved) setInvoices(JSON.parse(saved))
   }
 
-  const loadClinicInfo = () => {
-    const saved = localStorage.getItem('mcsos_clinic_info')
-    if (saved) setClinicInfo(JSON.parse(saved))
-  }
-
-  const loadHospitalLogo = () => {
-    const savedLogo = localStorage.getItem('hospital_logo')
-    if (savedLogo) setHospitalStamp(prev => ({ ...prev, logoPreview: savedLogo }))
+  const loadHospitalInfo = () => {
+    const saved = localStorage.getItem('mcsos_hospital_info')
+    if (saved) {
+      const savedInfo = JSON.parse(saved)
+      setHospitalInfo(savedInfo)
+    }
   }
 
   const saveInvoices = (data) => {
@@ -117,17 +110,29 @@ export default function InvoiceManager() {
     setDoctors(data)
   }
 
+  const saveHospitalInfo = (data) => {
+    localStorage.setItem('mcsos_hospital_info', JSON.stringify(data))
+    setHospitalInfo(data)
+  }
+
   const handleLogoUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
       const reader = new FileReader()
       reader.onloadend = () => {
-        setHospitalStamp(prev => ({ ...prev, logoPreview: reader.result }))
-        localStorage.setItem('hospital_logo', reader.result)
+        setHospitalInfo(prev => ({ ...prev, logoPreview: reader.result, logo: reader.result }))
+        saveHospitalInfo({ ...hospitalInfo, logoPreview: reader.result, logo: reader.result })
         toast.success('تم رفع شعار المستشفى بنجاح')
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const handleHospitalInfoChange = (field, value) => {
+    const updated = { ...hospitalInfo, [field]: value }
+    setHospitalInfo(updated)
+    saveHospitalInfo(updated)
+    toast.success('تم تحديث بيانات المستشفى')
   }
 
   const handleAddDoctor = () => {
@@ -229,7 +234,10 @@ export default function InvoiceManager() {
     const newInvoice = {
       id: selectedInvoice?.id || Date.now(),
       ...formData,
-      hospitalName: hospitalStamp.nameAr,
+      hospitalName: hospitalInfo.nameAr,
+      hospitalAddress: hospitalInfo.addressAr,
+      hospitalPhone: hospitalInfo.phone,
+      hospitalLogo: hospitalInfo.logoPreview,
       createdAt: selectedInvoice?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -274,10 +282,142 @@ export default function InvoiceManager() {
     })
   }
 
-  const handlePrint = (invoice) => {
+  // دالة الطباعة - تدعم صفحة واحدة أو أكثر
+  const handlePrint = (invoice, copies = 1) => {
     setSelectedInvoice(invoice)
     setShowPrintPreview(true)
-    setTimeout(() => { window.print(); setShowPrintPreview(false) }, 100)
+    // محاكاة طباعة عدة نسخ
+    for (let i = 0; i < copies; i++) {
+      setTimeout(() => {
+        const printWindow = window.open('', '_blank')
+        if (printWindow) {
+          printWindow.document.write(getPrintHTML(invoice, i + 1, copies))
+          printWindow.document.close()
+          printWindow.print()
+          if (i === copies - 1) {
+            setShowPrintPreview(false)
+          }
+        }
+      }, i * 500)
+    }
+    toast.success(`جاري طباعة ${copies} نسخة`)
+  }
+
+  // دالة لإنشاء HTML للطباعة
+  const getPrintHTML = (invoice, copyNumber, totalCopies) => {
+    const isRTLPrint = isRTL ? 'rtl' : 'ltr'
+    return `
+      <!DOCTYPE html>
+      <html dir="${isRTLPrint}" lang="${currentLang}">
+      <head>
+        <meta charset="UTF-8">
+        <title>فاتورة طبية - ${invoice.invoiceNumber}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; background: #fff; padding: 20px; }
+          .invoice-container { max-width: 1100px; margin: 0 auto; background: white; }
+          .header { background: linear-gradient(135deg, #1e3a5f, #2563eb); color: white; padding: 20px; border-radius: 10px 10px 0 0; }
+          .header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+          .logo-area { display: flex; align-items: center; gap: 15px; }
+          .logo-img { width: 70px; height: 70px; object-fit: contain; background: white; border-radius: 10px; padding: 5px; }
+          .hospital-name { font-size: 24px; font-weight: bold; }
+          .hospital-details { font-size: 12px; opacity: 0.9; margin-top: 5px; }
+          .invoice-number-box { background: rgba(255,255,255,0.2); border-radius: 8px; padding: 10px 20px; text-align: center; }
+          .invoice-title { font-size: 18px; }
+          .invoice-num { font-size: 20px; font-weight: bold; margin-top: 5px; }
+          .copy-badge { background: #ff9800; color: white; padding: 3px 10px; border-radius: 20px; font-size: 12px; margin-left: 10px; }
+          .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+          .info-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; background: #f9fafb; }
+          .info-title { font-weight: bold; color: #1e3a5f; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 10px; }
+          .info-row { margin: 8px 0; display: flex; ${isRTLPrint ? 'justify-content: space-between;' : 'justify-content: space-between;'} }
+          .info-label { font-weight: 600; color: #4b5563; }
+          .info-value { color: #1f2937; }
+          .services-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          .services-table th, .services-table td { border: 1px solid #e5e7eb; padding: 10px; text-align: ${isRTLPrint ? 'right' : 'left'}; }
+          .services-table th { background: #f3f4f6; font-weight: bold; }
+          .totals { background: #f9fafb; border-radius: 8px; padding: 15px; margin: 20px 0; }
+          .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+          .final-total { font-size: 20px; font-weight: bold; color: #2563eb; border-top: 2px solid #e5e7eb; padding-top: 10px; margin-top: 10px; }
+          .payment-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+          .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0; text-align: center; }
+          .sign-line { border-top: 1px solid #9ca3af; width: 200px; margin: 10px auto 0; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; }
+          @media print {
+            body { padding: 0; margin: 0; }
+            .no-print { display: none; }
+            .invoice-container { box-shadow: none; }
+          }
+          ${isRTLPrint ? '.sign-line { margin: 10px auto 0; }' : '.sign-line { margin: 10px auto 0; }'}
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
+          <div class="header">
+            <div class="header-content">
+              <div class="logo-area">
+                ${invoice.hospitalLogo ? `<img src="${invoice.hospitalLogo}" class="logo-img" alt="شعار المستشفى">` : '<div class="logo-img" style="background:white;display:flex;align-items:center;justify-content:center"><span style="color:#1e3a5f;font-size:30px">🏥</span></div>'}
+                <div>
+                  <div class="hospital-name">${invoice.hospitalName || hospitalInfo.nameAr}</div>
+                  <div class="hospital-details">${invoice.hospitalAddress || hospitalInfo.addressAr} | هاتف: ${invoice.hospitalPhone || hospitalInfo.phone}</div>
+                </div>
+              </div>
+              <div class="invoice-number-box">
+                <div class="invoice-title">فاتورة طبية</div>
+                <div class="invoice-num">${invoice.invoiceNumber}</div>
+                ${totalCopies > 1 ? `<div class="copy-badge">نسخة ${copyNumber}/${totalCopies}</div>` : ''}
+              </div>
+            </div>
+          </div>
+          
+          <div class="info-section">
+            <div class="info-card">
+              <div class="info-title">بيانات المريض</div>
+              <div class="info-row"><span class="info-label">الاسم:</span><span class="info-value">${invoice.patientName}</span></div>
+              <div class="info-row"><span class="info-label">العمر:</span><span class="info-value">${invoice.patientAge} سنة</span></div>
+              <div class="info-row"><span class="info-label">الجوال:</span><span class="info-value">${invoice.patientPhone || '-'}</span></div>
+              <div class="info-row"><span class="info-label">التاريخ:</span><span class="info-value">${invoice.invoiceDate}</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-title">بيانات الطبيب المعالج</div>
+              <div class="info-row"><span class="info-label">الاسم:</span><span class="info-value">${invoice.doctorName}</span></div>
+              ${invoice.doctorSpecialization ? `<div class="info-row"><span class="info-label">التخصص:</span><span class="info-value">${invoice.doctorSpecialization}</span></div>` : ''}
+              <div class="info-row"><span class="info-label">تاريخ العملية:</span><span class="info-value">${invoice.surgeryDate || '-'}</span></div>
+            </div>
+          </div>
+          
+          ${invoice.diagnosis ? `<div class="info-card" style="margin-bottom:20px"><div class="info-title">التشخيص</div><div class="info-value">${invoice.diagnosis}</div></div>` : ''}
+          
+          <table class="services-table">
+            <thead><tr><th>#</th><th>الخدمة</th><th>الكمية</th><th>السعر (ر.س)</th><th>الإجمالي (ر.س)</th></tr></thead>
+            <tbody>
+              ${invoice.items.map((item, idx) => `<tr><td>${idx+1}</td><td>${item.description || '-'}</td><td>${item.quantity}</td><td>${item.unitPrice.toFixed(2)}</td><td>${item.total.toFixed(2)}</td></tr>`).join('')}
+            </tbody>
+          </table>
+          
+          <div class="totals">
+            <div class="total-row"><span>مجموع الخدمات:</span><span>${invoice.subtotal.toFixed(2)} ر.س</span></div>
+            ${invoice.discount > 0 ? `<div class="total-row"><span>الخصم (${invoice.discount}${invoice.discountType === 'percentage' ? '%' : ' ر.س'}):</span><span style="color:red">- ${invoice.discountType === 'percentage' ? ((invoice.subtotal * invoice.discount) / 100).toFixed(2) : invoice.discount} ر.س</span></div>` : ''}
+            <div class="total-row final-total"><span>الإجمالي النهائي:</span><span>${invoice.total.toFixed(2)} ر.س</span></div>
+          </div>
+          
+          <div class="payment-section">
+            <div class="info-card"><div class="info-title">معلومات الدفع</div><div class="info-row"><span>الحالة:</span><span>${invoice.paymentStatus === 'paid' ? 'مدفوع' : 'غير مدفوع'}</span></div><div class="info-row"><span>الطريقة:</span><span>${invoice.paymentMethod === 'cash' ? 'كاش' : invoice.paymentMethod === 'card' ? 'بطاقة ائتمان' : 'تحويل بنكي'}</span></div></div>
+            <div class="info-card"><div class="info-title">ملاحظات</div><div class="info-value">${invoice.notes || 'لا توجد ملاحظات'}</div></div>
+          </div>
+          
+          <div class="signatures">
+            <div><div class="sign-line"></div><p style="margin-top:8px">توقيع المريض</p></div>
+            <div><div class="sign-line"></div><p style="margin-top:8px">توقيع الطبيب</p></div>
+          </div>
+          
+          <div class="footer">
+            <p>شكراً لثقتكم بنا - نتمنى لكم دوام الصحة والعافية</p>
+            <p style="margin-top:5px">تم إنشاء هذه الفاتورة بواسطة نظام المركز الطبي MCSOS</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
   }
 
   const getPaymentStatusBadge = (status) => status === 'paid'
@@ -290,16 +430,20 @@ export default function InvoiceManager() {
     <div className="space-y-6">
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
         <div><h1 className="text-3xl font-bold gradient-text">الفواتير الطبية</h1><p className="text-gray-400 mt-1">إدارة الفواتير وكشوف العمليات</p></div>
-        <button onClick={() => { resetForm(); setShowInvoiceModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30"><Plus size={18} /> فاتورة جديدة</button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowHospitalSettings(true)} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30"><Hospital size={18} /> بيانات المستشفى</button>
+          <button onClick={() => { resetForm(); setShowInvoiceModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30"><Plus size={18} /> فاتورة جديدة</button>
+        </div>
       </div>
 
+      {/* قائمة الفواتير */}
       <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
         <div className="px-6 py-4 border-b border-gray-700/50"><h2 className="text-xl font-bold text-white">قائمة الفواتير</h2></div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-800/80"><tr className={`${isRTL ? 'text-right' : 'text-left'}`}><th className="px-6 py-3 text-sm text-gray-300">الرقم</th><th className="px-6 py-3 text-sm text-gray-300">المريض</th><th className="px-6 py-3 text-sm text-gray-300">الطبيب</th><th className="px-6 py-3 text-sm text-gray-300">التاريخ</th><th className="px-6 py-3 text-sm text-gray-300">الإجمالي</th><th className="px-6 py-3 text-sm text-gray-300">الحالة</th><th className="px-6 py-3 text-sm text-gray-300">إجراءات</th></tr></thead>
             <tbody className="divide-y divide-gray-700/50">
-              {invoices.length === 0 ? <tr><td colSpan="7" className="px-6 py-8 text-center text-gray-400">لا توجد فواتير</td></tr> : invoices.map((inv) => (
+              {invoices.length === 0 ? <tr><td colSpan="7" className="px-6 py-8 text-center text-gray-400">لا توجد فواتير</td></td> : invoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-gray-700/30">
                   <td className="px-6 py-4 text-blue-400 font-mono text-sm">{inv.invoiceNumber}</td>
                   <td className="px-6 py-4"><div className="font-semibold text-white">{inv.patientName}</div><div className="text-sm text-gray-400">{inv.patientAge} سنة</div></td>
@@ -307,7 +451,7 @@ export default function InvoiceManager() {
                   <td className="px-6 py-4 text-gray-400">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
                   <td className="px-6 py-4 font-semibold text-green-400">{inv.total.toFixed(2)} ر.س</td>
                   <td className="px-6 py-4">{getPaymentStatusBadge(inv.paymentStatus)}</td>
-                  <td className="px-6 py-4"><div className="flex gap-2"><button onClick={() => handleEditInvoice(inv)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => handlePrint(inv)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button><button onClick={() => handleMarkAsPaid(inv.id)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded"><CheckCircle size={16} /></button><button onClick={() => handleDeleteInvoice(inv.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
+                  <td className="px-6 py-4"><div className="flex gap-2"><button onClick={() => handleEditInvoice(inv)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => { const copies = prompt('عدد النسخ المطلوبة:', '1'); if(copies) handlePrint(inv, parseInt(copies)); }} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button><button onClick={() => handleMarkAsPaid(inv.id)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded"><CheckCircle size={16} /></button><button onClick={() => handleDeleteInvoice(inv.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
                 </tr>
               ))}
             </tbody>
@@ -315,6 +459,37 @@ export default function InvoiceManager() {
         </div>
       </div>
 
+      {/* Modal إعدادات المستشفى */}
+      {showHospitalSettings && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">بيانات المستشفى / العيادة</h2><button onClick={() => setShowHospitalSettings(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
+            
+            <div className="space-y-4">
+              <div className="bg-gray-700/30 rounded-lg p-3">
+                <label className="block text-sm text-gray-400 mb-2">شعار المستشفى</label>
+                <div className="flex items-center gap-4">
+                  {hospitalInfo.logoPreview && <img src={hospitalInfo.logoPreview} alt="الشعار" className="w-20 h-20 object-contain border rounded p-1 bg-white" />}
+                  <label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2"><Upload size={18} /> رفع شعار</label>
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-sm text-gray-400 mb-1">اسم المستشفى (عربي)</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.nameAr} onChange={(e) => handleHospitalInfoChange('nameAr', e.target.value)} /></div>
+                <div><label className="block text-sm text-gray-400 mb-1">اسم المستشفى (English)</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.nameEn} onChange={(e) => handleHospitalInfoChange('nameEn', e.target.value)} /></div>
+                <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">العنوان (عربي)</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.addressAr} onChange={(e) => handleHospitalInfoChange('addressAr', e.target.value)} /></div>
+                <div><label className="block text-sm text-gray-400 mb-1">رقم الهاتف</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.phone} onChange={(e) => handleHospitalInfoChange('phone', e.target.value)} /></div>
+                <div><label className="block text-sm text-gray-400 mb-1">البريد الإلكتروني</label><input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.email} onChange={(e) => handleHospitalInfoChange('email', e.target.value)} /></div>
+              </div>
+              
+              <div className="flex gap-3 pt-4 border-t border-gray-700"><button onClick={() => setShowHospitalSettings(false)} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg">حفظ وإغلاق</button></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal إضافة فاتورة */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -324,15 +499,6 @@ export default function InvoiceManager() {
               <h3 className="text-blue-400 font-bold text-sm mb-2">📊 طريقة حساب الفاتورة</h3>
               <p className="text-gray-300 text-xs">الإجمالي = مجموع (سعر الخدمة × الكمية) - الخصم</p>
               <p className="text-gray-400 text-xs mt-1">لا توجد ضريبة مضافة على الخدمات الطبية</p>
-            </div>
-
-            <div className="bg-gray-700/30 rounded-lg p-3 mb-4">
-              <label className="block text-sm text-gray-400 mb-2">شعار المستشفى</label>
-              <div className="flex items-center gap-4">
-                {hospitalStamp.logoPreview && <img src={hospitalStamp.logoPreview} alt="شعار المستشفى" className="w-16 h-16 object-contain border rounded p-1 bg-white" />}
-                <label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2"><Upload size={18} /> رفع شعار</label>
-                <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -360,40 +526,13 @@ export default function InvoiceManager() {
         </div>
       )}
 
+      {/* Modal إضافة طبيب */}
       {showAddDoctorModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">إضافة طبيب</h2><button onClick={() => setShowAddDoctorModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
             <div className="space-y-3"><input type="text" placeholder="الاسم" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.nameAr} onChange={(e) => setNewDoctor({...newDoctor, nameAr: e.target.value})} /><input type="text" placeholder="التخصص" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.specializationAr} onChange={(e) => setNewDoctor({...newDoctor, specializationAr: e.target.value})} /><div className="flex gap-3 pt-4"><button onClick={handleAddDoctor} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">إضافة</button><button onClick={() => setShowAddDoctorModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div>
           </div>
-        </div>
-      )}
-
-      {showPrintPreview && selectedInvoice && (
-        <div className="fixed inset-0 bg-white z-50 overflow-auto p-8" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
-          <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  {hospitalStamp.logoPreview && <img src={hospitalStamp.logoPreview} alt="الشعار" className="w-16 h-16 object-contain bg-white rounded-lg p-1" />}
-                  <div><h1 className="text-2xl font-bold">{selectedInvoice.hospitalName || hospitalStamp.nameAr}</h1><p className="text-blue-100 text-sm">{hospitalStamp.addressAr}</p><p className="text-blue-100 text-sm">هاتف: {hospitalStamp.phone}</p></div>
-                </div>
-                <div className="text-left"><div className="bg-white/20 rounded-lg p-3"><p className="text-sm">فاتورة طبية</p><p className="text-xl font-bold">{selectedInvoice.invoiceNumber}</p></div></div>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="border rounded-lg p-4 bg-gray-50"><h3 className="font-bold text-blue-700 border-b pb-2 mb-2">بيانات المريض</h3><p><span className="font-semibold">الاسم:</span> {selectedInvoice.patientName}</p><p><span className="font-semibold">العمر:</span> {selectedInvoice.patientAge} سنة</p><p><span className="font-semibold">الجوال:</span> {selectedInvoice.patientPhone || '-'}</p><p><span className="font-semibold">التاريخ:</span> {selectedInvoice.invoiceDate}</p></div>
-                <div className="border rounded-lg p-4 bg-gray-50"><h3 className="font-bold text-green-700 border-b pb-2 mb-2">بيانات الطبيب</h3><p><span className="font-semibold">الاسم:</span> {selectedInvoice.doctorName}</p>{selectedInvoice.doctorSpecialization && <p><span className="font-semibold">التخصص:</span> {selectedInvoice.doctorSpecialization}</p>}<p><span className="font-semibold">تاريخ العملية:</span> {selectedInvoice.surgeryDate || '-'}</p></div>
-              </div>
-              {selectedInvoice.diagnosis && (<div className="mb-6"><h3 className="font-semibold mb-2">التشخيص</h3><div className="border rounded-lg p-3 bg-gray-50">{selectedInvoice.diagnosis}</div></div>)}
-              <div className="mb-6"><h3 className="font-semibold mb-2">الخدمات</h3><table className="w-full border-collapse"><thead className="bg-gray-100"><tr><th className="border p-2 text-center">#</th><th className="border p-2 text-right">الخدمة</th><th className="border p-2 text-center">الكمية</th><th className="border p-2 text-right">السعر</th><th className="border p-2 text-right">الإجمالي</th></tr></thead><tbody>{selectedInvoice.items.map((item, idx) => (<tr key={idx}><td className="border p-2 text-center">{idx+1}</td><td className="border p-2">{item.description || '-'}</td><td className="border p-2 text-center">{item.quantity}</td><td className="border p-2 text-right">{item.unitPrice.toFixed(2)}</td><td className="border p-2 text-right font-semibold">{item.total.toFixed(2)}</td></tr>))}</tbody><tfoot><tr><td colSpan="4" className="border p-2 text-right font-bold">المجموع</td><td className="border p-2 text-right font-bold">{selectedInvoice.subtotal.toFixed(2)}</td></tr>{selectedInvoice.discount > 0 && (<tr><td colSpan="4" className="border p-2 text-right font-bold text-red-600">الخصم ({selectedInvoice.discount}{selectedInvoice.discountType === 'percentage' ? '%' : ' ر.س'})</td><td className="border p-2 text-right text-red-600">- {selectedInvoice.discountType === 'percentage' ? ((selectedInvoice.subtotal * selectedInvoice.discount) / 100).toFixed(2) : selectedInvoice.discount}</td></tr>)}<tr className="bg-blue-50"><td colSpan="4" className="border p-2 text-right font-bold text-lg">الإجمالي</td><td className="border p-2 text-right font-bold text-lg text-blue-600">{selectedInvoice.total.toFixed(2)} ر.س</td></tr></tfoot></table></div>
-              <div className="grid grid-cols-2 gap-4 mb-6"><div className="border rounded-lg p-3"><h3 className="font-semibold mb-2">الدفع</h3><p>الحالة: {selectedInvoice.paymentStatus === 'paid' ? 'مدفوع' : 'غير مدفوع'}</p><p>الطريقة: {selectedInvoice.paymentMethod === 'cash' ? 'كاش' : selectedInvoice.paymentMethod === 'card' ? 'بطاقة' : 'تحويل'}</p></div><div className="border rounded-lg p-3"><h3 className="font-semibold mb-2">ملاحظات</h3><p>{selectedInvoice.notes || '-'}</p></div></div>
-              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t"><div className="text-center"><div className="border-t-2 border-gray-300 w-40 mx-auto pt-2"></div><p className="text-sm text-gray-500">توقيع المريض</p></div><div className="text-center"><div className="border-t-2 border-gray-300 w-40 mx-auto pt-2"></div><p className="text-sm text-gray-500">توقيع الطبيب</p></div></div>
-              <div className="text-center mt-6 pt-4 border-t"><p className="text-gray-500">شكراً لثقتكم بنا</p><p className="text-gray-400 text-xs mt-2">MCSOS - نظام المركز الطبي</p></div>
-            </div>
-          </div>
-          <div className="flex justify-center gap-4 mt-4 pb-8"><button onClick={() => window.print()} className="bg-blue-500 text-white px-6 py-2 rounded-lg flex items-center gap-2"><Printer size={18} /> طباعة</button><button onClick={() => setShowPrintPreview(false)} className="bg-gray-500 text-white px-6 py-2 rounded-lg">إغلاق</button></div>
         </div>
       )}
     </div>
