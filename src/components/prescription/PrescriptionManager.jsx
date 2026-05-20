@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Printer, Download, Plus, Trash2, Edit, Save, X, Calendar, Clock, Pill, Stethoscope, User, Phone, Mail, MapPin, Building, FileText } from 'lucide-react'
+import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, Calendar, Clock, Pill, FileText, Hospital, Phone, Mail, MapPin, Building, Syringe, ClipboardList, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function PrescriptionManager() {
@@ -11,85 +11,68 @@ export default function PrescriptionManager() {
   const [prescriptions, setPrescriptions] = useState([])
   const [selectedPrescription, setSelectedPrescription] = useState(null)
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false)
-  const [showPrintPreview, setShowPrintPreview] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [patients, setPatients] = useState([])
+  const [doctors, setDoctors] = useState([])
 
-  // بيانات العيادة/الطبيب
-  const [clinicInfo, setClinicInfo] = useState({
-    nameAr: 'مركز الطب الحديث',
-    nameEn: 'Modern Medical Center',
-    addressAr: 'شارع الملك فهد، الرياض، المملكة العربية السعودية',
-    addressEn: 'King Fahd Road, Riyadh, Saudi Arabia',
-    phone: '+966 12 345 6789',
-    email: 'info@modernmedical.com',
-    logo: ''
-  })
-
-  const [doctorInfo, setDoctorInfo] = useState({
-    nameAr: 'د. أحمد محمد علي',
-    nameEn: 'Dr. Ahmed Mohamed Ali',
-    specializationAr: 'استشاري جراحة العظام',
-    specializationEn: 'Orthopedic Consultant',
-    licenseNumber: '123456',
-    phone: '+966 50 123 4567',
-    clinicHoursAr: 'السبت - الخميس: 9 صباحاً - 9 مساءً',
-    clinicHoursEn: 'Sat - Thu: 9:00 AM - 9:00 PM',
-    signature: ''
+  const [hospitalInfo, setHospitalInfo] = useState({
+    nameAr: 'مستشفى السلام الدولي',
+    nameEn: 'Al Salam International Hospital',
+    addressAr: 'شارع الملك عبدالعزيز، الرياض',
+    addressEn: 'King Abdulaziz Road, Riyadh',
+    phone: '+966 12 345 6788',
+    email: 'info@alsalamhospital.com',
+    logo: null,
+    logoPreview: null
   })
 
   const [formData, setFormData] = useState({
+    prescriptionNumber: `RX-${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+    prescriptionDate: new Date().toISOString().split('T')[0],
     patientId: '',
     patientName: '',
     patientAge: '',
     patientPhone: '',
-    patientGender: 'male',
-    consultationDate: new Date().toISOString().split('T')[0],
-    followUpDate: '',
+    patientAddress: '',
+    doctorId: '',
+    doctorName: '',
+    doctorSpecialization: '',
     diagnosis: '',
     notes: '',
-    medications: [
-      { id: 1, name: '', dosage: '', frequency: '', duration: '', instructions: '' }
-    ]
+    medications: [{ id: 1, name: '', dosage: '', frequency: '', duration: '', durationUnit: 'days', quantity: '', instructions: '', timeOfDay: [] }],
+    refillCount: 0,
+    isRefillable: false,
+    expiryDate: ''
   })
 
-  const [patients, setPatients] = useState([])
-
-  // تحميل المرضى من التخزين المحلي
   useEffect(() => {
     loadPatients()
+    loadDoctors()
     loadPrescriptions()
-    loadClinicInfo()
-    loadDoctorInfo()
+    loadHospitalInfo()
   }, [])
 
   const loadPatients = () => {
     const saved = localStorage.getItem('mcsos_patients_v2')
-    if (saved) {
-      const allPatients = JSON.parse(saved)
-      setPatients(allPatients)
-    }
+    if (saved) setPatients(JSON.parse(saved))
+    else setPatients([])
     setLoading(false)
+  }
+
+  const loadDoctors = () => {
+    const saved = localStorage.getItem('mcsos_doctors')
+    if (saved) setDoctors(JSON.parse(saved))
+    else setDoctors([])
   }
 
   const loadPrescriptions = () => {
     const saved = localStorage.getItem('mcsos_prescriptions')
-    if (saved) {
-      setPrescriptions(JSON.parse(saved))
-    }
+    if (saved) setPrescriptions(JSON.parse(saved))
   }
 
-  const loadClinicInfo = () => {
-    const saved = localStorage.getItem('mcsos_clinic_info')
-    if (saved) {
-      setClinicInfo(JSON.parse(saved))
-    }
-  }
-
-  const loadDoctorInfo = () => {
-    const saved = localStorage.getItem('mcsos_doctor_info')
-    if (saved) {
-      setDoctorInfo(JSON.parse(saved))
-    }
+  const loadHospitalInfo = () => {
+    const saved = localStorage.getItem('mcsos_hospital_info')
+    if (saved) setHospitalInfo(JSON.parse(saved))
   }
 
   const savePrescriptions = (data) => {
@@ -97,22 +80,37 @@ export default function PrescriptionManager() {
     setPrescriptions(data)
   }
 
-  const saveClinicInfo = (data) => {
-    localStorage.setItem('mcsos_clinic_info', JSON.stringify(data))
-    setClinicInfo(data)
+  const handleSelectPatient = (patientId) => {
+    const patient = patients.find(p => p.id == patientId)
+    if (patient) {
+      setFormData(prev => ({
+        ...prev,
+        patientId: patient.id,
+        patientName: currentLang === 'ar' ? patient.nameAr : patient.nameEn,
+        patientAge: patient.age,
+        patientPhone: patient.phone || ''
+      }))
+    }
   }
 
-  const saveDoctorInfo = (data) => {
-    localStorage.setItem('mcsos_doctor_info', JSON.stringify(data))
-    setDoctorInfo(data)
+  const handleSelectDoctor = (doctorId) => {
+    const doctor = doctors.find(d => d.id == doctorId)
+    if (doctor) {
+      setFormData(prev => ({
+        ...prev,
+        doctorId: doctor.id,
+        doctorName: currentLang === 'ar' ? doctor.nameAr : doctor.nameEn,
+        doctorSpecialization: (currentLang === 'ar' ? doctor.specializationAr : doctor.specializationEn) || ''
+      }))
+    }
   }
 
   const handleAddMedication = () => {
     const newId = Math.max(...formData.medications.map(m => m.id), 0) + 1
-    setFormData({
-      ...formData,
-      medications: [...formData.medications, { id: newId, name: '', dosage: '', frequency: '', duration: '', instructions: '' }]
-    })
+    setFormData(prev => ({
+      ...prev,
+      medications: [...prev.medications, { id: newId, name: '', dosage: '', frequency: '', duration: '', durationUnit: 'days', quantity: '', instructions: '', timeOfDay: [] }]
+    }))
   }
 
   const handleRemoveMedication = (id) => {
@@ -120,35 +118,22 @@ export default function PrescriptionManager() {
       toast.error('يجب وجود دواء واحد على الأقل')
       return
     }
-    setFormData({
-      ...formData,
-      medications: formData.medications.filter(m => m.id !== id)
-    })
+    setFormData(prev => ({
+      ...prev,
+      medications: prev.medications.filter(m => m.id !== id)
+    }))
   }
 
   const handleMedicationChange = (id, field, value) => {
-    setFormData({
-      ...formData,
-      medications: formData.medications.map(m => m.id === id ? { ...m, [field]: value } : m)
-    })
-  }
-
-  const handleSelectPatient = (patientId) => {
-    const patient = patients.find(p => p.id == patientId)
-    if (patient) {
-      setFormData({
-        ...formData,
-        patientId: patient.id,
-        patientName: currentLang === 'ar' ? patient.nameAr : patient.nameEn,
-        patientAge: patient.age,
-        patientPhone: patient.phone || ''
-      })
-    }
+    setFormData(prev => ({
+      ...prev,
+      medications: prev.medications.map(m => m.id === id ? { ...m, [field]: value } : m)
+    }))
   }
 
   const handleSavePrescription = () => {
-    if (!formData.patientName || !formData.diagnosis) {
-      toast.error('الرجاء إدخال اسم المريض والتشخيص')
+    if (!formData.patientName || !formData.doctorName || formData.medications.length === 0) {
+      toast.error('الرجاء إدخال بيانات المريض والطبيب وإضافة دواء واحد على الأقل')
       return
     }
 
@@ -162,280 +147,221 @@ export default function PrescriptionManager() {
       id: selectedPrescription?.id || Date.now(),
       ...formData,
       medications: validMedications,
+      hospitalName: hospitalInfo.nameAr,
+      hospitalAddress: hospitalInfo.addressAr,
+      hospitalPhone: hospitalInfo.phone,
+      hospitalLogo: hospitalInfo.logoPreview,
       createdAt: selectedPrescription?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      prescriptionNumber: `RX-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
     }
 
-    let updatedPrescriptions
-    if (selectedPrescription) {
-      updatedPrescriptions = prescriptions.map(p => p.id === selectedPrescription.id ? newPrescription : p)
-    } else {
-      updatedPrescriptions = [newPrescription, ...prescriptions]
-    }
-
+    const updatedPrescriptions = selectedPrescription
+      ? prescriptions.map(p => p.id === selectedPrescription.id ? newPrescription : p)
+      : [newPrescription, ...prescriptions]
+    
     savePrescriptions(updatedPrescriptions)
     setShowPrescriptionModal(false)
     resetForm()
-    toast.success(selectedPrescription ? 'تم تحديث الروشتة بنجاح' : 'تم إضافة الروشتة بنجاح')
+    toast.success(selectedPrescription ? 'تم تحديث الروشتة' : 'تم إضافة الروشتة')
   }
 
   const handleEditPrescription = (prescription) => {
     setSelectedPrescription(prescription)
-    setFormData({
-      ...prescription,
-      medications: prescription.medications.map(m => ({ ...m }))
-    })
+    setFormData({ ...prescription })
     setShowPrescriptionModal(true)
   }
 
   const handleDeletePrescription = (id) => {
     if (confirm('هل أنت متأكد من حذف هذه الروشتة؟')) {
-      const updated = prescriptions.filter(p => p.id !== id)
-      savePrescriptions(updated)
-      toast.success('تم حذف الروشتة بنجاح')
+      savePrescriptions(prescriptions.filter(p => p.id !== id))
+      toast.success('تم حذف الروشتة')
     }
   }
 
   const resetForm = () => {
     setSelectedPrescription(null)
     setFormData({
-      patientId: '',
-      patientName: '',
-      patientAge: '',
-      patientPhone: '',
-      patientGender: 'male',
-      consultationDate: new Date().toISOString().split('T')[0],
-      followUpDate: '',
-      diagnosis: '',
-      notes: '',
-      medications: [
-        { id: 1, name: '', dosage: '', frequency: '', duration: '', instructions: '' }
-      ]
+      prescriptionNumber: `RX-${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+      prescriptionDate: new Date().toISOString().split('T')[0],
+      patientId: '', patientName: '', patientAge: '', patientPhone: '', patientAddress: '',
+      doctorId: '', doctorName: '', doctorSpecialization: '',
+      diagnosis: '', notes: '',
+      medications: [{ id: 1, name: '', dosage: '', frequency: '', duration: '', durationUnit: 'days', quantity: '', instructions: '', timeOfDay: [] }],
+      refillCount: 0, isRefillable: false, expiryDate: ''
     })
   }
 
   const handlePrint = (prescription) => {
-    setSelectedPrescription(prescription)
-    setShowPrintPreview(true)
-    setTimeout(() => {
-      window.print()
-      setShowPrintPreview(false)
-    }, 100)
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(getPrintHTML(prescription))
+      printWindow.document.close()
+      printWindow.print()
+    }
+    toast.success('جاري الطباعة...')
   }
 
-  const getPatientName = (patient) => {
-    if (currentLang === 'ar') return patient.nameAr
-    return patient.nameEn
-  }
-
-  // نافذة الطباعة
-  const PrintPrescription = ({ prescription }) => (
-    <div className="max-w-4xl mx-auto" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold">{currentLang === 'ar' ? clinicInfo.nameAr : clinicInfo.nameEn}</h1>
-        <p className="text-gray-600">{currentLang === 'ar' ? clinicInfo.addressAr : clinicInfo.addressEn}</p>
-        <p className="text-gray-600">هاتف: {clinicInfo.phone} | بريد: {clinicInfo.email}</p>
-        <div className="border-t-2 border-gray-300 my-4"></div>
-        <h2 className="text-xl font-bold">روشتة طبية</h2>
-        <p className="text-gray-500">رقم: {prescription.prescriptionNumber}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="border p-3 rounded"><p className="font-bold">اسم المريض:</p><p>{prescription.patientName}</p></div>
-        <div className="border p-3 rounded"><p className="font-bold">العمر:</p><p>{prescription.patientAge} سنة</p></div>
-        <div className="border p-3 rounded"><p className="font-bold">تاريخ الاستشارة:</p><p>{prescription.consultationDate}</p></div>
-        <div className="border p-3 rounded"><p className="font-bold">موعد المتابعة:</p><p>{prescription.followUpDate || 'غير محدد'}</p></div>
-      </div>
-
-      <div className="mb-6">
-        <h3 className="font-bold mb-2">التشخيص:</h3>
-        <p className="border p-3 rounded bg-gray-50">{prescription.diagnosis}</p>
-      </div>
-
-      <div className="mb-6">
-        <h3 className="font-bold mb-2">الأدوية الموصوفة:</h3>
-        <table className="w-full border-collapse">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-right">اسم الدواء</th>
-              <th className="border p-2 text-right">الجرعة</th>
-              <th className="border p-2 text-right">عدد المرات</th>
-              <th className="border p-2 text-right">المدة</th>
-              <th className="border p-2 text-right">تعليمات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {prescription.medications.map((med, idx) => (
-              <tr key={idx}>
-                <td className="border p-2">{med.name}</td>
-                <td className="border p-2">{med.dosage}</td>
-                <td className="border p-2">{med.frequency}</td>
-                <td className="border p-2">{med.duration}</td>
-                <td className="border p-2">{med.instructions}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {prescription.notes && (
-        <div className="mb-6">
-          <h3 className="font-bold mb-2">ملاحظات:</h3>
-          <p className="border p-3 rounded bg-gray-50">{prescription.notes}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t">
-        <div>
-          <p className="font-bold">الطبيب المعالج:</p>
-          <p>{currentLang === 'ar' ? doctorInfo.nameAr : doctorInfo.nameEn}</p>
-          <p>{currentLang === 'ar' ? doctorInfo.specializationAr : doctorInfo.specializationEn}</p>
-          <p>رخصة: {doctorInfo.licenseNumber}</p>
-        </div>
-        <div className="text-right">
-          <div className="border-t-2 border-gray-400 w-48 ml-auto pt-2 mt-8">
-            توقيع الطبيب
+  const getPrintHTML = (prescription) => {
+    const isRTLPrint = isRTL ? 'rtl' : 'ltr'
+    
+    return `
+      <!DOCTYPE html>
+      <html dir="${isRTLPrint}" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>روشتة طبية - ${prescription.prescriptionNumber}</title>
+        <style>
+          *{margin:0;padding:0;box-sizing:border-box;}
+          body{font-family:'Cairo','Segoe UI',Arial,sans-serif;background:#e0e0e0;padding:15px;display:flex;justify-content:center;min-height:100vh;}
+          .prescription{max-width:700px;width:100%;background:white;border-radius:10px;overflow:hidden;box-shadow:0 5px 20px rgba(0,0,0,0.1);}
+          .header{background:linear-gradient(135deg,#1e3a5f,#2563eb);color:white;padding:12px 20px;}
+          .header-content{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+          .logo-area{display:flex;align-items:center;gap:10px;}
+          .logo-img{width:45px;height:45px;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+          .hospital-name{font-size:16px;font-weight:bold;}
+          .hospital-details{font-size:9px;opacity:0.85;}
+          .prescription-box{background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 15px;text-align:center;}
+          .prescription-title{font-size:11px;}
+          .prescription-num{font-size:16px;font-weight:bold;}
+          .rx-badge{background:#ff9800;padding:2px 10px;border-radius:20px;font-size:10px;margin-top:3px;}
+          .info-row{display:flex;justify-content:space-between;padding:6px 12px;background:#f8fafc;border-bottom:1px solid #e5e7eb;font-size:11px;}
+          .diagnosis-box{background:#fef3c7;padding:8px 12px;border-bottom:1px solid #e5e7eb;}
+          .section-title{font-weight:bold;color:#1e3a5f;padding:8px 12px 4px 12px;font-size:12px;border-bottom:2px solid #2563eb;display:inline-block;margin:0 12px;}
+          table{width:96%;margin:10px auto;border-collapse:collapse;font-size:10px;}
+          th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:${isRTLPrint ? 'right' : 'left'};vertical-align:top;}
+          th{background:#f1f5f9;font-weight:600;}
+          .medication-name{font-weight:bold;color:#1e3a5f;}
+          .signatures{display:grid;grid-template-columns:1fr 1fr;gap:30px;padding:15px 30px;text-align:center;border-top:1px solid #e5e7eb;margin-top:10px;}
+          .sign-line{border-top:1px solid #94a3b8;width:140px;margin:8px auto 0;}
+          .footer{text-align:center;padding:8px;background:#1e3a5f;color:white;font-size:8px;}
+          .doctor-stamp{border:1px dashed #2563eb;padding:5px;border-radius:8px;margin-top:5px;}
+          @media print{body{background:white;padding:0;margin:0;}.prescription{box-shadow:none;border-radius:0;}}
+        </style>
+      </head>
+      <body>
+        <div class="prescription">
+          <div class="header">
+            <div class="header-content">
+              <div class="logo-area">
+                ${prescription.hospitalLogo ? `<img src="${prescription.hospitalLogo}" style="width:45px;height:45px;object-fit:contain;background:white;border-radius:8px;">` : '<div class="logo-img">🏥</div>'}
+                <div><div class="hospital-name">${prescription.hospitalName || hospitalInfo.nameAr}</div><div class="hospital-details">${prescription.hospitalAddress || hospitalInfo.addressAr}<br>هاتف: ${prescription.hospitalPhone || hospitalInfo.phone}</div></div>
+              </div>
+              <div class="prescription-box">
+                <div class="prescription-title">روشتة طبية</div>
+                <div class="prescription-num">${prescription.prescriptionNumber}</div>
+                <div class="rx-badge">💊 RX</div>
+              </div>
+            </div>
           </div>
+          
+          <div class="info-row"><span>المريض: <strong>${prescription.patientName}</strong></span><span>العمر: ${prescription.patientAge} سنة</span></div>
+          <div class="info-row"><span>الطبيب: ${prescription.doctorName}</span><span>التاريخ: ${prescription.prescriptionDate}</span></div>
+          ${prescription.doctorSpecialization ? `<div class="info-row"><span>التخصص: ${prescription.doctorSpecialization}</span><span>الجوال: ${prescription.patientPhone || '-'}</span></div>` : ''}
+          ${prescription.patientAddress ? `<div class="info-row"><span colspan="2">العنوان: ${prescription.patientAddress}</span></div>` : ''}
+          
+          ${prescription.diagnosis ? `<div class="diagnosis-box">📋 التشخيص: ${prescription.diagnosis}</div>` : ''}
+          
+          <div class="section-title">📋 الأدوية الموصوفة</div>
+          <table>
+            <thead>
+              <tr><th style="width:5%">#</th><th style="width:30%">اسم الدواء</th><th style="width:15%">الجرعة</th><th style="width:20%">عدد المرات</th><th style="width:15%">المدة</th><th style="width:15%">تعليمات</th></tr></thead>
+            <tbody>
+              ${prescription.medications.map((med, idx) => `
+              <tr><td style="text-align:center">${idx+1}</td><td class="medication-name">${med.name} ${med.quantity ? `(${med.quantity})` : ''}</td><td>${med.dosage || '-'}</td><td>${med.frequency || '-'}</td><td>${med.duration || '-'} ${med.durationUnit === 'days' ? 'يوم' : med.durationUnit === 'weeks' ? 'أسبوع' : 'شهر'}</td><td>${med.instructions || '-'}</td> `).join('')}
+            </tbody>
+          </table>
+          
+          ${prescription.notes ? `<div class="diagnosis-box" style="background:#f0fdf4;">📝 ملاحظات: ${prescription.notes}</div>` : ''}
+          
+          <div class="signatures">
+            <div><div class="sign-line"></div><p style="margin-top:5px;font-size:10px;">توقيع المريض</p></div>
+            <div><div class="sign-line"></div><p style="margin-top:5px;font-size:10px;">توقيع الطبيب</p><div class="doctor-stamp"><p style="font-size:9px;">${prescription.doctorName}</p><p style="font-size:8px;color:#2563eb;">${prescription.doctorSpecialization || ''}</p></div></div>
+          </div>
+          
+          <div class="footer"><p>${prescription.isRefillable ? `🔄 قابل لإعادة الصرف - عدد المرات: ${prescription.refillCount}` : '❌ لا يعاد صرف الروشتة'}</p><p style="margin-top:3px;">تم إنشاء هذه الروشتة بواسطة نظام المركز الطبي MCSOS</p></div>
         </div>
-      </div>
-
-      <div className="text-center mt-8 text-gray-400 text-sm">
-        تم إنشاء هذه الروشتة بواسطة نظام المركز الطبي MCSOS
-      </div>
-    </div>
-  )
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="text-white">جاري التحميل...</div></div>
+      </body>
+      </html>
+    `
   }
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="text-white">جاري التحميل...</div></div>
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
-        <div>
-          <h1 className="text-3xl font-bold gradient-text">الروشتات الطبية</h1>
-          <p className="text-gray-400 mt-1">إدارة الروشتات والأدوية</p>
+        <div><h1 className="text-3xl font-bold gradient-text">الروشتات الطبية</h1><p className="text-gray-400 mt-1">إدارة الروشتات والأدوية الموصوفة</p></div>
+        <div className="flex gap-2">
+          <button onClick={() => { resetForm(); setShowPrescriptionModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30">
+            <Plus size={18} /> روشتة جديدة
+          </button>
         </div>
-        <button onClick={() => { resetForm(); setShowPrescriptionModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30">
-          <Plus size={18} /> روشتة جديدة
-        </button>
       </div>
 
-      {/* قائمة الروشتات */}
       <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
-        <div className="px-6 py-4 border-b border-gray-700/50">
-          <h2 className="text-xl font-bold text-white">قائمة الروشتات</h2>
-        </div>
+        <div className="px-6 py-4 border-b border-gray-700/50"><h2 className="text-xl font-bold text-white">قائمة الروشتات</h2></div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/80">
-              <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
-                <th className="px-6 py-3 text-sm text-gray-300">الرقم</th>
-                <th className="px-6 py-3 text-sm text-gray-300">المريض</th>
-                <th className="px-6 py-3 text-sm text-gray-300">التشخيص</th>
-                <th className="px-6 py-3 text-sm text-gray-300">الأدوية</th>
-                <th className="px-6 py-3 text-sm text-gray-300">التاريخ</th>
-                <th className="px-6 py-3 text-sm text-gray-300">إجراءات</th>
-              </tr>
-            </thead>
+            <thead className="bg-gray-800/80"><tr className={`${isRTL ? 'text-right' : 'text-left'}`}><th className="px-4 py-2 text-sm text-gray-300">الرقم</th><th className="px-4 py-2 text-sm text-gray-300">المريض</th><th className="px-4 py-2 text-sm text-gray-300">الطبيب</th><th className="px-4 py-2 text-sm text-gray-300">التاريخ</th><th className="px-4 py-2 text-sm text-gray-300">الأدوية</th><th className="px-4 py-2 text-sm text-gray-300">إجراءات</th></tr></thead>
             <tbody className="divide-y divide-gray-700/50">
-              {prescriptions.length === 0 ? (
-                <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-400">لا توجد روشتات</td></tr>
-              ) : (
-                prescriptions.map((pres) => (
-                  <tr key={pres.id} className="hover:bg-gray-700/30">
-                    <td className="px-6 py-4 text-blue-400 font-mono text-sm">{pres.prescriptionNumber}</td>
-                    <td className="px-6 py-4"><div className="font-semibold text-white">{pres.patientName}</div><div className="text-sm text-gray-400">{pres.patientAge} سنة</div></td>
-                    <td className="px-6 py-4 text-gray-300 max-w-xs truncate">{pres.diagnosis}</td>
-                    <td className="px-6 py-4 text-gray-300">{pres.medications.length} أدوية</td>
-                    <td className="px-6 py-4 text-gray-400">{new Date(pres.consultationDate).toLocaleDateString()}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => handleEditPrescription(pres)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button>
-                        <button onClick={() => handlePrint(pres)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button>
-                        <button onClick={() => handleDeletePrescription(pres.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button>
-                      </div>
-                    </td>
-                   </tr>
-                ))
-              )}
+              {prescriptions.length === 0 ? <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">لا توجد روشتات</td></tr> : prescriptions.map((pres) => (
+                <tr key={pres.id} className="hover:bg-gray-700/30">
+                  <td className="px-4 py-2 text-blue-400 text-sm">{pres.prescriptionNumber}</td>
+                  <td className="px-4 py-2"><div className="font-semibold text-white">{pres.patientName}</div><div className="text-xs text-gray-400">{pres.patientAge} سنة</div></td>
+                  <td className="px-4 py-2 text-gray-300 text-sm">{pres.doctorName}</td>
+                  <td className="px-4 py-2 text-gray-400 text-sm">{new Date(pres.prescriptionDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-2 text-gray-300 text-sm">{pres.medications.filter(m => m.name).length} أدوية</td>
+                  <td className="px-4 py-2"><div className="flex gap-2"><button onClick={() => handleEditPrescription(pres)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => handlePrint(pres)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button><button onClick={() => handleDeletePrescription(pres.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
+                </tr>
+              ))}
             </tbody>
-           </table>
+          </table>
         </div>
       </div>
 
-      {/* Modal إضافة/تعديل روشتة */}
       {showPrescriptionModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">{selectedPrescription ? 'تعديل روشتة' : 'روشتة جديدة'}</h2>
-              <button onClick={() => setShowPrescriptionModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
-            </div>
+            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">{selectedPrescription ? 'تعديل روشتة' : 'روشتة جديدة'}</h2><button onClick={() => setShowPrescriptionModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">المريض</label>
-                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientId} onChange={(e) => handleSelectPatient(e.target.value)}>
-                  <option value="">اختر مريض</option>
-                  {patients.map(p => <option key={p.id} value={p.id}>{getPatientName(p)}</option>)}
-                </select>
-              </div>
-              <div><label className="block text-sm text-gray-400 mb-1">اسم المريض *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientName} onChange={(e) => setFormData({...formData, patientName: e.target.value})} /></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <h3 className="col-span-2 font-bold text-white text-lg mb-2">بيانات المريض والطبيب</h3>
+              <div><label className="block text-sm text-gray-400 mb-1">المريض *</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientId} onChange={(e) => handleSelectPatient(e.target.value)}><option value="">اختر المريض</option>{patients.map(p => (<option key={p.id} value={p.id}>{currentLang === 'ar' ? p.nameAr : p.nameEn}</option>))}</select></div>
+              <div><label className="block text-sm text-gray-400 mb-1">الطبيب *</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.doctorId} onChange={(e) => handleSelectDoctor(e.target.value)}><option value="">اختر الطبيب</option>{doctors.map(d => (<option key={d.id} value={d.id}>{currentLang === 'ar' ? d.nameAr : d.nameEn}</option>))}</select></div>
               <div><label className="block text-sm text-gray-400 mb-1">العمر</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientAge} onChange={(e) => setFormData({...formData, patientAge: e.target.value})} /></div>
               <div><label className="block text-sm text-gray-400 mb-1">رقم الجوال</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientPhone} onChange={(e) => setFormData({...formData, patientPhone: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400 mb-1">تاريخ الاستشارة</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.consultationDate} onChange={(e) => setFormData({...formData, consultationDate: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400 mb-1">موعد المتابعة</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.followUpDate} onChange={(e) => setFormData({...formData, followUpDate: e.target.value})} /></div>
-              <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">التشخيص *</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} /></div>
+              <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientAddress} onChange={(e) => setFormData({...formData, patientAddress: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400 mb-1">تاريخ الروشتة</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.prescriptionDate} onChange={(e) => setFormData({...formData, prescriptionDate: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400 mb-1">تاريخ الصلاحية</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} /></div>
             </div>
 
-            {/* الأدوية */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2"><Pill size={18} className="text-green-400" /> الأدوية</h3>
-                <button onClick={handleAddMedication} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Plus size={14} /> إضافة دواء</button>
-              </div>
-              <div className="space-y-3">
-                {formData.medications.map((med, idx) => (
-                  <div key={med.id} className="bg-gray-700/30 rounded-lg p-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="md:col-span-2 flex justify-between items-center">
-                        <label className="text-sm text-gray-400">اسم الدواء *</label>
-                        {idx > 0 && <button onClick={() => handleRemoveMedication(med.id)} className="text-red-400 hover:text-red-300"><Trash2 size={16} /></button>}
-                      </div>
-                      <div className="md:col-span-2"><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: بروفين 500mg" value={med.name} onChange={(e) => handleMedicationChange(med.id, 'name', e.target.value)} /></div>
-                      <div><label className="text-sm text-gray-400">الجرعة</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: قرص واحد" value={med.dosage} onChange={(e) => handleMedicationChange(med.id, 'dosage', e.target.value)} /></div>
-                      <div><label className="text-sm text-gray-400">عدد المرات</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: 3 مرات يومياً" value={med.frequency} onChange={(e) => handleMedicationChange(med.id, 'frequency', e.target.value)} /></div>
-                      <div><label className="text-sm text-gray-400">المدة</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: 7 أيام" value={med.duration} onChange={(e) => handleMedicationChange(med.id, 'duration', e.target.value)} /></div>
-                      <div className="md:col-span-2"><label className="text-sm text-gray-400">تعليمات الاستخدام</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="1" placeholder="تعليمات إضافية..." value={med.instructions} onChange={(e) => handleMedicationChange(med.id, 'instructions', e.target.value)} /></div>
-                    </div>
+            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg"><label className="block text-sm text-gray-400 mb-1">التشخيص</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} placeholder="أدخل التشخيص الطبي..." /></div>
+
+            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <div className="flex justify-between items-center mb-3"><h3 className="font-bold text-white text-lg flex items-center gap-2"><Pill size={18} className="text-green-400" /> الأدوية الموصوفة</h3><button onClick={handleAddMedication} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Plus size={14} /> إضافة دواء</button></div>
+              {formData.medications.map((med, idx) => (
+                <div key={med.id} className="bg-gray-700/50 rounded-lg p-3 mb-3">
+                  <div className="flex justify-between items-center mb-2"><span className="text-sm text-gray-400">الدواء #{idx+1}</span>{idx > 0 && <button onClick={() => handleRemoveMedication(med.id)} className="text-red-400 hover:text-red-300"><Trash2 size={16} /></button>}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="md:col-span-2"><label className="block text-xs text-gray-400 mb-1">اسم الدواء *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: بروفين 500mg" value={med.name} onChange={(e) => handleMedicationChange(med.id, 'name', e.target.value)} /></div>
+                    <div><label className="block text-xs text-gray-400 mb-1">الجرعة</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: قرص واحد" value={med.dosage} onChange={(e) => handleMedicationChange(med.id, 'dosage', e.target.value)} /></div>
+                    <div><label className="block text-xs text-gray-400 mb-1">عدد المرات</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: 3 مرات يومياً" value={med.frequency} onChange={(e) => handleMedicationChange(med.id, 'frequency', e.target.value)} /></div>
+                    <div><label className="block text-xs text-gray-400 mb-1">المدة</label><div className="flex gap-2"><input type="number" className="flex-1 p-2 bg-gray-700 rounded-lg text-white" placeholder="المدة" value={med.duration} onChange={(e) => handleMedicationChange(med.id, 'duration', e.target.value)} /><select className="w-24 p-2 bg-gray-700 rounded-lg text-white" value={med.durationUnit} onChange={(e) => handleMedicationChange(med.id, 'durationUnit', e.target.value)}><option value="days">أيام</option><option value="weeks">أسابيع</option><option value="months">شهور</option></select></div></div>
+                    <div><label className="block text-xs text-gray-400 mb-1">الكمية</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: 30 قرص" value={med.quantity} onChange={(e) => handleMedicationChange(med.id, 'quantity', e.target.value)} /></div>
+                    <div className="md:col-span-2"><label className="block text-xs text-gray-400 mb-1">تعليمات الاستخدام</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="1" placeholder="تعليمات إضافية..." value={med.instructions} onChange={(e) => handleMedicationChange(med.id, 'instructions', e.target.value)} /></div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-1">ملاحظات إضافية</label>
-              <textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg"><label className="block text-sm text-gray-400 mb-1">ملاحظات إضافية</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="ملاحظات إضافية عن الروشتة..." /></div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <div><label className="block text-sm text-gray-400 mb-1">قابل لإعادة الصرف</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.isRefillable} onChange={(e) => setFormData({...formData, isRefillable: e.target.value === 'true'})}><option value="false">لا</option><option value="true">نعم</option></select></div>
+              {formData.isRefillable && <div><label className="block text-sm text-gray-400 mb-1">عدد مرات إعادة الصرف</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.refillCount} onChange={(e) => setFormData({...formData, refillCount: parseInt(e.target.value)})} min="0" max="10" /></div>}
             </div>
 
-            <div className="flex gap-3 pt-4 border-t border-gray-700">
-              <button onClick={handleSavePrescription} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">حفظ</button>
-              <button onClick={() => setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* نافذة الطباعة */}
-      {showPrintPreview && selectedPrescription && (
-        <div className="fixed inset-0 bg-white z-50 overflow-auto p-8">
-          <PrintPrescription prescription={selectedPrescription} />
-          <div className="flex justify-center gap-4 mt-8 pb-8">
-            <button onClick={() => window.print()} className="bg-blue-500 text-white px-6 py-2 rounded-lg flex items-center gap-2"><Printer size={18} /> طباعة</button>
-            <button onClick={() => setShowPrintPreview(false)} className="bg-gray-500 text-white px-6 py-2 rounded-lg">إغلاق</button>
+            <div className="flex gap-3 pt-4 border-t border-gray-700"><button onClick={handleSavePrescription} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">حفظ الروشتة</button><button onClick={() => setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button></div>
           </div>
         </div>
       )}
