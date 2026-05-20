@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -14,8 +14,9 @@ const navItems = [
   { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
   { to: '/packages', label: 'sidebar.packages', icon: Package },
   { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
-  { to: '/prescription', label: 'sidebar.prescription', icon: FileText },
   { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
+  { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
+  { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
 ]
 
 export default function DashboardLayout() {
@@ -25,132 +26,60 @@ export default function DashboardLayout() {
   const [isMobile, setIsMobile] = useState(false)
   const isRTL = i18n.language === 'ar'
 
-  // التحقق من حجم الشاشة
   useEffect(() => {
     const checkScreenSize = () => {
       const mobile = window.innerWidth < 1024
       setIsMobile(mobile)
-      if (mobile) {
-        setSidebarOpen(false)
-      } else {
-        setSidebarOpen(true)
-      }
+      if (mobile) setSidebarOpen(false)
+      else setSidebarOpen(true)
     }
     checkScreenSize()
     window.addEventListener('resize', checkScreenSize)
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
-  // تحديث اتجاه الصفحة
   useEffect(() => {
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr'
     document.documentElement.lang = i18n.language
   }, [isRTL, i18n.language])
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen)
-  }
-
-  const closeSidebar = () => {
-    if (isMobile) {
-      setSidebarOpen(false)
-    }
-  }
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
+  const closeSidebar = () => { if (isMobile) setSidebarOpen(false) }
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-gray-900`}>
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        {/* زر القائمة للشاشات الصغيرة */}
         {isMobile && (
-          <button
-            onClick={toggleSidebar}
-            className={`fixed top-4 z-50 p-3 rounded-xl bg-gray-800/80 backdrop-blur-md shadow-lg hover:bg-gray-700 transition-all duration-300 ${isRTL ? 'right-4' : 'left-4'}`}
-          >
+          <button onClick={toggleSidebar} className={`fixed top-4 z-50 p-3 rounded-xl bg-gray-800/80 backdrop-blur-md shadow-lg hover:bg-gray-700 transition-all duration-300 ${isRTL ? 'right-4' : 'left-4'}`}>
             {sidebarOpen ? <X size={24} className="text-blue-400" /> : <Menu size={24} className="text-blue-400" />}
           </button>
         )}
 
-        {/* السايد بار - ثابت الحجم */}
-        <div
-          className={`
-            fixed top-0 z-40 h-full bg-gray-800/95 backdrop-blur-md shadow-2xl flex flex-col transition-all duration-300
-            ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
-            ${isRTL ? 'right-0' : 'left-0'}
-            w-80
-          `}
-          style={{
-            width: '320px',
-            [isRTL ? 'right' : 'left']: 0,
-            top: 0,
-            height: '100vh'
-          }}
-        >
-          {/* Logo Area */}
+        <div className={`fixed top-0 z-40 h-full bg-gray-800/95 backdrop-blur-md shadow-2xl flex flex-col transition-all duration-300 ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'} ${isRTL ? 'right-0' : 'left-0'} w-80`}>
           <div className={`p-6 border-b border-gray-700 ${isRTL ? 'text-right' : 'text-left'} ${isMobile ? 'mt-12' : 'mt-0'}`}>
-            <div className="font-bold text-2xl">
-              <span className="bg-gradient-to-r from-blue-500 to-teal-400 bg-clip-text text-transparent">
-                {t('app.title')}
-              </span>
-            </div>
+            <div className="font-bold text-2xl"><span className="bg-gradient-to-r from-blue-500 to-teal-400 bg-clip-text text-transparent">{t('app.title')}</span></div>
             <p className="text-xs text-gray-400 mt-2">{t('app.name')}</p>
           </div>
-
-          {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={closeSidebar}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' 
-                      : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
-                  } ${isRTL ? 'flex-row-reverse' : ''}`
-                }
-              >
+              <NavLink key={item.to} to={item.to} onClick={closeSidebar} className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'} ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <item.icon size={20} />
                 <span className="font-medium text-base">{t(item.label)}</span>
               </NavLink>
             ))}
           </nav>
-
-          {/* Bottom Section */}
           <div className="p-4 border-t border-gray-700 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <LanguageSwitcher />
-              <ThemeSwitcher />
-            </div>
-            <button 
-              onClick={closeSidebar}
-              className={`flex items-center gap-3 text-red-400 hover:text-red-300 w-full hover:bg-red-500/10 p-3 rounded-xl transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
-            >
-              <LogOut size={20} />
-              <span className="font-medium">{t('sidebar.logout')}</span>
+            <div className="grid grid-cols-2 gap-3"><LanguageSwitcher /><ThemeSwitcher /></div>
+            <button onClick={closeSidebar} className={`flex items-center gap-3 text-red-400 hover:text-red-300 w-full hover:bg-red-500/10 p-3 rounded-xl transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <LogOut size={20} /><span className="font-medium">{t('sidebar.logout')}</span>
             </button>
           </div>
         </div>
 
-        {/* Overlay للشاشات الصغيرة */}
-        {isMobile && sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
-            onClick={closeSidebar}
-          />
-        )}
+        {isMobile && sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30" onClick={closeSidebar} />}
 
-        {/* المحتوى الرئيسي - مع مسافة مناسبة للسايد بار */}
-        <main 
-          className={`
-            min-h-screen transition-all duration-300
-            ${!isMobile && !isRTL ? 'ml-80' : ''}
-            ${!isMobile && isRTL ? 'mr-80' : ''}
-          `}
-        >
-          <div className="p-4 md:p-8">
-            <Outlet />
-          </div>
+        <main className={`min-h-screen transition-all duration-300 ${!isMobile && !isRTL ? 'ml-80' : ''} ${!isMobile && isRTL ? 'mr-80' : ''}`}>
+          <div className="p-4 md:p-8"><Outlet /></div>
         </main>
       </div>
     </div>

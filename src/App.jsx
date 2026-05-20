@@ -8,9 +8,9 @@ import OperationsDashboard from './pages/OperationsDashboard'
 import SchedulingEngine from './components/scheduling/SchedulingEngine'
 import PackagesManager from './components/packages/PackagesManager'
 import WhatsAppManager from './components/whatsapp/WhatsAppManager'
-import PrescriptionManager from './components/prescription/PrescriptionManager'
 import InvoiceManager from './components/invoice/InvoiceManager'
-
+import PrescriptionManager from './components/prescription/PrescriptionManager'
+import PatientProfile from './pages/patient/PatientProfile'
 
 function App() {
   return (
@@ -25,8 +25,9 @@ function App() {
             <Route path="scheduling" element={<SchedulingEngine />} />
             <Route path="packages" element={<PackagesManager />} />
             <Route path="whatsapp" element={<WhatsAppManager />} />
-            <Route path="prescription" element={<PrescriptionManager />} />
             <Route path="invoice" element={<InvoiceManager />} />
+            <Route path="prescription" element={<PrescriptionManager />} />
+            <Route path="patients" element={<PatientProfile />} />
           </Route>
         </Routes>
       </Router>
