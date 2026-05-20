@@ -19,7 +19,6 @@ export default function InvoiceManager() {
   const [showAddDoctorModal, setShowAddDoctorModal] = useState(false)
   const [newDoctor, setNewDoctor] = useState({ nameAr: '', nameEn: '', specializationAr: '', specializationEn: '' })
 
-  // بيانات العيادة/المستشفى
   const [hospitalInfo, setHospitalInfo] = useState({
     nameAr: 'مستشفى السلام',
     nameEn: 'Al Salam Hospital',
@@ -54,7 +53,6 @@ export default function InvoiceManager() {
     notes: ''
   })
 
-  // تحميل البيانات
   useEffect(() => {
     loadPatients()
     loadInvoices()
@@ -95,8 +93,7 @@ export default function InvoiceManager() {
   const loadHospitalInfo = () => {
     const saved = localStorage.getItem('mcsos_hospital_info')
     if (saved) {
-      const savedInfo = JSON.parse(saved)
-      setHospitalInfo(savedInfo)
+      setHospitalInfo(JSON.parse(saved))
     }
   }
 
@@ -120,8 +117,9 @@ export default function InvoiceManager() {
     if (file) {
       const reader = new FileReader()
       reader.onloadend = () => {
-        setHospitalInfo(prev => ({ ...prev, logoPreview: reader.result, logo: reader.result }))
-        saveHospitalInfo({ ...hospitalInfo, logoPreview: reader.result, logo: reader.result })
+        const updated = { ...hospitalInfo, logoPreview: reader.result, logo: reader.result }
+        setHospitalInfo(updated)
+        saveHospitalInfo(updated)
         toast.success('تم رفع شعار المستشفى بنجاح')
       }
       reader.readAsDataURL(file)
@@ -282,11 +280,8 @@ export default function InvoiceManager() {
     })
   }
 
-  // دالة الطباعة - تدعم صفحة واحدة أو أكثر
   const handlePrint = (invoice, copies = 1) => {
     setSelectedInvoice(invoice)
-    setShowPrintPreview(true)
-    // محاكاة طباعة عدة نسخ
     for (let i = 0; i < copies; i++) {
       setTimeout(() => {
         const printWindow = window.open('', '_blank')
@@ -294,47 +289,37 @@ export default function InvoiceManager() {
           printWindow.document.write(getPrintHTML(invoice, i + 1, copies))
           printWindow.document.close()
           printWindow.print()
-          if (i === copies - 1) {
-            setShowPrintPreview(false)
-          }
         }
-      }, i * 500)
+      }, i * 300)
     }
     toast.success(`جاري طباعة ${copies} نسخة`)
   }
 
-  // دالة لإنشاء HTML للطباعة
   const getPrintHTML = (invoice, copyNumber, totalCopies) => {
     const isRTLPrint = isRTL ? 'rtl' : 'ltr'
     return `
       <!DOCTYPE html>
-      <html dir="${isRTLPrint}" lang="${currentLang}">
+      <html dir="${isRTLPrint}" lang="ar">
       <head>
         <meta charset="UTF-8">
         <title>فاتورة طبية - ${invoice.invoiceNumber}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; background: #fff; padding: 20px; }
+          body { font-family: 'Cairo', Arial, sans-serif; background: #fff; padding: 20px; }
           .invoice-container { max-width: 1100px; margin: 0 auto; background: white; }
           .header { background: linear-gradient(135deg, #1e3a5f, #2563eb); color: white; padding: 20px; border-radius: 10px 10px 0 0; }
           .header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
           .logo-area { display: flex; align-items: center; gap: 15px; }
           .logo-img { width: 70px; height: 70px; object-fit: contain; background: white; border-radius: 10px; padding: 5px; }
-          .hospital-name { font-size: 24px; font-weight: bold; }
-          .hospital-details { font-size: 12px; opacity: 0.9; margin-top: 5px; }
-          .invoice-number-box { background: rgba(255,255,255,0.2); border-radius: 8px; padding: 10px 20px; text-align: center; }
-          .invoice-title { font-size: 18px; }
-          .invoice-num { font-size: 20px; font-weight: bold; margin-top: 5px; }
+          .hospital-name { font-size: 22px; font-weight: bold; }
           .copy-badge { background: #ff9800; color: white; padding: 3px 10px; border-radius: 20px; font-size: 12px; margin-left: 10px; }
           .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
           .info-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; background: #f9fafb; }
           .info-title { font-weight: bold; color: #1e3a5f; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 10px; }
-          .info-row { margin: 8px 0; display: flex; ${isRTLPrint ? 'justify-content: space-between;' : 'justify-content: space-between;'} }
-          .info-label { font-weight: 600; color: #4b5563; }
-          .info-value { color: #1f2937; }
+          .info-row { margin: 8px 0; display: flex; justify-content: space-between; }
           .services-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
           .services-table th, .services-table td { border: 1px solid #e5e7eb; padding: 10px; text-align: ${isRTLPrint ? 'right' : 'left'}; }
-          .services-table th { background: #f3f4f6; font-weight: bold; }
+          .services-table th { background: #f3f4f6; }
           .totals { background: #f9fafb; border-radius: 8px; padding: 15px; margin: 20px 0; }
           .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
           .final-total { font-size: 20px; font-weight: bold; color: #2563eb; border-top: 2px solid #e5e7eb; padding-top: 10px; margin-top: 10px; }
@@ -342,12 +327,7 @@ export default function InvoiceManager() {
           .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0; text-align: center; }
           .sign-line { border-top: 1px solid #9ca3af; width: 200px; margin: 10px auto 0; }
           .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; }
-          @media print {
-            body { padding: 0; margin: 0; }
-            .no-print { display: none; }
-            .invoice-container { box-shadow: none; }
-          }
-          ${isRTLPrint ? '.sign-line { margin: 10px auto 0; }' : '.sign-line { margin: 10px auto 0; }'}
+          @media print { body { padding: 0; margin: 0; } }
         </style>
       </head>
       <body>
@@ -355,15 +335,15 @@ export default function InvoiceManager() {
           <div class="header">
             <div class="header-content">
               <div class="logo-area">
-                ${invoice.hospitalLogo ? `<img src="${invoice.hospitalLogo}" class="logo-img" alt="شعار المستشفى">` : '<div class="logo-img" style="background:white;display:flex;align-items:center;justify-content:center"><span style="color:#1e3a5f;font-size:30px">🏥</span></div>'}
+                ${invoice.hospitalLogo ? `<img src="${invoice.hospitalLogo}" class="logo-img" alt="شعار المستشفى">` : '<div class="logo-img" style="background:white;display:flex;align-items:center;justify-content:center"><span style="font-size:30px">🏥</span></div>'}
                 <div>
                   <div class="hospital-name">${invoice.hospitalName || hospitalInfo.nameAr}</div>
-                  <div class="hospital-details">${invoice.hospitalAddress || hospitalInfo.addressAr} | هاتف: ${invoice.hospitalPhone || hospitalInfo.phone}</div>
+                  <div style="font-size:12px">${invoice.hospitalAddress || hospitalInfo.addressAr} | هاتف: ${invoice.hospitalPhone || hospitalInfo.phone}</div>
                 </div>
               </div>
-              <div class="invoice-number-box">
-                <div class="invoice-title">فاتورة طبية</div>
-                <div class="invoice-num">${invoice.invoiceNumber}</div>
+              <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:10px 20px;text-align:center">
+                <div>فاتورة طبية</div>
+                <div style="font-size:20px;font-weight:bold">${invoice.invoiceNumber}</div>
                 ${totalCopies > 1 ? `<div class="copy-badge">نسخة ${copyNumber}/${totalCopies}</div>` : ''}
               </div>
             </div>
@@ -372,25 +352,25 @@ export default function InvoiceManager() {
           <div class="info-section">
             <div class="info-card">
               <div class="info-title">بيانات المريض</div>
-              <div class="info-row"><span class="info-label">الاسم:</span><span class="info-value">${invoice.patientName}</span></div>
-              <div class="info-row"><span class="info-label">العمر:</span><span class="info-value">${invoice.patientAge} سنة</span></div>
-              <div class="info-row"><span class="info-label">الجوال:</span><span class="info-value">${invoice.patientPhone || '-'}</span></div>
-              <div class="info-row"><span class="info-label">التاريخ:</span><span class="info-value">${invoice.invoiceDate}</span></div>
+              <div class="info-row"><span>الاسم:</span><span>${invoice.patientName}</span></div>
+              <div class="info-row"><span>العمر:</span><span>${invoice.patientAge} سنة</span></div>
+              <div class="info-row"><span>الجوال:</span><span>${invoice.patientPhone || '-'}</span></div>
+              <div class="info-row"><span>التاريخ:</span><span>${invoice.invoiceDate}</span></div>
             </div>
             <div class="info-card">
-              <div class="info-title">بيانات الطبيب المعالج</div>
-              <div class="info-row"><span class="info-label">الاسم:</span><span class="info-value">${invoice.doctorName}</span></div>
-              ${invoice.doctorSpecialization ? `<div class="info-row"><span class="info-label">التخصص:</span><span class="info-value">${invoice.doctorSpecialization}</span></div>` : ''}
-              <div class="info-row"><span class="info-label">تاريخ العملية:</span><span class="info-value">${invoice.surgeryDate || '-'}</span></div>
+              <div class="info-title">بيانات الطبيب</div>
+              <div class="info-row"><span>الاسم:</span><span>${invoice.doctorName}</span></div>
+              ${invoice.doctorSpecialization ? `<div class="info-row"><span>التخصص:</span><span>${invoice.doctorSpecialization}</span></div>` : ''}
+              <div class="info-row"><span>تاريخ العملية:</span><span>${invoice.surgeryDate || '-'}</span></div>
             </div>
           </div>
           
-          ${invoice.diagnosis ? `<div class="info-card" style="margin-bottom:20px"><div class="info-title">التشخيص</div><div class="info-value">${invoice.diagnosis}</div></div>` : ''}
+          ${invoice.diagnosis ? `<div class="info-card" style="margin-bottom:20px"><div class="info-title">التشخيص</div><div>${invoice.diagnosis}</div></div>` : ''}
           
           <table class="services-table">
-            <thead><tr><th>#</th><th>الخدمة</th><th>الكمية</th><th>السعر (ر.س)</th><th>الإجمالي (ر.س)</th></tr></thead>
+            <thead><tr><th>#</th><th>الخدمة</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
             <tbody>
-              ${invoice.items.map((item, idx) => `<tr><td>${idx+1}</td><td>${item.description || '-'}</td><td>${item.quantity}</td><td>${item.unitPrice.toFixed(2)}</td><td>${item.total.toFixed(2)}</td></tr>`).join('')}
+              ${invoice.items.map((item, idx) => `<tr><td>${idx+1}</td><td>${item.description || '-'}</td><td>${item.quantity}</td><td>${item.unitPrice.toFixed(2)} ر.س</td><td>${item.total.toFixed(2)} ر.س</td></tr>`).join('')}
             </tbody>
           </table>
           
@@ -401,8 +381,8 @@ export default function InvoiceManager() {
           </div>
           
           <div class="payment-section">
-            <div class="info-card"><div class="info-title">معلومات الدفع</div><div class="info-row"><span>الحالة:</span><span>${invoice.paymentStatus === 'paid' ? 'مدفوع' : 'غير مدفوع'}</span></div><div class="info-row"><span>الطريقة:</span><span>${invoice.paymentMethod === 'cash' ? 'كاش' : invoice.paymentMethod === 'card' ? 'بطاقة ائتمان' : 'تحويل بنكي'}</span></div></div>
-            <div class="info-card"><div class="info-title">ملاحظات</div><div class="info-value">${invoice.notes || 'لا توجد ملاحظات'}</div></div>
+            <div class="info-card"><div class="info-title">معلومات الدفع</div><div class="info-row"><span>الحالة:</span><span>${invoice.paymentStatus === 'paid' ? 'مدفوع' : 'غير مدفوع'}</span></div><div class="info-row"><span>الطريقة:</span><span>${invoice.paymentMethod === 'cash' ? 'كاش' : invoice.paymentMethod === 'card' ? 'بطاقة' : 'تحويل'}</span></div></div>
+            <div class="info-card"><div class="info-title">ملاحظات</div><div>${invoice.notes || 'لا توجد'}</div></div>
           </div>
           
           <div class="signatures">
@@ -412,7 +392,7 @@ export default function InvoiceManager() {
           
           <div class="footer">
             <p>شكراً لثقتكم بنا - نتمنى لكم دوام الصحة والعافية</p>
-            <p style="margin-top:5px">تم إنشاء هذه الفاتورة بواسطة نظام المركز الطبي MCSOS</p>
+            <p style="margin-top:5px">MCSOS - نظام المركز الطبي</p>
           </div>
         </div>
       </body>
@@ -436,24 +416,44 @@ export default function InvoiceManager() {
         </div>
       </div>
 
-      {/* قائمة الفواتير */}
       <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
         <div className="px-6 py-4 border-b border-gray-700/50"><h2 className="text-xl font-bold text-white">قائمة الفواتير</h2></div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/80"><tr className={`${isRTL ? 'text-right' : 'text-left'}`}><th className="px-6 py-3 text-sm text-gray-300">الرقم</th><th className="px-6 py-3 text-sm text-gray-300">المريض</th><th className="px-6 py-3 text-sm text-gray-300">الطبيب</th><th className="px-6 py-3 text-sm text-gray-300">التاريخ</th><th className="px-6 py-3 text-sm text-gray-300">الإجمالي</th><th className="px-6 py-3 text-sm text-gray-300">الحالة</th><th className="px-6 py-3 text-sm text-gray-300">إجراءات</th></tr></thead>
+            <thead className="bg-gray-800/80">
+              <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
+                <th className="px-6 py-3 text-sm text-gray-300">الرقم</th>
+                <th className="px-6 py-3 text-sm text-gray-300">المريض</th>
+                <th className="px-6 py-3 text-sm text-gray-300">الطبيب</th>
+                <th className="px-6 py-3 text-sm text-gray-300">التاريخ</th>
+                <th className="px-6 py-3 text-sm text-gray-300">الإجمالي</th>
+                <th className="px-6 py-3 text-sm text-gray-300">الحالة</th>
+                <th className="px-6 py-3 text-sm text-gray-300">إجراءات</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-gray-700/50">
-              {invoices.length === 0 ? <tr><td colSpan="7" className="px-6 py-8 text-center text-gray-400">لا توجد فواتير</td></td> : invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-700/30">
-                  <td className="px-6 py-4 text-blue-400 font-mono text-sm">{inv.invoiceNumber}</td>
-                  <td className="px-6 py-4"><div className="font-semibold text-white">{inv.patientName}</div><div className="text-sm text-gray-400">{inv.patientAge} سنة</div></td>
-                  <td className="px-6 py-4 text-gray-300">{inv.doctorName}</td>
-                  <td className="px-6 py-4 text-gray-400">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 font-semibold text-green-400">{inv.total.toFixed(2)} ر.س</td>
-                  <td className="px-6 py-4">{getPaymentStatusBadge(inv.paymentStatus)}</td>
-                  <td className="px-6 py-4"><div className="flex gap-2"><button onClick={() => handleEditInvoice(inv)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => { const copies = prompt('عدد النسخ المطلوبة:', '1'); if(copies) handlePrint(inv, parseInt(copies)); }} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button><button onClick={() => handleMarkAsPaid(inv.id)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded"><CheckCircle size={16} /></button><button onClick={() => handleDeleteInvoice(inv.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
-                </tr>
-              ))}
+              {invoices.length === 0 ? (
+                <tr><td colSpan="7" className="px-6 py-8 text-center text-gray-400">لا توجد فواتير</td></tr>
+              ) : (
+                invoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-gray-700/30">
+                    <td className="px-6 py-4 text-blue-400 font-mono text-sm">{inv.invoiceNumber}</td>
+                    <td className="px-6 py-4"><div className="font-semibold text-white">{inv.patientName}</div><div className="text-sm text-gray-400">{inv.patientAge} سنة</div></td>
+                    <td className="px-6 py-4 text-gray-300">{inv.doctorName}</td>
+                    <td className="px-6 py-4 text-gray-400">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 font-semibold text-green-400">{inv.total.toFixed(2)} ر.س</td>
+                    <td className="px-6 py-4">{getPaymentStatusBadge(inv.paymentStatus)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditInvoice(inv)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button>
+                        <button onClick={() => { const copies = prompt('عدد النسخ المطلوبة:', '1'); if(copies) handlePrint(inv, parseInt(copies)); }} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button>
+                        <button onClick={() => handleMarkAsPaid(inv.id)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded"><CheckCircle size={16} /></button>
+                        <button onClick={() => handleDeleteInvoice(inv.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
