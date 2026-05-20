@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Mail, Lock, User, Shield, AlertCircle, Building, Heart } from 'lucide-react'
@@ -72,17 +72,27 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
+  useEffect(() => {
+    const savedUser = localStorage.getItem('mcsos_user')
+    if (savedUser) {
+      navigate('/dashboard')
+    }
+    const savedEmail = localStorage.getItem('mcsos_saved_email')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      setRememberMe(true)
+    }
+  }, [navigate])
+  
   const handleLogin = (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     
-    // محاكاة تأخير الشبكة
     setTimeout(() => {
       const user = users.find(u => u.email === email && u.password === password)
       
       if (user) {
-        // حفظ بيانات المستخدم
         const userData = {
           id: user.id,
           name: user.name,
@@ -103,11 +113,12 @@ export default function Login() {
         if (rememberMe) {
           localStorage.setItem('mcsos_remember', 'true')
           localStorage.setItem('mcsos_saved_email', email)
+        } else {
+          localStorage.removeItem('mcsos_saved_email')
         }
         
         toast.success(`مرحباً ${user.name}`)
         
-        // توجيه حسب الدور
         if (user.role === 'admin') {
           navigate('/dashboard')
         } else if (user.role === 'doctor') {
@@ -124,19 +135,6 @@ export default function Login() {
       setLoading(false)
     }, 1000)
   }
-  
-  // التحقق من وجود جلسة سابقة
-  useState(() => {
-    const savedUser = localStorage.getItem('mcsos_user')
-    if (savedUser) {
-      navigate('/dashboard')
-    }
-    const savedEmail = localStorage.getItem('mcsos_saved_email')
-    if (savedEmail) {
-      setEmail(savedEmail)
-      setRememberMe(true)
-    }
-  }, [navigate])
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
@@ -223,6 +221,15 @@ export default function Login() {
               )}
             </button>
           </form>
+          
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-400">
+              {isRTL ? 'ليس لديك حساب؟' : "Don't have an account?"}{' '}
+              <button onClick={() => navigate('/register')} className="text-blue-400 hover:text-blue-300 font-medium">
+                {isRTL ? 'إنشاء حساب جديد' : 'Create Account'}
+              </button>
+            </p>
+          </div>
           
           <div className="mt-6 pt-6 border-t border-gray-700">
             <p className="text-center text-sm text-gray-400 mb-3">{isRTL ? 'حسابات تجريبية' : 'Demo Accounts'}</p>

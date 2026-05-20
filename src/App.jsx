@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import Login from './pages/auth/Login'
+import Register from './pages/auth/Register'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import DashboardLayout from './components/common/DashboardLayout'
 import HospitalDashboard from './pages/dashboard/HospitalDashboard'
@@ -22,6 +23,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/" element={
             <ProtectedRoute>
               <DashboardLayout />
