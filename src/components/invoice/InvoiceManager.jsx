@@ -52,8 +52,12 @@ export default function InvoiceManager() {
     discountType: 'percentage',
     discountAmount: 0,
     total: 0,
+    paidAmount: 0,
+    remainingAmount: 0,
     paymentMethod: 'cash',
     paymentStatus: 'unpaid',
+    installmentMonths: 1,
+    installmentAmount: 0,
     notes: ''
   })
 
@@ -216,16 +220,50 @@ export default function InvoiceManager() {
       discountAmount = data.discount
     }
     const total = subtotal - discountAmount
+    let remainingAmount = total - (data.paidAmount || 0)
+    let installmentAmount = 0
+    if (data.paymentStatus === 'installment' && data.installmentMonths > 0) {
+      installmentAmount = remainingAmount / data.installmentMonths
+    }
     setFormData(prev => ({ 
       ...prev, 
       subtotal, 
       discountAmount,
-      total 
+      total,
+      remainingAmount,
+      installmentAmount
     }))
   }
 
   const handleDiscountChange = (value) => {
     const updatedForm = { ...formData, discount: parseFloat(value) || 0 }
+    calculateTotals(updatedForm)
+    setFormData(updatedForm)
+  }
+
+  const handlePaidAmountChange = (value) => {
+    const paidAmount = parseFloat(value) || 0
+    const updatedForm = { ...formData, paidAmount }
+    calculateTotals(updatedForm)
+    setFormData(updatedForm)
+  }
+
+  const handleInstallmentMonthsChange = (value) => {
+    const months = parseInt(value) || 1
+    const updatedForm = { ...formData, installmentMonths: months }
+    calculateTotals(updatedForm)
+    setFormData(updatedForm)
+  }
+
+  const handlePaymentStatusChange = (status) => {
+    const updatedForm = { ...formData, paymentStatus: status }
+    if (status === 'paid') {
+      updatedForm.paidAmount = formData.total
+      updatedForm.remainingAmount = 0
+    } else if (status === 'unpaid') {
+      updatedForm.paidAmount = 0
+      updatedForm.remainingAmount = formData.total
+    }
     calculateTotals(updatedForm)
     setFormData(updatedForm)
   }
@@ -270,7 +308,7 @@ export default function InvoiceManager() {
   }
 
   const handleMarkAsPaid = (id) => {
-    saveInvoices(invoices.map(i => i.id === id ? { ...i, paymentStatus: 'paid' } : i))
+    saveInvoices(invoices.map(i => i.id === id ? { ...i, paymentStatus: 'paid', paidAmount: i.total, remainingAmount: 0 } : i))
     toast.success('تم تحديث حالة الدفع إلى مدفوع')
   }
 
@@ -287,7 +325,10 @@ export default function InvoiceManager() {
       surgeryDate: '', diagnosis: '',
       items: [{ id: 1, description: '', quantity: 1, unitPrice: 0, total: 0 }],
       subtotal: 0, discount: 0, discountType: 'percentage', discountAmount: 0, total: 0,
-      paymentMethod: 'cash', paymentStatus: 'unpaid', notes: ''
+      paidAmount: 0, remainingAmount: 0,
+      paymentMethod: 'cash', paymentStatus: 'unpaid',
+      installmentMonths: 1, installmentAmount: 0,
+      notes: ''
     })
   }
 
@@ -317,10 +358,26 @@ export default function InvoiceManager() {
     const invoiceTypeText = invoice.invoiceType === 'surgery' ? 'عملية جراحية' : 'كشف طبي'
     const invoiceTypeIcon = invoice.invoiceType === 'surgery' ? '🔪' : '🩺'
     
-    // حساب الإجماليات للطباعة
     const discountAmountDisplay = invoice.discountType === 'percentage' 
       ? (invoice.subtotal * invoice.discount / 100).toFixed(2)
       : invoice.discount.toFixed(2)
+    
+    const getPaymentStatusText = (status) => {
+      switch(status) {
+        case 'paid': return 'مدفوع بالكامل ✅'
+        case 'installment': return 'دفع بالتقسيط 📅'
+        default: return 'غير مدفوع ❌'
+      }
+    }
+    
+    const getPaymentMethodText = (method) => {
+      switch(method) {
+        case 'cash': return 'كاش'
+        case 'card': return 'بطاقة ائتمان'
+        case 'bank': return 'تحويل بنكي'
+        default: return method
+      }
+    }
     
     return `
       <!DOCTYPE html>
@@ -350,13 +407,14 @@ export default function InvoiceManager() {
           .services-table th, .services-table td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: ${isRTLPrint ? 'right' : 'left'}; }
           .services-table th { background: #f3f4f6; font-weight: 600; }
           .totals { padding: 8px 12px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; }
-          .totals-box { width: 260px; }
+          .totals-box { width: 280px; }
           .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; }
           .total-row-border { border-top: 1px solid #d1d5db; padding-top: 6px; margin-top: 4px; }
           .final-total { font-size: 14px; font-weight: bold; color: #2563eb; }
           .payment-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px; background: #fff; border-top: 1px solid #e5e7eb; }
           .payment-box, .notes-box { font-size: 10px; }
           .box-title { font-weight: 600; color: #1e3a5f; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; margin-bottom: 5px; font-size: 10px; }
+          .installment-details { background: #e0f2fe; padding: 6px; border-radius: 6px; margin-top: 5px; font-size: 9px; }
           .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 10px 12px; text-align: center; border-top: 1px solid #e5e7eb; background: #f8fafc; }
           .sign-line { border-top: 1px solid #9ca3af; width: 140px; margin: 5px auto 0; }
           .footer { text-align: center; padding: 8px; background: #f8fafc; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 8px; }
@@ -411,8 +469,8 @@ export default function InvoiceManager() {
                 <th style="width:5%">#</th>
                 <th style="width:45%">الخدمة</th>
                 <th style="width:15%">الكمية</th>
-                <th style="width:17%">السعر (ر.س)</th>
-                <th style="width:18%">الإجمالي (ر.س)</th>
+                <th style="width:17%">السعر</th>
+                <th style="width:18%">الإجمالي</th>
               </tr>
             </thead>
             <tbody>
@@ -423,23 +481,30 @@ export default function InvoiceManager() {
                 <td style="text-align:center">${item.quantity}</td>
                 <td style="text-align:center">${item.unitPrice.toFixed(2)}</td>
                 <td style="text-align:center">${item.total.toFixed(2)}</td>
-              </tr>`).join('')}
+               </tr>`).join('')}
             </tbody>
           </table>
           
           <div class="totals">
             <div class="totals-box">
-              <div class="total-row"><span>المجموع الفرعي:</span><span>${invoice.subtotal.toFixed(2)} ر.س</span></div>
-              ${invoice.discount > 0 ? `<div class="total-row"><span>الخصم (${invoice.discount}${invoice.discountType === 'percentage' ? '%' : ' ر.س'}):</span><span style="color:red">- ${discountAmountDisplay} ر.س</span></div>` : ''}
-              <div class="total-row total-row-border"><span class="final-total">الإجمالي النهائي:</span><span class="final-total">${invoice.total.toFixed(2)} ر.س</span></div>
+              <div class="total-row"><span>المجموع الفرعي:</span><span>${invoice.subtotal.toFixed(2)}</span></div>
+              ${invoice.discount > 0 ? `<div class="total-row"><span>الخصم (${invoice.discount}${invoice.discountType === 'percentage' ? '%' : ''}):</span><span style="color:red">- ${discountAmountDisplay}</span></div>` : ''}
+              <div class="total-row"><span>المبلغ المدفوع:</span><span>${(invoice.paidAmount || 0).toFixed(2)}</span></div>
+              <div class="total-row"><span>المبلغ المتبقي:</span><span>${(invoice.remainingAmount || invoice.total).toFixed(2)}</span></div>
+              <div class="total-row total-row-border"><span class="final-total">الإجمالي النهائي:</span><span class="final-total">${invoice.total.toFixed(2)}</span></div>
             </div>
           </div>
           
           <div class="payment-notes">
             <div class="payment-box">
               <div class="box-title">معلومات الدفع</div>
-              <div class="info-item"><span>الحالة:</span><span>${invoice.paymentStatus === 'paid' ? 'مدفوع ✅' : 'غير مدفوع ❌'}</span></div>
-              <div class="info-item"><span>الطريقة:</span><span>${invoice.paymentMethod === 'cash' ? 'كاش' : invoice.paymentMethod === 'card' ? 'بطاقة' : 'تحويل بنكي'}</span></div>
+              <div class="info-item"><span>الحالة:</span><span>${getPaymentStatusText(invoice.paymentStatus)}</span></div>
+              <div class="info-item"><span>الطريقة:</span><span>${getPaymentMethodText(invoice.paymentMethod)}</span></div>
+              ${invoice.paymentStatus === 'installment' && invoice.installmentMonths > 0 ? `
+              <div class="installment-details">
+                <div>📅 تقسيط على ${invoice.installmentMonths} أشهر</div>
+                <div>💵 القسط الشهري: ${(invoice.total / invoice.installmentMonths).toFixed(2)}</div>
+              </div>` : ''}
             </div>
             <div class="notes-box">
               <div class="box-title">ملاحظات</div>
@@ -462,9 +527,16 @@ export default function InvoiceManager() {
     `
   }
 
-  const getPaymentStatusBadge = (status) => status === 'paid'
-    ? <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs border border-green-500/30">مدفوع</span>
-    : <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs border border-yellow-500/30">غير مدفوع</span>
+  const getPaymentStatusBadge = (status) => {
+    switch(status) {
+      case 'paid':
+        return <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs border border-green-500/30">مدفوع</span>
+      case 'installment':
+        return <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs border border-blue-500/30">تقسيط</span>
+      default:
+        return <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs border border-yellow-500/30">غير مدفوع</span>
+    }
+  }
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-white">جاري التحميل...</div></div>
 
@@ -484,24 +556,34 @@ export default function InvoiceManager() {
           <table className="w-full">
             <thead className="bg-gray-800/80"><tr className={`${isRTL ? 'text-right' : 'text-left'}`}><th className="px-6 py-3 text-sm text-gray-300">الرقم</th><th className="px-6 py-3 text-sm text-gray-300">النوع</th><th className="px-6 py-3 text-sm text-gray-300">المريض</th><th className="px-6 py-3 text-sm text-gray-300">الطبيب</th><th className="px-6 py-3 text-sm text-gray-300">التاريخ</th><th className="px-6 py-3 text-sm text-gray-300">الإجمالي</th><th className="px-6 py-3 text-sm text-gray-300">الحالة</th><th className="px-6 py-3 text-sm text-gray-300">إجراءات</th></tr></thead>
             <tbody className="divide-y divide-gray-700/50">
-              {invoices.length === 0 ? <tr><td colSpan="8" className="px-6 py-8 text-center text-gray-400">لا توجد فواتير</td></tr> : invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-700/30">
-                  <td className="px-6 py-4 text-blue-400 font-mono text-sm">{inv.invoiceNumber}</td>
-                  <td className="px-6 py-4"><span className="px-2 py-1 bg-gray-600 rounded-full text-xs">{inv.invoiceType === 'surgery' ? 'عملية' : 'كشف'}</span></td>
-                  <td className="px-6 py-4"><div className="font-semibold text-white">{inv.patientName}</div><div className="text-sm text-gray-400">{inv.patientAge} سنة</div></td>
-                  <td className="px-6 py-4 text-gray-300">{inv.doctorName}</td>
-                  <td className="px-6 py-4 text-gray-400">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 font-semibold text-green-400">{inv.total.toFixed(2)} ر.س</td>
-                  <td className="px-6 py-4">{getPaymentStatusBadge(inv.paymentStatus)}</td>
-                  <td className="px-6 py-4"><div className="flex gap-2"><button onClick={() => handleEditInvoice(inv)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => openPrintOptions(inv)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button><button onClick={() => handleMarkAsPaid(inv.id)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded"><CheckCircle size={16} /></button><button onClick={() => handleDeleteInvoice(inv.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
-                </tr>
-              ))}
+              {invoices.length === 0 ? (
+                <tr><td colSpan="8" className="px-6 py-8 text-center text-gray-400">لا توجد فواتير</td></tr>
+              ) : (
+                invoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-gray-700/30">
+                    <td className="px-6 py-4 text-blue-400 font-mono text-sm">{inv.invoiceNumber}</td>
+                    <td className="px-6 py-4"><span className="px-2 py-1 bg-gray-600 rounded-full text-xs">{inv.invoiceType === 'surgery' ? 'عملية' : 'كشف'}</span></td>
+                    <td className="px-6 py-4"><div className="font-semibold text-white">{inv.patientName}</div><div className="text-sm text-gray-400">{inv.patientAge} سنة</div></td>
+                    <td className="px-6 py-4 text-gray-300">{inv.doctorName}</td>
+                    <td className="px-6 py-4 text-gray-400">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 font-semibold text-green-400">{inv.total.toFixed(2)}</td>
+                    <td className="px-6 py-4">{getPaymentStatusBadge(inv.paymentStatus)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditInvoice(inv)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button>
+                        <button onClick={() => openPrintOptions(inv)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button>
+                        <button onClick={() => handleMarkAsPaid(inv.id)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded"><CheckCircle size={16} /></button>
+                        <button onClick={() => handleDeleteInvoice(inv.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal اختيار عدد النسخ */}
       {showPrintOptions && selectedInvoice && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
@@ -512,7 +594,7 @@ export default function InvoiceManager() {
                 <p className="text-2xl font-bold text-blue-400">{selectedInvoice.invoiceNumber}</p>
                 <p className="text-gray-400 text-sm mt-2">المريض: {selectedInvoice.patientName}</p>
                 <p className="text-gray-400 text-sm">النوع: {selectedInvoice.invoiceType === 'surgery' ? 'عملية جراحية' : 'كشف طبي'}</p>
-                <p className="text-gray-400 text-sm">الإجمالي: {selectedInvoice.total.toFixed(2)} ر.س</p>
+                <p className="text-gray-400 text-sm">الإجمالي: {selectedInvoice.total.toFixed(2)}</p>
               </div>
               <div className="text-center">
                 <label className="block text-sm text-gray-400 mb-3">عدد النسخ المطلوبة</label>
@@ -529,7 +611,6 @@ export default function InvoiceManager() {
         </div>
       )}
 
-      {/* Modal إعدادات المستشفى */}
       {showHospitalSettings && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -543,7 +624,6 @@ export default function InvoiceManager() {
         </div>
       )}
 
-      {/* Modal إضافة فاتورة */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -566,18 +646,53 @@ export default function InvoiceManager() {
               <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">التشخيص</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} /></div>
             </div>
 
-            <div className="mb-4"><div className="flex justify-between items-center mb-2"><h3 className="text-white font-bold">الخدمات</h3><button onClick={handleAddItem} className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm"><Plus size={14} /> إضافة</button></div>
-            {formData.items.map((item) => (<div key={item.id} className="grid grid-cols-12 gap-2 mb-2"><input type="text" className="col-span-5 p-2 bg-gray-700 rounded-lg text-white" placeholder="الخدمة" value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} /><input type="number" className="col-span-2 p-2 bg-gray-700 rounded-lg text-white" placeholder="الكمية" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} /><input type="number" className="col-span-3 p-2 bg-gray-700 rounded-lg text-white" placeholder="السعر (ر.س)" value={item.unitPrice} onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} /><div className="col-span-1 text-white text-center">{item.total.toFixed(2)}</div><button onClick={() => handleRemoveItem(item.id)} className="col-span-1 text-red-400"><Trash2 size={16} /></button></div>))}</div>
+            <div className="mb-4"><div className="flex justify-between items-center mb-2"><h3 className="text-white font-bold">الخدمات</h3><button onClick={handleAddItem} className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm"><Plus size={14} /> إضافة خدمة</button></div>
+            {formData.items.map((item) => (
+              <div key={item.id} className="grid grid-cols-12 gap-2 mb-2">
+                <input type="text" className="col-span-5 p-2 bg-gray-700 rounded-lg text-white" placeholder="الخدمة" value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} />
+                <input type="number" className="col-span-2 p-2 bg-gray-700 rounded-lg text-white" placeholder="الكمية" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} />
+                <input type="number" className="col-span-3 p-2 bg-gray-700 rounded-lg text-white" placeholder="السعر" value={item.unitPrice} onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                <div className="col-span-1 text-white text-center">{item.total.toFixed(2)}</div>
+                <button onClick={() => handleRemoveItem(item.id)} className="col-span-1 text-red-400"><Trash2 size={16} /></button>
+              </div>
+            ))}</div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">الخصم</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discount} onChange={(e) => handleDiscountChange(e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">نوع الخصم</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discountType} onChange={(e) => { setFormData({...formData, discountType: e.target.value}); calculateTotals({...formData, discountType: e.target.value}); }}><option value="percentage">نسبة مئوية %</option><option value="fixed">قيمة ثابتة (ر.س)</option></select></div></div>
+            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">الخصم</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discount} onChange={(e) => handleDiscountChange(e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">نوع الخصم</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discountType} onChange={(e) => { setFormData({...formData, discountType: e.target.value}); calculateTotals({...formData, discountType: e.target.value}); }}><option value="percentage">نسبة مئوية %</option><option value="fixed">قيمة ثابتة</option></select></div></div>
 
-            <div className="bg-gray-700/30 p-3 rounded-lg mb-4">
-              <div className="flex justify-between items-center py-1"><span className="text-gray-400">مجموع الخدمات:</span><span className="text-white font-semibold">{formData.subtotal.toFixed(2)} ر.س</span></div>
-              {formData.discount > 0 && (<div className="flex justify-between items-center py-1"><span className="text-gray-400">الخصم ({formData.discount}{formData.discountType === 'percentage' ? '%' : ' ر.س'}):</span><span className="text-red-400">- {formData.discountAmount.toFixed(2)} ر.س</span></div>)}
-              <div className="flex justify-between items-center py-2 mt-2 border-t border-gray-600"><span className="text-lg font-bold text-white">الإجمالي النهائي:</span><span className="text-xl font-bold text-green-400">{formData.total.toFixed(2)} ر.س</span></div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div><label className="block text-sm text-gray-400 mb-1">حالة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentStatus} onChange={(e) => handlePaymentStatusChange(e.target.value)}>
+                <option value="unpaid">غير مدفوع</option>
+                <option value="paid">مدفوع بالكامل</option>
+                <option value="installment">دفع بالتقسيط</option>
+              </select></div>
+              <div><label className="block text-sm text-gray-400 mb-1">طريقة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}>
+                <option value="cash">كاش</option>
+                <option value="card">بطاقة ائتمان</option>
+                <option value="bank">تحويل بنكي</option>
+              </select></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">حالة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentStatus} onChange={(e) => setFormData({...formData, paymentStatus: e.target.value})}><option value="unpaid">غير مدفوع</option><option value="paid">مدفوع</option></select></div><div><label className="block text-sm text-gray-400 mb-1">طريقة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}><option value="cash">كاش</option><option value="card">بطاقة ائتمان</option><option value="bank">تحويل بنكي</option></select></div></div>
+            {formData.paymentStatus === 'installment' && (
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
+                <h4 className="text-blue-400 font-bold text-sm mb-2">📅 تفاصيل التقسيط</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-sm text-gray-400 mb-1">عدد الأشهر</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.installmentMonths} onChange={(e) => handleInstallmentMonthsChange(e.target.value)} min="1" max="24" /></div>
+                  <div><label className="block text-sm text-gray-400 mb-1">القسط الشهري</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-gray-300" value={formData.installmentAmount.toFixed(2)} disabled readOnly /></div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div><label className="block text-sm text-gray-400 mb-1">المبلغ المدفوع</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paidAmount} onChange={(e) => handlePaidAmountChange(e.target.value)} /></div>
+              <div><label className="block text-sm text-gray-400 mb-1">المبلغ المتبقي</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-gray-300" value={formData.remainingAmount.toFixed(2)} disabled readOnly /></div>
+            </div>
+
+            <div className="bg-gray-700/30 p-3 rounded-lg mb-4">
+              <div className="flex justify-between items-center py-1"><span className="text-gray-400">مجموع الخدمات:</span><span className="text-white font-semibold">{formData.subtotal.toFixed(2)}</span></div>
+              {formData.discount > 0 && (<div className="flex justify-between items-center py-1"><span className="text-gray-400">الخصم ({formData.discount}{formData.discountType === 'percentage' ? '%' : ''}):</span><span className="text-red-400">- {formData.discountAmount.toFixed(2)}</span></div>)}
+              <div className="flex justify-between items-center py-2 mt-2 border-t border-gray-600"><span className="text-lg font-bold text-white">الإجمالي النهائي:</span><span className="text-xl font-bold text-green-400">{formData.total.toFixed(2)}</span></div>
+            </div>
+
             <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">ملاحظات إضافية</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} /></div>
 
             <div className="flex gap-3 pt-4 border-t border-gray-700"><button onClick={handleSaveInvoice} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">حفظ الفاتورة</button><button onClick={() => setShowInvoiceModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button></div>
@@ -585,7 +700,6 @@ export default function InvoiceManager() {
         </div>
       )}
 
-      {/* Modal إضافة طبيب */}
       {showAddDoctorModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
