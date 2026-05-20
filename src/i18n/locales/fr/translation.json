@@ -4,6 +4,9 @@
     "name": "MCSOS"
   },
   "sidebar": {
+    "dashboard": "Tableau de bord",
+    "profile": "Profil",
+    "patients": "Patients",
     "reception": "Accueil",
     "doctor": "Médecin",
     "finance": "Finances",
@@ -12,6 +15,8 @@
     "packages": "Forfaits",
     "whatsapp": "WhatsApp",
     "prescription": "Ordonnances",
+    "invoice": "Facture",
+    "appointments": "Rendez-vous",
     "logout": "Déconnexion"
   },
   "reception": {
@@ -35,7 +40,8 @@
     "search_placeholder": "Rechercher par nom ou numéro",
     "no_patients": "Aucun patient trouvé",
     "visits": "visite",
-    "id": "ID Patient"
+    "id": "ID Patient",
+    "required_fields": "Veuillez remplir tous les champs requis"
   },
   "doctor": {
     "title": "Médecin",
@@ -82,7 +88,13 @@
     "printing": "Impression",
     "exporting": "Exportation",
     "paid": "Payé",
-    "unpaid": "Impayé"
+    "unpaid": "Impayé",
+    "coming": "Bientôt Disponible",
+    "description": "Système de Gestion Financière Intégré",
+    "payments": "Paiements",
+    "packages": "Forfaits",
+    "invoices": "Factures",
+    "discounts": "Remises"
   },
   "operations": {
     "title": "Opérations",
@@ -97,7 +109,19 @@
     "morning": "Matin",
     "evening": "Soir",
     "total": "Total",
-    "appointments": "RDV"
+    "appointments": "RDV",
+    "add_day": "Ajouter Jour",
+    "edit": "Modifier",
+    "doctor_performance": "Performance Médecins",
+    "specialization": "Spécialisation",
+    "patients": "Patients",
+    "sessions": "Séances",
+    "attendance": "Présence",
+    "utilization": "Utilisation",
+    "update_rates": "Mettre à jour",
+    "reset_data": "Réinitialiser",
+    "total_week": "Total Semaine",
+    "export_report": "Exporter Rapport"
   },
   "scheduling": {
     "title": "Planification",
@@ -106,7 +130,15 @@
     "bulk_generate": "Planification groupe",
     "dynamic_generate": "Planification dynamique",
     "available": "Disponible",
-    "no_slots": "Aucun créneau"
+    "no_slots": "Aucun créneau",
+    "select_pattern": "Choisir modèle",
+    "bulk_slots": "Créneaux groupés",
+    "dynamic_slots": "Créneaux dynamiques",
+    "generate_first": "Générer des créneaux d'abord",
+    "bulk_generated": "Créneaux groupés générés",
+    "dynamic_generated": "Créneaux dynamiques générés",
+    "slot_deleted": "Créneau supprimé",
+    "select_doctor_pattern": "Veuillez sélectionner médecin et modèle"
   },
   "packages": {
     "title": "Forfaits",
@@ -116,7 +148,18 @@
     "price": "Prix",
     "currency": "SAR",
     "sessions": "séances",
-    "days": "jours"
+    "days": "jours",
+    "name_ar": "Nom (Arabe)",
+    "name_en": "Nom (Anglais)",
+    "sessions_count": "Nombre de séances",
+    "expiry_days": "Jours d'expiration",
+    "services_list": "Liste des services (séparés par virgules)",
+    "fill_required": "Veuillez remplir les champs requis",
+    "updated": "Forfait mis à jour",
+    "added": "Forfait ajouté",
+    "deleted": "Forfait supprimé",
+    "confirm_delete": "Êtes-vous sûr de vouloir supprimer ce forfait?",
+    "status_updated": "Statut du forfait mis à jour"
   },
   "whatsapp": {
     "title": "WhatsApp",
@@ -124,7 +167,31 @@
     "send_now": "Envoyer",
     "message": "Message",
     "template": "Modèle",
-    "statistics": "Statistiques"
+    "statistics": "Statistiques",
+    "compose_message": "Composer message",
+    "select_template": "Choisir modèle",
+    "type_message": "Tapez votre message ici...",
+    "schedule": "Planifier",
+    "settings": "Paramètres",
+    "enter_phone": "Entrez le numéro de téléphone",
+    "enter_message": "Entrez le message",
+    "message_sent": "Message envoyé",
+    "message_scheduled": "Message planifié",
+    "fill_fields": "Veuillez remplir tous les champs",
+    "schedule_time": "Entrez l'heure de planification",
+    "messages_sent": "Messages envoyés",
+    "scheduled": "Planifiés",
+    "active_chats": "Chats actifs",
+    "automated": "Automatisés",
+    "automated_flows": "Flux automatisés",
+    "booking_confirmation": "Confirmation de réservation",
+    "auto_after_booking": "Automatique après réservation",
+    "reminder_before": "Rappel rendez-vous",
+    "auto_24h_before": "Automatique 24h avant",
+    "missed_followup": "Relance absence",
+    "auto_after_missed": "Automatique après absence",
+    "message_history": "Historique des messages",
+    "no_messages": "Aucun message"
   },
   "prescription": {
     "title": "Ordonnances Médicales",
@@ -167,7 +234,10 @@
     "actions": "Actions",
     "close": "Fermer",
     "details": "Détails",
-    "select": "Choisir"
+    "select": "Choisir",
+    "with": "avec",
+    "on": "le",
+    "at": "à"
   },
   "status": {
     "active": "Actif",

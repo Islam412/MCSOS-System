@@ -4,6 +4,9 @@
     "name": "MCSOS"
   },
   "sidebar": {
+    "dashboard": "لوحة التحكم",
+    "profile": "الملف الشخصي",
+    "patients": "المرضى",
     "reception": "الاستقبال",
     "doctor": "الأطباء",
     "finance": "المالية",
@@ -12,6 +15,8 @@
     "packages": "الباقات",
     "whatsapp": "واتساب",
     "prescription": "الروشتات",
+    "invoice": "الفواتير",
+    "appointments": "المواعيد",
     "logout": "تسجيل الخروج"
   },
   "reception": {
@@ -35,7 +40,8 @@
     "search_placeholder": "ابحث بالاسم أو رقم الجوال",
     "no_patients": "لا يوجد مرضى",
     "visits": "زيارة",
-    "id": "رقم المريض"
+    "id": "رقم المريض",
+    "required_fields": "الرجاء ملء جميع الحقول المطلوبة"
   },
   "doctor": {
     "title": "لوحة الأطباء",
@@ -82,7 +88,13 @@
     "printing": "جاري الطباعة",
     "exporting": "جاري تصدير التقرير",
     "paid": "مدفوع",
-    "unpaid": "غير مدفوع"
+    "unpaid": "غير مدفوع",
+    "coming": "قريباً",
+    "description": "نظام إدارة المالية المتكامل",
+    "payments": "المدفوعات",
+    "packages": "الباقات",
+    "invoices": "الفواتير",
+    "discounts": "الخصومات"
   },
   "operations": {
     "title": "لوحة العمليات",
@@ -97,7 +109,19 @@
     "morning": "الفترة الصباحية",
     "evening": "الفترة المسائية",
     "total": "الإجمالي",
-    "appointments": "موعد"
+    "appointments": "موعد",
+    "add_day": "إضافة يوم",
+    "edit": "تعديل",
+    "doctor_performance": "أداء الأطباء",
+    "specialization": "التخصص",
+    "patients": "المرضى",
+    "sessions": "الجلسات",
+    "attendance": "الحضور",
+    "utilization": "الاستخدام",
+    "update_rates": "تحديث النسب",
+    "reset_data": "إعادة تعيين",
+    "total_week": "إجمالي الأسبوع",
+    "export_report": "تصدير التقرير"
   },
   "scheduling": {
     "title": "نظام الجدولة",
@@ -106,7 +130,15 @@
     "bulk_generate": "جدولة دفعات",
     "dynamic_generate": "جدولة ديناميكية",
     "available": "متاح",
-    "no_slots": "لا توجد مواعيد"
+    "no_slots": "لا توجد مواعيد",
+    "select_pattern": "اختر النمط",
+    "bulk_slots": "المواعيد المجمعة",
+    "dynamic_slots": "المواعيد الديناميكية",
+    "generate_first": "قم بإنشاء مواعيد أولاً",
+    "bulk_generated": "تم إنشاء المواعيد المجمعة",
+    "dynamic_generated": "تم إنشاء المواعيد الديناميكية",
+    "slot_deleted": "تم حذف الموعد",
+    "select_doctor_pattern": "الرجاء اختيار الطبيب والنمط"
   },
   "packages": {
     "title": "إدارة الباقات",
@@ -116,7 +148,18 @@
     "price": "السعر",
     "currency": "ر.س",
     "sessions": "جلسات",
-    "days": "يوم"
+    "days": "يوم",
+    "name_ar": "الاسم (عربي)",
+    "name_en": "الاسم (إنجليزي)",
+    "sessions_count": "عدد الجلسات",
+    "expiry_days": "أيام الصلاحية",
+    "services_list": "قائمة الخدمات (مفصولة بفواصل)",
+    "fill_required": "الرجاء ملء الحقول المطلوبة",
+    "updated": "تم تحديث الباقة",
+    "added": "تم إضافة الباقة",
+    "deleted": "تم حذف الباقة",
+    "confirm_delete": "هل أنت متأكد من حذف هذه الباقة؟",
+    "status_updated": "تم تحديث حالة الباقة"
   },
   "whatsapp": {
     "title": "نظام واتساب",
@@ -124,7 +167,31 @@
     "send_now": "إرسال الآن",
     "message": "الرسالة",
     "template": "قالب",
-    "statistics": "إحصائيات"
+    "statistics": "إحصائيات",
+    "compose_message": "كتابة رسالة",
+    "select_template": "اختر قالباً",
+    "type_message": "اكتب رسالتك هنا...",
+    "schedule": "جدولة",
+    "settings": "إعدادات",
+    "enter_phone": "الرجاء إدخال رقم الجوال",
+    "enter_message": "الرجاء إدخال الرسالة",
+    "message_sent": "تم إرسال الرسالة",
+    "message_scheduled": "تم جدولة الرسالة",
+    "fill_fields": "الرجاء ملء جميع الحقول",
+    "schedule_time": "أدخل وقت الجدولة",
+    "messages_sent": "رسائل مرسلة",
+    "scheduled": "مججولة",
+    "active_chats": "محادثات نشطة",
+    "automated": "آلي",
+    "automated_flows": "التدفقات الآلية",
+    "booking_confirmation": "تأكيد الحجز",
+    "auto_after_booking": "تلقائي بعد الحجز",
+    "reminder_before": "تذكير قبل الموعد",
+    "auto_24h_before": "تلقائي قبل 24 ساعة",
+    "missed_followup": "متابعة الغياب",
+    "auto_after_missed": "تلقائي بعد الغياب",
+    "message_history": "سجل الرسائل",
+    "no_messages": "لا توجد رسائل"
   },
   "prescription": {
     "title": "الروشتات الطبية",
@@ -167,7 +234,10 @@
     "actions": "إجراءات",
     "close": "إغلاق",
     "details": "تفاصيل",
-    "select": "اختر"
+    "select": "اختر",
+    "with": "مع",
+    "on": "في",
+    "at": "الساعة"
   },
   "status": {
     "active": "نشط",

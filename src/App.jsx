@@ -8,6 +8,7 @@ import DashboardLayout from './components/common/DashboardLayout'
 import AdminDashboard from './pages/dashboard/AdminDashboard'
 import DoctorDashboard from './pages/dashboard/DoctorDashboard'
 import ReceptionDashboard from './pages/dashboard/ReceptionDashboard'
+import PatientDashboard from './pages/dashboard/PatientDashboard'
 import HospitalDashboard from './pages/dashboard/HospitalDashboard'
 import ReceptionPage from './pages/ReceptionDashboard'
 import DoctorPage from './pages/DoctorDashboard'
@@ -46,6 +47,9 @@ function App() {
             <Route path="reception-dashboard" element={<ReceptionDashboard />} />
             <Route path="reception" element={<ReceptionPage />} />
             
+            {/* مسار المريض */}
+            <Route path="patient-dashboard" element={<PatientDashboard />} />
+            
             {/* المسارات المشتركة */}
             <Route path="finance" element={<FinanceManager />} />
             <Route path="operations" element={<OperationsDashboard />} />
@@ -57,7 +61,7 @@ function App() {
             <Route path="patients" element={<PatientProfile />} />
             <Route path="profile" element={<Profile />} />
             
-            {/* الصفحة الرئيسية الافتراضية - تظهر حسب الدور */}
+            {/* الصفحة الرئيسية الافتراضية */}
             <Route index element={<AdminDashboard />} />
           </Route>
         </Routes>
