@@ -26,8 +26,9 @@ export default function DashboardLayout() {
   const { theme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
+  const [user, setUser] = useState(null)
   const isRTL = i18n.language === 'ar'
-
+  
   useEffect(() => {
     const checkScreenSize = () => {
       const mobile = window.innerWidth < 1024
@@ -39,15 +40,28 @@ export default function DashboardLayout() {
     window.addEventListener('resize', checkScreenSize)
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
-
+  
   useEffect(() => {
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr'
     document.documentElement.lang = i18n.language
   }, [isRTL, i18n.language])
-
+  
+  useEffect(() => {
+    const userData = localStorage.getItem('mcsos_user')
+    if (userData) {
+      setUser(JSON.parse(userData))
+    }
+  }, [])
+  
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
   const closeSidebar = () => { if (isMobile) setSidebarOpen(false) }
-
+  
+  const handleLogout = () => {
+    localStorage.removeItem('mcsos_user')
+    localStorage.removeItem('mcsos_token')
+    window.location.href = '/login'
+  }
+  
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-gray-900`}>
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -56,11 +70,12 @@ export default function DashboardLayout() {
             {sidebarOpen ? <X size={24} className="text-blue-400" /> : <Menu size={24} className="text-blue-400" />}
           </button>
         )}
-
+        
         <div className={`fixed top-0 z-40 h-full bg-gray-800/95 backdrop-blur-md shadow-2xl flex flex-col transition-all duration-300 ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'} ${isRTL ? 'right-0' : 'left-0'} w-80`}>
           <div className={`p-6 border-b border-gray-700 ${isRTL ? 'text-right' : 'text-left'} ${isMobile ? 'mt-12' : 'mt-0'}`}>
             <div className="font-bold text-2xl"><span className="bg-gradient-to-r from-blue-500 to-teal-400 bg-clip-text text-transparent">{t('app.title')}</span></div>
-            <p className="text-xs text-gray-400 mt-2">{t('app.name')}</p>
+            <p className="text-xs text-gray-400 mt-2">{user ? (isRTL ? user.name : user.nameEn) : t('app.name')}</p>
+            <p className="text-xs text-gray-500 mt-1">{user ? (isRTL ? user.roleAr : user.roleEn) : ''}</p>
           </div>
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {navItems.map((item) => (
@@ -72,14 +87,14 @@ export default function DashboardLayout() {
           </nav>
           <div className="p-4 border-t border-gray-700 space-y-3">
             <div className="grid grid-cols-2 gap-3"><LanguageSwitcher /><ThemeSwitcher /></div>
-            <button onClick={closeSidebar} className={`flex items-center gap-3 text-red-400 hover:text-red-300 w-full hover:bg-red-500/10 p-3 rounded-xl transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <button onClick={handleLogout} className={`flex items-center gap-3 text-red-400 hover:text-red-300 w-full hover:bg-red-500/10 p-3 rounded-xl transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}>
               <LogOut size={20} /><span className="font-medium">{t('sidebar.logout')}</span>
             </button>
           </div>
         </div>
-
+        
         {isMobile && sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30" onClick={closeSidebar} />}
-
+        
         <main className={`min-h-screen transition-all duration-300 ${!isMobile && !isRTL ? 'ml-80' : ''} ${!isMobile && isRTL ? 'mr-80' : ''}`}>
           <div className="p-4 md:p-8"><Outlet /></div>
         </main>

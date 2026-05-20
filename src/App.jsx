@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
+import Login from './pages/auth/Login'
+import ProtectedRoute from './components/common/ProtectedRoute'
 import DashboardLayout from './components/common/DashboardLayout'
 import HospitalDashboard from './pages/dashboard/HospitalDashboard'
 import ReceptionDashboard from './pages/ReceptionDashboard'
@@ -19,7 +21,12 @@ function App() {
     <ThemeProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<DashboardLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }>
             <Route path="dashboard" element={<HospitalDashboard />} />
             <Route index element={<ReceptionDashboard />} />
             <Route path="doctor" element={<DoctorDashboard />} />
