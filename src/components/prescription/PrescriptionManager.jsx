@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, Calendar, Clock, Pill, FileText, Hospital, Phone, Mail, MapPin, Building, Syringe, ClipboardList, AlertCircle, Signature, PenTool, UserCheck, Stamp, Upload } from 'lucide-react'
+import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, Calendar, Clock, Pill, FileText, Hospital, Phone, Mail, MapPin, Building, Syringe, ClipboardList, AlertCircle, Signature, PenTool, UserCheck, Stamp, Upload, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function PrescriptionManager() {
@@ -49,6 +49,7 @@ export default function PrescriptionManager() {
     doctorSignatureDate: '',
     hospitalStamp: '',
     hospitalStampDate: '',
+    // إعدادات إظهار/إخفاء التوقيعات
     showDoctorSignature: true,
     showPatientSignature: true,
     showHospitalStamp: true,
@@ -398,6 +399,7 @@ export default function PrescriptionManager() {
           .hospital-stamp-img{max-width:100px;max-height:80px;margin:5px auto;display:block;}
           .footer{text-align:center;padding:8px;background:#1e3a5f;color:white;font-size:8px;}
           .doctor-stamp{border:1px dashed #2563eb;padding:5px;border-radius:8px;margin-top:5px;}
+          .hidden-signature{display:none;}
           @media print{body{background:white;padding:0;margin:0;}.prescription{box-shadow:none;border-radius:0;}}
         </style>
       </head>
@@ -429,7 +431,7 @@ export default function PrescriptionManager() {
             <thead><tr><th style="width:5%">#</th><th style="width:30%">اسم الدواء</th><th style="width:15%">الجرعة</th><th style="width:20%">عدد المرات</th><th style="width:15%">المدة</th><th style="width:15%">تعليمات</th></tr></thead>
             <tbody>
               ${prescription.medications.map((med, idx) => `
-              <tr><td style="text-align:center">${idx+1}</td><td class="medication-name">${med.name} ${med.quantity ? `(${med.quantity})` : ''}</td><td>${med.dosage || '-'}</td><td>${med.frequency || '-'}</td><td>${med.duration || '-'} ${med.durationUnit === 'days' ? 'يوم' : med.durationUnit === 'weeks' ? 'أسبوع' : 'شهر'}</td><td>${med.instructions || '-'}</td></tr>
+              <tr><td style="text-align:center">${idx+1}</td><td class="medication-name">${med.name} ${med.quantity ? `(${med.quantity})` : ''}</td><td>${med.dosage || '-'}</td><td>${med.frequency || '-'}</td><td>${med.duration || '-'} ${med.durationUnit === 'days' ? 'يوم' : med.durationUnit === 'weeks' ? 'أسبوع' : 'شهر'}</td><td>${med.instructions || '-'}</td>
               `).join('')}
             </tbody>
           </table>
@@ -437,12 +439,15 @@ export default function PrescriptionManager() {
           ${prescription.notes ? `<div class="diagnosis-box" style="background:#f0fdf4;">📝 ملاحظات: ${prescription.notes}</div>` : ''}
           
           <div class="signatures-section">
+            <!-- توقيع المريض -->
             <div>
               <div class="sign-line"></div>
               <p style="margin-top:5px;font-size:10px;">توقيع المريض</p>
               ${prescription.showPatientSignature && prescription.patientSignature ? `<img src="${prescription.patientSignature}" class="signature-img" alt="توقيع المريض">` : '<div style="height:40px;"></div>'}
               ${prescription.patientSignatureDate ? `<p style="font-size:8px;color:#666;">${prescription.patientSignatureDate}</p>` : ''}
             </div>
+            
+            <!-- توقيع الطبيب -->
             <div>
               <div class="sign-line"></div>
               <p style="margin-top:5px;font-size:10px;">توقيع الطبيب</p>
@@ -450,6 +455,8 @@ export default function PrescriptionManager() {
               ${prescription.doctorSignatureDate ? `<p style="font-size:8px;color:#666;">${prescription.doctorSignatureDate}</p>` : ''}
               <div class="doctor-stamp"><p style="font-size:9px;">${prescription.doctorName}</p><p style="font-size:8px;color:#2563eb;">${prescription.doctorSpecialization || ''}</p></div>
             </div>
+            
+            <!-- ختم المستشفى -->
             <div>
               <div class="sign-line"></div>
               <p style="margin-top:5px;font-size:10px;">ختم المستشفى</p>
@@ -539,11 +546,75 @@ export default function PrescriptionManager() {
               <div><label className="block text-sm text-gray-400 mb-1">تاريخ الصلاحية</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} /></div>
             </div>
 
+            {/* التوقيعات - مع خيارات الإظهار/الإخفاء */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
-              <h3 className="col-span-3 font-bold text-white text-lg mb-2">التوقيعات والأختام</h3>
-              <div className="border border-gray-600 rounded-lg p-3"><div className="flex justify-between items-center mb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={formData.showPatientSignature} onChange={(e) => setFormData({...formData, showPatientSignature: e.target.checked})} className="w-4 h-4" /><span className="text-white">توقيع المريض</span></label><button onClick={() => handleAddSignature('patient')} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><PenTool size={14} /> إضافة</button></div>{formData.patientSignature && (<div className="mt-2 p-2 bg-gray-700 rounded-lg"><img src={formData.patientSignature} alt="توقيع المريض" className="h-12 object-contain" /><button onClick={() => handleRemoveSignature('patient')} className="text-red-400 text-xs mt-1">إزالة</button></div>)}</div>
-              <div className="border border-gray-600 rounded-lg p-3"><div className="flex justify-between items-center mb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={formData.showDoctorSignature} onChange={(e) => setFormData({...formData, showDoctorSignature: e.target.checked})} className="w-4 h-4" /><span className="text-white">توقيع الطبيب</span></label><button onClick={() => handleAddSignature('doctor')} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><PenTool size={14} /> إضافة</button></div>{formData.doctorSignature && (<div className="mt-2 p-2 bg-gray-700 rounded-lg"><img src={formData.doctorSignature} alt="توقيع الطبيب" className="h-12 object-contain" /><button onClick={() => handleRemoveSignature('doctor')} className="text-red-400 text-xs mt-1">إزالة</button></div>)}</div>
-              <div className="border border-gray-600 rounded-lg p-3"><div className="flex justify-between items-center mb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={formData.showHospitalStamp} onChange={(e) => setFormData({...formData, showHospitalStamp: e.target.checked})} className="w-4 h-4" /><span className="text-white">ختم المستشفى</span></label><button onClick={() => handleAddSignature('hospital')} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Stamp size={14} /> إضافة</button></div>{formData.hospitalStamp && (<div className="mt-2 p-2 bg-gray-700 rounded-lg"><img src={formData.hospitalStamp} alt="ختم المستشفى" className="h-12 object-contain" /><button onClick={() => handleRemoveSignature('hospital')} className="text-red-400 text-xs mt-1">إزالة</button></div>)}</div>
+              <h3 className="col-span-3 font-bold text-white text-lg mb-2 flex items-center justify-between">
+                <span>التوقيعات والأختام (اختيارية)</span>
+                <span className="text-xs text-gray-400">يمكنك إظهار أو إخفاء كل توقيع حسب الرغبة</span>
+              </h3>
+              
+              {/* توقيع المريض */}
+              <div className="border border-gray-600 rounded-lg p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.showPatientSignature} onChange={(e) => setFormData({...formData, showPatientSignature: e.target.checked})} className="w-4 h-4" />
+                    <span className="text-white flex items-center gap-1"><User size={14} /> توقيع المريض</span>
+                  </label>
+                  <div className="flex gap-1">
+                    {formData.showPatientSignature ? <Eye size={14} className="text-green-400" /> : <EyeOff size={14} className="text-gray-500" />}
+                    <button onClick={() => handleAddSignature('patient')} className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs flex items-center gap-1"><PenTool size={12} /> إضافة</button>
+                  </div>
+                </div>
+                {formData.patientSignature && (
+                  <div className="mt-2 p-2 bg-gray-700 rounded-lg">
+                    <img src={formData.patientSignature} alt="توقيع المريض" className="h-10 object-contain" />
+                    <button onClick={() => handleRemoveSignature('patient')} className="text-red-400 text-xs mt-1 w-full">إزالة</button>
+                  </div>
+                )}
+                {!formData.patientSignature && <p className="text-xs text-gray-500 mt-2 text-center">لا يوجد توقيع</p>}
+              </div>
+
+              {/* توقيع الطبيب */}
+              <div className="border border-gray-600 rounded-lg p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.showDoctorSignature} onChange={(e) => setFormData({...formData, showDoctorSignature: e.target.checked})} className="w-4 h-4" />
+                    <span className="text-white flex items-center gap-1"><Stethoscope size={14} /> توقيع الطبيب</span>
+                  </label>
+                  <div className="flex gap-1">
+                    {formData.showDoctorSignature ? <Eye size={14} className="text-green-400" /> : <EyeOff size={14} className="text-gray-500" />}
+                    <button onClick={() => handleAddSignature('doctor')} className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs flex items-center gap-1"><PenTool size={12} /> إضافة</button>
+                  </div>
+                </div>
+                {formData.doctorSignature && (
+                  <div className="mt-2 p-2 bg-gray-700 rounded-lg">
+                    <img src={formData.doctorSignature} alt="توقيع الطبيب" className="h-10 object-contain" />
+                    <button onClick={() => handleRemoveSignature('doctor')} className="text-red-400 text-xs mt-1 w-full">إزالة</button>
+                  </div>
+                )}
+                {!formData.doctorSignature && <p className="text-xs text-gray-500 mt-2 text-center">لا يوجد توقيع</p>}
+              </div>
+
+              {/* ختم المستشفى */}
+              <div className="border border-gray-600 rounded-lg p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.showHospitalStamp} onChange={(e) => setFormData({...formData, showHospitalStamp: e.target.checked})} className="w-4 h-4" />
+                    <span className="text-white flex items-center gap-1"><Stamp size={14} /> ختم المستشفى</span>
+                  </label>
+                  <div className="flex gap-1">
+                    {formData.showHospitalStamp ? <Eye size={14} className="text-green-400" /> : <EyeOff size={14} className="text-gray-500" />}
+                    <button onClick={() => handleAddSignature('hospital')} className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs flex items-center gap-1"><Stamp size={12} /> إضافة</button>
+                  </div>
+                </div>
+                {formData.hospitalStamp && (
+                  <div className="mt-2 p-2 bg-gray-700 rounded-lg">
+                    <img src={formData.hospitalStamp} alt="ختم المستشفى" className="h-10 object-contain" />
+                    <button onClick={() => handleRemoveSignature('hospital')} className="text-red-400 text-xs mt-1 w-full">إزالة</button>
+                  </div>
+                )}
+                {!formData.hospitalStamp && <p className="text-xs text-gray-500 mt-2 text-center">لا يوجد ختم</p>}
+              </div>
             </div>
 
             <div className="mb-6 p-4 bg-gray-700/30 rounded-lg"><label className="block text-sm text-gray-400 mb-1">التشخيص</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} placeholder="أدخل التشخيص الطبي..." /></div>
