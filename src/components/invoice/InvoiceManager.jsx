@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, DollarSign, FileText, Calendar, Stamp, Building, UserPlus, Upload, Hospital, Settings, Minus, Maximize, ClipboardList, Syringe } from 'lucide-react'
+import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, DollarSign, FileText, Calendar, Stamp, Building, UserPlus, Upload, Hospital, Settings, Minus, Maximize, ClipboardList, Syringe, Calculator, Percent } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function InvoiceManager() {
@@ -52,12 +52,17 @@ export default function InvoiceManager() {
     discountType: 'percentage',
     discountAmount: 0,
     total: 0,
+    downPayment: 0,           // المبلغ المقدم (دفعة أولى)
+    remainingAfterDown: 0,    // المتبقي بعد المقدم
+    interestRate: 0,          // نسبة الفائدة (%)
+    interestAmount: 0,        // قيمة الفائدة
+    totalWithInterest: 0,     // الإجمالي مع الفائدة
+    installmentMonths: 1,     // عدد أشهر التقسيط
+    monthlyInstallment: 0,    // القسط الشهري
     paidAmount: 0,
     remainingAmount: 0,
     paymentMethod: 'cash',
     paymentStatus: 'unpaid',
-    installmentMonths: 1,
-    installmentAmount: 0,
     notes: ''
   })
 
@@ -211,6 +216,7 @@ export default function InvoiceManager() {
     setFormData(updatedForm)
   }
 
+  // حساب جميع الإجماليات مع نظام التقسيط
   const calculateTotals = (data) => {
     const subtotal = data.items.reduce((sum, item) => sum + (item.total || 0), 0)
     let discountAmount = 0
@@ -220,18 +226,31 @@ export default function InvoiceManager() {
       discountAmount = data.discount
     }
     const total = subtotal - discountAmount
-    let remainingAmount = total - (data.paidAmount || 0)
-    let installmentAmount = 0
-    if (data.paymentStatus === 'installment' && data.installmentMonths > 0) {
-      installmentAmount = remainingAmount / data.installmentMonths
+    let remainingAfterDown = total - (data.downPayment || 0)
+    if (remainingAfterDown < 0) remainingAfterDown = 0
+    
+    // حساب الفائدة على المبلغ المتبقي بعد المقدم
+    const interestAmount = (remainingAfterDown * (data.interestRate || 0)) / 100
+    const totalWithInterest = remainingAfterDown + interestAmount
+    
+    let monthlyInstallment = 0
+    if (data.paymentStatus === 'installment' && data.installmentMonths > 0 && totalWithInterest > 0) {
+      monthlyInstallment = totalWithInterest / data.installmentMonths
     }
+    
+    let remainingAmount = totalWithInterest - (data.paidAmount || 0)
+    if (remainingAmount < 0) remainingAmount = 0
+    
     setFormData(prev => ({ 
       ...prev, 
       subtotal, 
       discountAmount,
       total,
-      remainingAmount,
-      installmentAmount
+      remainingAfterDown,
+      interestAmount,
+      totalWithInterest,
+      monthlyInstallment,
+      remainingAmount
     }))
   }
 
@@ -241,9 +260,16 @@ export default function InvoiceManager() {
     setFormData(updatedForm)
   }
 
-  const handlePaidAmountChange = (value) => {
-    const paidAmount = parseFloat(value) || 0
-    const updatedForm = { ...formData, paidAmount }
+  const handleDownPaymentChange = (value) => {
+    const downPayment = parseFloat(value) || 0
+    const updatedForm = { ...formData, downPayment }
+    calculateTotals(updatedForm)
+    setFormData(updatedForm)
+  }
+
+  const handleInterestRateChange = (value) => {
+    const interestRate = parseFloat(value) || 0
+    const updatedForm = { ...formData, interestRate }
     calculateTotals(updatedForm)
     setFormData(updatedForm)
   }
@@ -255,14 +281,21 @@ export default function InvoiceManager() {
     setFormData(updatedForm)
   }
 
+  const handlePaidAmountChange = (value) => {
+    const paidAmount = parseFloat(value) || 0
+    const updatedForm = { ...formData, paidAmount }
+    calculateTotals(updatedForm)
+    setFormData(updatedForm)
+  }
+
   const handlePaymentStatusChange = (status) => {
     const updatedForm = { ...formData, paymentStatus: status }
     if (status === 'paid') {
-      updatedForm.paidAmount = formData.total
+      updatedForm.paidAmount = formData.totalWithInterest
       updatedForm.remainingAmount = 0
     } else if (status === 'unpaid') {
       updatedForm.paidAmount = 0
-      updatedForm.remainingAmount = formData.total
+      updatedForm.remainingAmount = formData.totalWithInterest
     }
     calculateTotals(updatedForm)
     setFormData(updatedForm)
@@ -308,7 +341,7 @@ export default function InvoiceManager() {
   }
 
   const handleMarkAsPaid = (id) => {
-    saveInvoices(invoices.map(i => i.id === id ? { ...i, paymentStatus: 'paid', paidAmount: i.total, remainingAmount: 0 } : i))
+    saveInvoices(invoices.map(i => i.id === id ? { ...i, paymentStatus: 'paid', paidAmount: i.totalWithInterest, remainingAmount: 0 } : i))
     toast.success('تم تحديث حالة الدفع إلى مدفوع')
   }
 
@@ -325,9 +358,11 @@ export default function InvoiceManager() {
       surgeryDate: '', diagnosis: '',
       items: [{ id: 1, description: '', quantity: 1, unitPrice: 0, total: 0 }],
       subtotal: 0, discount: 0, discountType: 'percentage', discountAmount: 0, total: 0,
+      downPayment: 0, remainingAfterDown: 0,
+      interestRate: 0, interestAmount: 0, totalWithInterest: 0,
+      installmentMonths: 1, monthlyInstallment: 0,
       paidAmount: 0, remainingAmount: 0,
       paymentMethod: 'cash', paymentStatus: 'unpaid',
-      installmentMonths: 1, installmentAmount: 0,
       notes: ''
     })
   }
@@ -358,14 +393,23 @@ export default function InvoiceManager() {
     const invoiceTypeText = invoice.invoiceType === 'surgery' ? 'عملية جراحية' : 'كشف طبي'
     const invoiceTypeIcon = invoice.invoiceType === 'surgery' ? '🔪' : '🩺'
     
-    const discountAmountDisplay = invoice.discountType === 'percentage' 
-      ? (invoice.subtotal * invoice.discount / 100).toFixed(2)
-      : invoice.discount.toFixed(2)
+    const discountAmountCalc = invoice.discountType === 'percentage' 
+      ? (invoice.subtotal * invoice.discount / 100)
+      : invoice.discount
+    const discountDisplay = discountAmountCalc.toFixed(2)
+    
+    const remainingAfterDownCalc = invoice.total - (invoice.downPayment || 0)
+    const interestAmountCalc = (remainingAfterDownCalc * (invoice.interestRate || 0)) / 100
+    const totalWithInterestCalc = remainingAfterDownCalc + interestAmountCalc
+    const monthlyInstallmentCalc = invoice.paymentStatus === 'installment' && invoice.installmentMonths > 0 && totalWithInterestCalc > 0
+      ? (totalWithInterestCalc / invoice.installmentMonths).toFixed(2)
+      : '0.00'
+    const remainingAmountCalc = totalWithInterestCalc - (invoice.paidAmount || 0)
     
     const getPaymentStatusText = (status) => {
       switch(status) {
         case 'paid': return 'مدفوع بالكامل ✅'
-        case 'installment': return 'دفع بالتقسيط 📅'
+        case 'installment': return `دفع بالتقسيط 📅 (${invoice.installmentMonths} شهر)`
         default: return 'غير مدفوع ❌'
       }
     }
@@ -387,38 +431,45 @@ export default function InvoiceManager() {
         <title>فاتورة طبية - ${invoice.invoiceNumber}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; background: #fff; padding: 8px; font-size: 11px; }
-          .invoice-container { max-width: 800px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-          .header { background: linear-gradient(135deg, #1e3a5f, #2563eb); color: white; padding: 10px 12px; }
-          .header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-          .logo-area { display: flex; align-items: center; gap: 8px; }
-          .logo-img { width: 45px; height: 45px; object-fit: contain; background: white; border-radius: 8px; padding: 3px; }
-          .hospital-name { font-size: 14px; font-weight: bold; }
-          .hospital-details { font-size: 9px; opacity: 0.9; }
-          .invoice-box { background: rgba(255,255,255,0.15); border-radius: 6px; padding: 5px 12px; text-align: center; }
-          .invoice-title { font-size: 10px; }
-          .invoice-num { font-size: 14px; font-weight: bold; }
-          .copy-badge { background: #ff9800; padding: 1px 6px; border-radius: 15px; font-size: 9px; margin-top: 3px; }
-          .type-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; font-size: 10px; display: inline-block; margin-top: 4px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
-          .info-item { display: flex; justify-content: space-between; font-size: 10px; padding: 2px 0; }
+          body { font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #e0e0e0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+          .invoice-container { max-width: 750px; width: 100%; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); color: white; padding: 20px 25px; }
+          .header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+          .logo-area { display: flex; align-items: center; gap: 12px; }
+          .logo-img { width: 60px; height: 60px; object-fit: contain; background: white; border-radius: 12px; padding: 5px; }
+          .hospital-name { font-size: 18px; font-weight: bold; margin-bottom: 3px; }
+          .hospital-details { font-size: 11px; opacity: 0.85; line-height: 1.4; }
+          .invoice-box { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 20px; text-align: center; backdrop-filter: blur(5px); }
+          .invoice-title { font-size: 12px; letter-spacing: 1px; }
+          .invoice-num { font-size: 18px; font-weight: bold; margin: 5px 0 3px; }
+          .type-badge { background: rgba(255,255,255,0.25); padding: 3px 12px; border-radius: 20px; font-size: 11px; display: inline-block; }
+          .copy-badge { background: #ff9800; padding: 2px 10px; border-radius: 20px; font-size: 10px; margin-top: 5px; display: inline-block; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 25px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+          .info-card { background: white; border-radius: 10px; padding: 12px 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+          .info-title { font-weight: bold; color: #1e3a5f; border-right: 3px solid #2563eb; padding-right: 8px; margin-bottom: 10px; font-size: 13px; }
+          .info-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; }
           .info-label { font-weight: 600; color: #4b5563; }
-          .services-table { width: 100%; border-collapse: collapse; font-size: 10px; }
-          .services-table th, .services-table td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: ${isRTLPrint ? 'right' : 'left'}; }
-          .services-table th { background: #f3f4f6; font-weight: 600; }
-          .totals { padding: 8px 12px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; }
-          .totals-box { width: 280px; }
-          .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; }
-          .total-row-border { border-top: 1px solid #d1d5db; padding-top: 6px; margin-top: 4px; }
-          .final-total { font-size: 14px; font-weight: bold; color: #2563eb; }
-          .payment-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px; background: #fff; border-top: 1px solid #e5e7eb; }
-          .payment-box, .notes-box { font-size: 10px; }
-          .box-title { font-weight: 600; color: #1e3a5f; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; margin-bottom: 5px; font-size: 10px; }
-          .installment-details { background: #e0f2fe; padding: 6px; border-radius: 6px; margin-top: 5px; font-size: 9px; }
-          .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 10px 12px; text-align: center; border-top: 1px solid #e5e7eb; background: #f8fafc; }
-          .sign-line { border-top: 1px solid #9ca3af; width: 140px; margin: 5px auto 0; }
-          .footer { text-align: center; padding: 8px; background: #f8fafc; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 8px; }
-          @media print { body { padding: 0; margin: 0; } .invoice-container { border: none; } }
+          .diagnosis-box { background: #fef3c7; margin: 0 25px 15px 25px; padding: 10px 15px; border-radius: 8px; border-right: 3px solid #f59e0b; }
+          .diagnosis-label { font-weight: bold; color: #b45309; font-size: 11px; margin-bottom: 5px; }
+          .services-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          .services-table th, .services-table td { border: 1px solid #e2e8f0; padding: 10px 12px; text-align: ${isRTLPrint ? 'right' : 'left'}; }
+          .services-table th { background: #f1f5f9; font-weight: 600; font-size: 12px; }
+          .services-table td { font-size: 12px; }
+          .totals-section { padding: 15px 25px; background: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+          .totals-box { width: 380px; ${isRTLPrint ? 'margin-right: auto;' : 'margin-left: auto;'} }
+          .total-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; }
+          .total-row-border { border-top: 2px solid #cbd5e1; padding-top: 8px; margin-top: 5px; }
+          .final-total { font-size: 16px; font-weight: bold; color: #2563eb; }
+          .discount-text { color: #dc2626; }
+          .interest-text { color: #f59e0b; }
+          .payment-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 25px; background: white; }
+          .payment-card, .notes-card { background: #f8fafc; border-radius: 10px; padding: 12px 15px; }
+          .card-title { font-weight: bold; color: #1e3a5f; border-bottom: 2px solid #2563eb; padding-bottom: 6px; margin-bottom: 10px; font-size: 13px; display: inline-block; }
+          .installment-details { background: #dbeafe; border-radius: 8px; padding: 8px 12px; margin-top: 10px; font-size: 11px; }
+          .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 20px 40px; text-align: center; border-top: 1px solid #e2e8f0; background: #f8fafc; }
+          .sign-line { border-top: 1px solid #94a3b8; width: 150px; margin: 10px auto 0; }
+          .footer { text-align: center; padding: 12px; background: #1e3a5f; color: white; font-size: 10px; }
+          @media print { body { background: white; padding: 0; margin: 0; } .invoice-container { box-shadow: none; border-radius: 0; } }
         </style>
       </head>
       <body>
@@ -426,7 +477,7 @@ export default function InvoiceManager() {
           <div class="header">
             <div class="header-content">
               <div class="logo-area">
-                ${invoice.hospitalLogo ? `<img src="${invoice.hospitalLogo}" class="logo-img" alt="شعار المستشفى">` : '<div class="logo-img" style="background:white;display:flex;align-items:center;justify-content:center"><span style="font-size:22px">🏥</span></div>'}
+                ${invoice.hospitalLogo ? `<img src="${invoice.hospitalLogo}" class="logo-img" alt="شعار المستشفى">` : '<div class="logo-img" style="background:white;display:flex;align-items:center;justify-content:center"><span style="font-size:28px">🏥</span></div>'}
                 <div>
                   <div class="hospital-name">${invoice.hospitalName || hospitalInfo.nameAr}</div>
                   <div class="hospital-details">${invoice.hospitalAddress || hospitalInfo.addressAr}</div>
@@ -443,34 +494,36 @@ export default function InvoiceManager() {
           </div>
           
           <div class="info-grid">
-            <div>
-              <div class="info-item"><span class="info-label">المريض:</span><span>${invoice.patientName}</span></div>
-              <div class="info-item"><span class="info-label">العمر:</span><span>${invoice.patientAge} سنة</span></div>
-              <div class="info-item"><span class="info-label">الجوال:</span><span>${invoice.patientPhone || '-'}</span></div>
-              <div class="info-item"><span class="info-label">التاريخ:</span><span>${invoice.invoiceDate}</span></div>
+            <div class="info-card">
+              <div class="info-title">بيانات المريض</div>
+              <div class="info-row"><span class="info-label">الاسم:</span><span>${invoice.patientName}</span></div>
+              <div class="info-row"><span class="info-label">العمر:</span><span>${invoice.patientAge} سنة</span></div>
+              <div class="info-row"><span class="info-label">الجوال:</span><span>${invoice.patientPhone || 'غير محدد'}</span></div>
+              <div class="info-row"><span class="info-label">التاريخ:</span><span>${invoice.invoiceDate}</span></div>
             </div>
-            <div>
-              <div class="info-item"><span class="info-label">الطبيب:</span><span>${invoice.doctorName}</span></div>
-              ${invoice.doctorSpecialization ? `<div class="info-item"><span class="info-label">التخصص:</span><span>${invoice.doctorSpecialization}</span></div>` : ''}
-              <div class="info-item"><span class="info-label">تاريخ العملية:</span><span>${invoice.surgeryDate || '-'}</span></div>
-              ${invoice.procedureName ? `<div class="info-item"><span class="info-label">نوع العملية:</span><span>${invoice.procedureName}</span></div>` : ''}
+            <div class="info-card">
+              <div class="info-title">بيانات الطبيب</div>
+              <div class="info-row"><span class="info-label">الاسم:</span><span>${invoice.doctorName}</span></div>
+              ${invoice.doctorSpecialization ? `<div class="info-row"><span class="info-label">التخصص:</span><span>${invoice.doctorSpecialization}</span></div>` : ''}
+              <div class="info-row"><span class="info-label">تاريخ العملية:</span><span>${invoice.surgeryDate || 'غير محدد'}</span></div>
+              ${invoice.procedureName ? `<div class="info-row"><span class="info-label">العملية:</span><span>${invoice.procedureName}</span></div>` : ''}
             </div>
           </div>
           
           ${invoice.diagnosis ? `
-          <div style="padding: 6px 12px; background: #fef3c7; border-bottom: 1px solid #e5e7eb">
-            <div class="info-label" style="margin-bottom:3px">التشخيص:</div>
-            <div style="font-size:10px">${invoice.diagnosis}</div>
+          <div class="diagnosis-box">
+            <div class="diagnosis-label">📋 التشخيص</div>
+            <div style="font-size: 12px;">${invoice.diagnosis}</div>
           </div>` : ''}
           
-          <table class="services-table">
+          <table class="services-table" style="width: 95%; margin: 15px auto;">
             <thead>
               <tr>
-                <th style="width:5%">#</th>
-                <th style="width:45%">الخدمة</th>
-                <th style="width:15%">الكمية</th>
-                <th style="width:17%">السعر</th>
-                <th style="width:18%">الإجمالي</th>
+                <th style="width:5%; text-align:center">#</th>
+                <th style="width:50%; text-align:${isRTLPrint ? 'right' : 'left'}">الخدمة</th>
+                <th style="width:15%; text-align:center">الكمية</th>
+                <th style="width:15%; text-align:center">السعر</th>
+                <th style="width:15%; text-align:center">الإجمالي</th>
               </tr>
             </thead>
             <tbody>
@@ -480,46 +533,54 @@ export default function InvoiceManager() {
                 <td>${item.description || '-'}</td>
                 <td style="text-align:center">${item.quantity}</td>
                 <td style="text-align:center">${item.unitPrice.toFixed(2)}</td>
-                <td style="text-align:center">${item.total.toFixed(2)}</td>
-               </tr>`).join('')}
+                <td style="text-align:center; font-weight:bold;">${item.total.toFixed(2)}</td>
+              </tr>`).join('')}
             </tbody>
           </table>
           
-          <div class="totals">
+          <div class="totals-section">
             <div class="totals-box">
               <div class="total-row"><span>المجموع الفرعي:</span><span>${invoice.subtotal.toFixed(2)}</span></div>
-              ${invoice.discount > 0 ? `<div class="total-row"><span>الخصم (${invoice.discount}${invoice.discountType === 'percentage' ? '%' : ''}):</span><span style="color:red">- ${discountAmountDisplay}</span></div>` : ''}
+              ${invoice.discount > 0 ? `<div class="total-row"><span>الخصم (${invoice.discount}${invoice.discountType === 'percentage' ? '%' : ''}):</span><span class="discount-text">- ${discountDisplay}</span></div>` : ''}
+              <div class="total-row"><span>الإجمالي بعد الخصم:</span><span>${invoice.total.toFixed(2)}</span></div>
+              ${invoice.downPayment > 0 ? `<div class="total-row"><span>المبلغ المقدم:</span><span style="color:#10b981;">- ${invoice.downPayment.toFixed(2)}</span></div>` : ''}
+              <div class="total-row"><span>المتبقي بعد المقدم:</span><span>${(invoice.total - (invoice.downPayment || 0)).toFixed(2)}</span></div>
+              ${invoice.interestRate > 0 ? `<div class="total-row"><span>فائدة (${invoice.interestRate}%):</span><span class="interest-text">+ ${((invoice.total - (invoice.downPayment || 0)) * (invoice.interestRate || 0) / 100).toFixed(2)}</span></div>` : ''}
+              <div class="total-row total-row-border"><span class="final-total">الإجمالي مع الفائدة:</span><span class="final-total">${(invoice.total - (invoice.downPayment || 0) + ((invoice.total - (invoice.downPayment || 0)) * (invoice.interestRate || 0) / 100)).toFixed(2)}</span></div>
               <div class="total-row"><span>المبلغ المدفوع:</span><span>${(invoice.paidAmount || 0).toFixed(2)}</span></div>
-              <div class="total-row"><span>المبلغ المتبقي:</span><span>${(invoice.remainingAmount || invoice.total).toFixed(2)}</span></div>
-              <div class="total-row total-row-border"><span class="final-total">الإجمالي النهائي:</span><span class="final-total">${invoice.total.toFixed(2)}</span></div>
+              <div class="total-row"><span>المبلغ المتبقي:</span><span style="color:${remainingAmountCalc > 0 ? '#dc2626' : '#10b981'};">${remainingAmountCalc.toFixed(2)}</span></div>
+              ${invoice.paymentStatus === 'installment' && invoice.installmentMonths > 0 ? `
+              <div class="total-row"><span>القسط الشهري (${invoice.installmentMonths} شهر):</span><span style="color:#2563eb; font-weight:bold;">${monthlyInstallmentCalc}</span></div>
+              ` : ''}
             </div>
           </div>
           
-          <div class="payment-notes">
-            <div class="payment-box">
-              <div class="box-title">معلومات الدفع</div>
-              <div class="info-item"><span>الحالة:</span><span>${getPaymentStatusText(invoice.paymentStatus)}</span></div>
-              <div class="info-item"><span>الطريقة:</span><span>${getPaymentMethodText(invoice.paymentMethod)}</span></div>
+          <div class="payment-section">
+            <div class="payment-card">
+              <div class="card-title">💰 معلومات الدفع</div>
+              <div class="info-row"><span>الحالة:</span><span>${getPaymentStatusText(invoice.paymentStatus)}</span></div>
+              <div class="info-row"><span>طريقة الدفع:</span><span>${getPaymentMethodText(invoice.paymentMethod)}</span></div>
               ${invoice.paymentStatus === 'installment' && invoice.installmentMonths > 0 ? `
               <div class="installment-details">
                 <div>📅 تقسيط على ${invoice.installmentMonths} أشهر</div>
-                <div>💵 القسط الشهري: ${(invoice.total / invoice.installmentMonths).toFixed(2)}</div>
+                <div>💵 القسط الشهري: ${monthlyInstallmentCalc}</div>
+                <div>📌 إجمالي المبلغ: ${(invoice.total - (invoice.downPayment || 0) + ((invoice.total - (invoice.downPayment || 0)) * (invoice.interestRate || 0) / 100)).toFixed(2)}</div>
               </div>` : ''}
             </div>
-            <div class="notes-box">
-              <div class="box-title">ملاحظات</div>
-              <div style="font-size:10px">${invoice.notes || 'لا توجد ملاحظات'}</div>
+            <div class="notes-card">
+              <div class="card-title">📝 ملاحظات</div>
+              <div style="font-size: 11px; line-height: 1.5;">${invoice.notes || 'لا توجد ملاحظات'}</div>
             </div>
           </div>
           
           <div class="signatures">
-            <div><div class="sign-line"></div><p style="margin-top:4px; font-size:9px">توقيع المريض</p></div>
-            <div><div class="sign-line"></div><p style="margin-top:4px; font-size:9px">توقيع الطبيب</p></div>
+            <div><div class="sign-line"></div><p style="margin-top: 8px; font-size: 11px;">توقيع المريض</p></div>
+            <div><div class="sign-line"></div><p style="margin-top: 8px; font-size: 11px;">توقيع الطبيب</p></div>
           </div>
           
           <div class="footer">
             <p>شكراً لثقتكم بنا - نتمنى لكم دوام الصحة والعافية</p>
-            <p style="margin-top:2px">MCSOS - نظام المركز الطبي</p>
+            <p style="margin-top: 4px; font-size: 9px;">تم إنشاء هذه الفاتورة بواسطة نظام المركز الطبي MCSOS</p>
           </div>
         </div>
       </body>
@@ -554,7 +615,18 @@ export default function InvoiceManager() {
         <div className="px-6 py-4 border-b border-gray-700/50"><h2 className="text-xl font-bold text-white">قائمة الفواتير</h2></div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/80"><tr className={`${isRTL ? 'text-right' : 'text-left'}`}><th className="px-6 py-3 text-sm text-gray-300">الرقم</th><th className="px-6 py-3 text-sm text-gray-300">النوع</th><th className="px-6 py-3 text-sm text-gray-300">المريض</th><th className="px-6 py-3 text-sm text-gray-300">الطبيب</th><th className="px-6 py-3 text-sm text-gray-300">التاريخ</th><th className="px-6 py-3 text-sm text-gray-300">الإجمالي</th><th className="px-6 py-3 text-sm text-gray-300">الحالة</th><th className="px-6 py-3 text-sm text-gray-300">إجراءات</th></tr></thead>
+            <thead className="bg-gray-800/80">
+              <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
+                <th className="px-6 py-3 text-sm text-gray-300">الرقم</th>
+                <th className="px-6 py-3 text-sm text-gray-300">النوع</th>
+                <th className="px-6 py-3 text-sm text-gray-300">المريض</th>
+                <th className="px-6 py-3 text-sm text-gray-300">الطبيب</th>
+                <th className="px-6 py-3 text-sm text-gray-300">التاريخ</th>
+                <th className="px-6 py-3 text-sm text-gray-300">الإجمالي</th>
+                <th className="px-6 py-3 text-sm text-gray-300">الحالة</th>
+                <th className="px-6 py-3 text-sm text-gray-300">إجراءات</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-gray-700/50">
               {invoices.length === 0 ? (
                 <tr><td colSpan="8" className="px-6 py-8 text-center text-gray-400">لا توجد فواتير</td></tr>
@@ -675,9 +747,22 @@ export default function InvoiceManager() {
             {formData.paymentStatus === 'installment' && (
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
                 <h4 className="text-blue-400 font-bold text-sm mb-2">📅 تفاصيل التقسيط</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div><label className="block text-sm text-gray-400 mb-1">المبلغ المقدم</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.downPayment} onChange={(e) => handleDownPaymentChange(e.target.value)} min="0" /></div>
                   <div><label className="block text-sm text-gray-400 mb-1">عدد الأشهر</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.installmentMonths} onChange={(e) => handleInstallmentMonthsChange(e.target.value)} min="1" max="24" /></div>
-                  <div><label className="block text-sm text-gray-400 mb-1">القسط الشهري</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-gray-300" value={formData.installmentAmount.toFixed(2)} disabled readOnly /></div>
+                  <div><label className="block text-sm text-gray-400 mb-1">نسبة الفائدة %</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.interestRate} onChange={(e) => handleInterestRateChange(e.target.value)} min="0" max="100" step="0.5" /></div>
+                </div>
+                <div className="mt-3 p-2 bg-gray-700/30 rounded-lg">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-gray-400">المتبقي بعد المقدم:</div>
+                    <div className="text-white font-semibold">{formData.remainingAfterDown.toFixed(2)}</div>
+                    <div className="text-gray-400">قيمة الفائدة:</div>
+                    <div className="text-yellow-400 font-semibold">{formData.interestAmount.toFixed(2)}</div>
+                    <div className="text-gray-400">الإجمالي مع الفائدة:</div>
+                    <div className="text-blue-400 font-semibold">{formData.totalWithInterest.toFixed(2)}</div>
+                    <div className="text-gray-400">القسط الشهري:</div>
+                    <div className="text-green-400 font-semibold">{formData.monthlyInstallment.toFixed(2)}</div>
+                  </div>
                 </div>
               </div>
             )}
@@ -690,7 +775,10 @@ export default function InvoiceManager() {
             <div className="bg-gray-700/30 p-3 rounded-lg mb-4">
               <div className="flex justify-between items-center py-1"><span className="text-gray-400">مجموع الخدمات:</span><span className="text-white font-semibold">{formData.subtotal.toFixed(2)}</span></div>
               {formData.discount > 0 && (<div className="flex justify-between items-center py-1"><span className="text-gray-400">الخصم ({formData.discount}{formData.discountType === 'percentage' ? '%' : ''}):</span><span className="text-red-400">- {formData.discountAmount.toFixed(2)}</span></div>)}
-              <div className="flex justify-between items-center py-2 mt-2 border-t border-gray-600"><span className="text-lg font-bold text-white">الإجمالي النهائي:</span><span className="text-xl font-bold text-green-400">{formData.total.toFixed(2)}</span></div>
+              <div className="flex justify-between items-center py-1 border-t border-gray-600 mt-1 pt-1"><span className="text-gray-400">الإجمالي بعد الخصم:</span><span className="text-white font-semibold">{formData.total.toFixed(2)}</span></div>
+              {formData.downPayment > 0 && (<div className="flex justify-between items-center py-1"><span className="text-gray-400">المبلغ المقدم:</span><span className="text-green-400">- {formData.downPayment.toFixed(2)}</span></div>)}
+              {formData.interestRate > 0 && (<div className="flex justify-between items-center py-1"><span className="text-gray-400">الفائدة ({formData.interestRate}%):</span><span className="text-yellow-400">+ {formData.interestAmount.toFixed(2)}</span></div>)}
+              <div className="flex justify-between items-center py-2 mt-2 border-t-2 border-gray-600"><span className="text-lg font-bold text-white">الإجمالي النهائي:</span><span className="text-xl font-bold text-green-400">{formData.paymentStatus === 'installment' ? formData.totalWithInterest.toFixed(2) : formData.total.toFixed(2)}</span></div>
             </div>
 
             <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">ملاحظات إضافية</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} /></div>
