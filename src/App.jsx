@@ -8,6 +8,7 @@ import OperationsDashboard from './pages/OperationsDashboard'
 import SchedulingEngine from './components/scheduling/SchedulingEngine'
 import PackagesManager from './components/packages/PackagesManager'
 import WhatsAppManager from './components/whatsapp/WhatsAppManager'
+import PrescriptionManager from './components/prescription/PrescriptionManager'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route path="scheduling" element={<SchedulingEngine />} />
             <Route path="packages" element={<PackagesManager />} />
             <Route path="whatsapp" element={<WhatsAppManager />} />
+            <Route path="prescription" element={<PrescriptionManager />} />
           </Route>
         </Routes>
       </Router>
