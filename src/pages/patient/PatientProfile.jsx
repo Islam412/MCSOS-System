@@ -4,7 +4,7 @@ import {
   User, Calendar, Phone, Mail, MapPin, Activity, Pill, FileText, 
   Image, Camera, Printer, Download, Plus, Trash2, Edit, Save, X,
   CheckCircle, XCircle, Clock, TrendingUp, Stethoscope, Syringe,
-  ClipboardList, AlertCircle, Eye, Upload, Search
+  ClipboardList, AlertCircle, Eye, Upload, Search, UserPlus, PenBox
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -16,6 +16,8 @@ export default function PatientProfile() {
   const [patients, setPatients] = useState([])
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [showPatientModal, setShowPatientModal] = useState(false)
+  const [showAddPatientModal, setShowAddPatientModal] = useState(false)
+  const [showEditPatientModal, setShowEditPatientModal] = useState(false)
   const [activeTab, setActiveTab] = useState('info')
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -27,12 +29,32 @@ export default function PatientProfile() {
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [viewerImages, setViewerImages] = useState([])
   const [showReportModal, setShowReportModal] = useState(false)
+  const [showEditReportModal, setShowEditReportModal] = useState(false)
+  const [selectedReport, setSelectedReport] = useState(null)
   const [newReport, setNewReport] = useState({ title: '', content: '', type: 'medical' })
+  const [editReportData, setEditReportData] = useState({ title: '', content: '' })
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false)
   const [prescriptions, setPrescriptions] = useState([])
   const [prescriptionForm, setPrescriptionForm] = useState({
     medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
     notes: ''
+  })
+  
+  const [newPatient, setNewPatient] = useState({
+    nameAr: '', nameEn: '', nameFr: '',
+    age: '', phone: '', email: '',
+    diagnosis: '', severity: 'moderate',
+    totalSessions: 6, completedSessions: 0,
+    status: 'active', progress: 0,
+    notes: ''
+  })
+
+  const [editPatient, setEditPatient] = useState({
+    id: '', nameAr: '', nameEn: '', nameFr: '',
+    age: '', phone: '', email: '',
+    diagnosis: '', severity: 'moderate',
+    totalSessions: 6, completedSessions: 0,
+    status: 'active', notes: ''
   })
 
   useEffect(() => {
@@ -73,6 +95,125 @@ export default function PatientProfile() {
   const getSeverityColor = (severity) => {
     const map = { mild: 'text-green-400', moderate: 'text-yellow-400', severe: 'text-red-400' }
     return map[severity] || 'text-gray-400'
+  }
+
+  const handleAddPatient = () => {
+    if (!newPatient.nameAr || !newPatient.age) {
+      toast.error('الرجاء إدخال الاسم والعمر')
+      return
+    }
+    
+    const patient = {
+      id: Date.now(),
+      nameAr: newPatient.nameAr,
+      nameEn: newPatient.nameEn || newPatient.nameAr,
+      nameFr: newPatient.nameFr || newPatient.nameAr,
+      age: parseInt(newPatient.age),
+      phone: newPatient.phone || '',
+      email: newPatient.email || '',
+      diagnosis: newPatient.diagnosis || 'قيد التشخيص',
+      severity: newPatient.severity,
+      totalSessions: parseInt(newPatient.totalSessions) || 6,
+      completedSessions: 0,
+      status: 'active',
+      progress: 0,
+      notes: newPatient.notes || '',
+      images: [],
+      reports: [],
+      prescriptions: []
+    }
+    
+    const updatedPatients = [...patients, patient]
+    setPatients(updatedPatients)
+    localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
+    setShowAddPatientModal(false)
+    setNewPatient({
+      nameAr: '', nameEn: '', nameFr: '',
+      age: '', phone: '', email: '',
+      diagnosis: '', severity: 'moderate',
+      totalSessions: 6, completedSessions: 0,
+      status: 'active', progress: 0,
+      notes: ''
+    })
+    toast.success('تم إضافة المريض بنجاح')
+  }
+
+  const handleEditPatient = () => {
+    if (!editPatient.nameAr || !editPatient.age) {
+      toast.error('الرجاء إدخال الاسم والعمر')
+      return
+    }
+    
+    const updatedPatients = patients.map(p => 
+      p.id === editPatient.id ? {
+        ...p,
+        nameAr: editPatient.nameAr,
+        nameEn: editPatient.nameEn || editPatient.nameAr,
+        nameFr: editPatient.nameFr || editPatient.nameAr,
+        age: parseInt(editPatient.age),
+        phone: editPatient.phone || '',
+        email: editPatient.email || '',
+        diagnosis: editPatient.diagnosis || p.diagnosis,
+        severity: editPatient.severity,
+        totalSessions: parseInt(editPatient.totalSessions) || p.totalSessions,
+        notes: editPatient.notes || ''
+      } : p
+    )
+    
+    setPatients(updatedPatients)
+    localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
+    
+    if (selectedPatient && selectedPatient.id === editPatient.id) {
+      setSelectedPatient(updatedPatients.find(p => p.id === editPatient.id))
+    }
+    
+    setShowEditPatientModal(false)
+    toast.success('تم تحديث بيانات المريض بنجاح')
+  }
+
+  const handleDeletePatient = (patientId) => {
+    if (confirm('هل أنت متأكد من حذف هذا المريض؟')) {
+      const updatedPatients = patients.filter(p => p.id !== patientId)
+      setPatients(updatedPatients)
+      localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
+      if (selectedPatient && selectedPatient.id === patientId) {
+        setShowPatientModal(false)
+        setSelectedPatient(null)
+      }
+      toast.success('تم حذف المريض بنجاح')
+    }
+  }
+
+  const handleEditReport = (report) => {
+    setSelectedReport(report)
+    setEditReportData({ title: report.title, content: report.content })
+    setShowEditReportModal(true)
+  }
+
+  const handleSaveReportEdit = () => {
+    if (!editReportData.title) {
+      toast.error('الرجاء إدخال عنوان التقرير')
+      return
+    }
+    
+    const updatedReports = selectedPatient.reports.map(r => 
+      r.id === selectedReport.id ? { ...r, title: editReportData.title, content: editReportData.content } : r
+    )
+    
+    const updatedPatient = { ...selectedPatient, reports: updatedReports }
+    updatePatient(updatedPatient)
+    setShowEditReportModal(false)
+    setSelectedReport(null)
+    toast.success('تم تحديث التقرير بنجاح')
+  }
+
+  const handleDeleteReport = (reportId) => {
+    if (confirm('هل أنت متأكد من حذف هذا التقرير؟')) {
+      const updatedReports = selectedPatient.reports.filter(r => r.id !== reportId)
+      const updatedPatient = { ...selectedPatient, reports: updatedReports }
+      updatePatient(updatedPatient)
+      toast.success('تم حذف التقرير بنجاح')
+    }
   }
 
   const handleFileSelect = (e) => {
@@ -254,29 +395,23 @@ export default function PatientProfile() {
     const patientPrescriptions = prescriptions.filter(p => p.patientId === patient.id)
     const isRTLPrint = isRTL ? 'rtl' : 'ltr'
     
-    return `
-      <!DOCTYPE html>
+    return `<!DOCTYPE html>
       <html dir="${isRTLPrint}" lang="ar">
-      <head>
-        <meta charset="UTF-8">
-        <title>تقرير حالة المريض - ${getPatientName(patient)}</title>
-        <style>
-          *{margin:0;padding:0;box-sizing:border-box;}
-          body{font-family:'Cairo',Arial,sans-serif;background:#e0e0e0;padding:20px;}
-          .report{max-width:800px;margin:0 auto;background:white;border-radius:10px;overflow:hidden;box-shadow:0 5px 20px rgba(0,0,0,0.1);}
-          .header{background:linear-gradient(135deg,#1e3a5f,#2563eb);color:white;padding:20px;text-align:center;}
-          .header h1{font-size:24px;margin-bottom:5px;}
-          .section{padding:15px 20px;border-bottom:1px solid #e5e7eb;}
-          .section-title{font-weight:bold;color:#1e3a5f;font-size:18px;margin-bottom:15px;border-bottom:2px solid #2563eb;display:inline-block;}
-          .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
-          .info-item{display:flex;justify-content:space-between;padding:5px 0;}
-          .progress-bar{background:#e5e7eb;border-radius:10px;height:20px;margin:10px 0;}
-          .progress-fill{background:#2563eb;border-radius:10px;height:20px;width:${patient.progress || 0}%;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;}
-          table{width:100%;border-collapse:collapse;margin-top:10px;}
-          th,td{border:1px solid #e5e7eb;padding:8px;text-align:${isRTLPrint ? 'right' : 'left'};}
-          .footer{text-align:center;padding:15px;background:#f8fafc;color:#6b7280;font-size:10px;}
-          @media print{body{background:white;padding:0;}.report{box-shadow:none;border-radius:0;}}
-        </style>
+      <head><meta charset="UTF-8"><title>تقرير حالة المريض</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Cairo',Arial,sans-serif;background:#e0e0e0;padding:20px;}
+        .report{max-width:800px;margin:0 auto;background:white;border-radius:10px;overflow:hidden;box-shadow:0 5px 20px rgba(0,0,0,0.1);}
+        .header{background:linear-gradient(135deg,#1e3a5f,#2563eb);color:white;padding:20px;text-align:center;}
+        .section{padding:15px 20px;border-bottom:1px solid #e5e7eb;}
+        .section-title{font-weight:bold;color:#1e3a5f;font-size:18px;margin-bottom:15px;border-bottom:2px solid #2563eb;display:inline-block;}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+        .info-item{display:flex;justify-content:space-between;padding:5px 0;}
+        .progress-bar{background:#e5e7eb;border-radius:10px;height:20px;margin:10px 0;}
+        .progress-fill{background:#2563eb;border-radius:10px;height:20px;width:${patient.progress || 0}%;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;}
+        .footer{text-align:center;padding:15px;background:#f8fafc;color:#6b7280;font-size:10px;}
+        @media print{body{background:white;padding:0;}.report{box-shadow:none;border-radius:0;}}
+      </style>
       </head>
       <body>
         <div class="report">
@@ -286,8 +421,7 @@ export default function PatientProfile() {
           <div class="footer"><p>تم إنشاء هذا التقرير بواسطة نظام المركز الطبي MCSOS</p></div>
         </div>
       </body>
-      </html>
-    `
+      </html>`
   }
 
   const filteredPatients = patients.filter(p => 
@@ -299,8 +433,11 @@ export default function PatientProfile() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div><h1 className="text-3xl font-bold gradient-text">ملف المريض</h1><p className="text-gray-400 mt-1">إدارة بيانات المرضى ومتابعة الحالة</p></div>
+        <button onClick={() => setShowAddPatientModal(true)} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30">
+          <UserPlus size={18} /> إضافة مريض جديد
+        </button>
       </div>
 
       <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
@@ -315,38 +452,72 @@ export default function PatientProfile() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/80"><tr><th className="px-4 py-3 text-sm text-gray-300">المريض</th><th className="px-4 py-3 text-sm text-gray-300">العمر</th><th className="px-4 py-3 text-sm text-gray-300">التشخيص</th><th className="px-4 py-3 text-sm text-gray-300">الجلسات</th><th className="px-4 py-3 text-sm text-gray-300">التقدم</th><th className="px-4 py-3 text-sm text-gray-300">الحالة</th><th className="px-4 py-3 text-sm text-gray-300">إجراءات</th></tr></thead>
-            <tbody className="divide-y divide-gray-700/50">
-              {filteredPatients.length === 0 ? <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-400">لا يوجد مرضى</td></tr> : filteredPatients.map((patient) => (
-                <tr key={patient.id} className="hover:bg-gray-700/30 cursor-pointer" onClick={() => { setSelectedPatient(patient); setShowPatientModal(true); }}>
-                  <td className="px-4 py-3 font-semibold text-white">{getPatientName(patient)}</td>
-                  <td className="px-4 py-3 text-gray-300">{patient.age}</td>
-                  <td className="px-4 py-3 text-gray-300">{patient.diagnosis || '-'}</td>
-                  <td className="px-4 py-3 text-gray-300">{patient.completedSessions || 0}/{patient.totalSessions || 0}</td>
-                  <td className="px-4 py-3"><div className="w-24 bg-gray-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${patient.progress || 0}%` }}></div></div></td>
-                  <td className="px-4 py-3"><span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400">{patient.status === 'completed' ? 'مكتمل' : 'نشط'}</span></td>
-                  <td className="px-4 py-3"><button onClick={(e) => { e.stopPropagation(); setSelectedPatient(patient); setShowPatientModal(true); }} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Eye size={16} /></button></td>
-                </tr>
-              ))}
+            <thead className="bg-gray-800/80">
+              <tr><th className="px-4 py-3 text-sm text-gray-300">المريض</th><th className="px-4 py-3 text-sm text-gray-300">العمر</th><th className="px-4 py-3 text-sm text-gray-300">التشخيص</th><th className="px-4 py-3 text-sm text-gray-300">الجلسات</th><th className="px-4 py-3 text-sm text-gray-300">التقدم</th><th className="px-4 py-3 text-sm text-gray-300">الحالة</th><th className="px-4 py-3 text-sm text-gray-300">إجراءات</th></tr>
+            </thead>
+            <tbody>
+              {filteredPatients.length === 0 ? (
+                <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-400">لا يوجد مرضى</td></tr>
+              ) : (
+                filteredPatients.map((patient) => (
+                  <tr key={patient.id} className="hover:bg-gray-700/30">
+                    <td className="px-4 py-3 font-semibold text-white cursor-pointer" onClick={() => { setSelectedPatient(patient); setShowPatientModal(true); }}>{getPatientName(patient)}</td>
+                    <td className="px-4 py-3 text-gray-300">{patient.age}</td>
+                    <td className="px-4 py-3 text-gray-300">{patient.diagnosis || '-'}</td>
+                    <td className="px-4 py-3 text-gray-300">{patient.completedSessions || 0}/{patient.totalSessions || 0}</td>
+                    <td className="px-4 py-3"><div className="w-24 bg-gray-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${patient.progress || 0}%` }}></div></div></td>
+                    <td className="px-4 py-3"><span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400">{patient.status === 'completed' ? 'مكتمل' : 'نشط'}</span></td>
+                    <td className="px-4 py-3"><div className="flex gap-2"><button onClick={() => { setEditPatient({ ...patient }); setShowEditPatientModal(true); }} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded"><Edit size={16} /></button><button onClick={() => { setSelectedPatient(patient); setShowPatientModal(true); }} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Eye size={16} /></button><button onClick={() => handleDeletePatient(patient.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* باقي المودالات - تم تبسيطها */}
+      {showAddPatientModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">إضافة مريض جديد</h2><button onClick={() => setShowAddPatientModal(false)}><X size={20} className="text-gray-400" /></button></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label>الاسم (عربي) *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.nameAr} onChange={(e) => setNewPatient({...newPatient, nameAr: e.target.value})} /></div>
+              <div><label>العمر *</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.age} onChange={(e) => setNewPatient({...newPatient, age: e.target.value})} /></div>
+              <div><label>رقم الجوال</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.phone} onChange={(e) => setNewPatient({...newPatient, phone: e.target.value})} /></div>
+              <div><label>عدد الجلسات</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.totalSessions} onChange={(e) => setNewPatient({...newPatient, totalSessions: e.target.value})} /></div>
+              <div className="md:col-span-2"><label>التشخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.diagnosis} onChange={(e) => setNewPatient({...newPatient, diagnosis: e.target.value})} /></div>
+              <div><label>درجة الحالة</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.severity} onChange={(e) => setNewPatient({...newPatient, severity: e.target.value})}><option value="mild">بسيط</option><option value="moderate">متوسط</option><option value="severe">شديد</option></select></div>
+            </div>
+            <div className="flex gap-3 pt-4"><button onClick={handleAddPatient} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">إضافة</button><button onClick={() => setShowAddPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div>
+          </div>
+        </div>
+      )}
+
+      {showEditPatientModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">تعديل بيانات المريض</h2><button onClick={() => setShowEditPatientModal(false)}><X size={20} className="text-gray-400" /></button></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label>الاسم (عربي) *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.nameAr} onChange={(e) => setEditPatient({...editPatient, nameAr: e.target.value})} /></div>
+              <div><label>العمر *</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.age} onChange={(e) => setEditPatient({...editPatient, age: e.target.value})} /></div>
+              <div><label>رقم الجوال</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.phone} onChange={(e) => setEditPatient({...editPatient, phone: e.target.value})} /></div>
+              <div><label>عدد الجلسات</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.totalSessions} onChange={(e) => setEditPatient({...editPatient, totalSessions: e.target.value})} /></div>
+              <div className="md:col-span-2"><label>التشخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.diagnosis} onChange={(e) => setEditPatient({...editPatient, diagnosis: e.target.value})} /></div>
+              <div><label>درجة الحالة</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.severity} onChange={(e) => setEditPatient({...editPatient, severity: e.target.value})}><option value="mild">بسيط</option><option value="moderate">متوسط</option><option value="severe">شديد</option></select></div>
+            </div>
+            <div className="flex gap-3 pt-4"><button onClick={handleEditPatient} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg">حفظ</button><button onClick={() => setShowEditPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div>
+          </div>
+        </div>
+      )}
 
       {showPatientModal && selectedPatient && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-white">{getPatientName(selectedPatient)}</h2>
-              <div className="flex gap-2">
-                <button onClick={handlePrintReport} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm"><Printer size={16} /> تقرير</button>
-                <button onClick={() => setShowPrescriptionModal(true)} className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm"><Pill size={16} /> روشتة</button>
-                <button onClick={() => setShowReportModal(true)} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm"><FileText size={16} /> تقرير</button>
-                <button onClick={() => setShowImageUpload(true)} className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-lg text-sm"><Upload size={16} /> صورة</button>
-                <button onClick={() => setShowPatientModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} /></button>
-              </div>
+              <div className="flex gap-2"><button onClick={() => { setEditPatient({ ...selectedPatient }); setShowEditPatientModal(true); setShowPatientModal(false); }} className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-lg text-sm"><Edit size={16} /> تعديل</button><button onClick={handlePrintReport} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm"><Printer size={16} /> تقرير</button><button onClick={() => setShowPrescriptionModal(true)} className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm"><Pill size={16} /> روشتة</button><button onClick={() => setShowReportModal(true)} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm"><FileText size={16} /> تقرير</button><button onClick={() => setShowImageUpload(true)} className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-lg text-sm"><Upload size={16} /> صورة</button><button onClick={() => setShowPatientModal(false)}><X size={20} /></button></div>
             </div>
-
             <div className="flex gap-2 border-b border-gray-700 mb-4">
               <button onClick={() => setActiveTab('info')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'info' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>معلومات</button>
               <button onClick={() => setActiveTab('progress')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'progress' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>التقدم</button>
@@ -354,96 +525,24 @@ export default function PatientProfile() {
               <button onClick={() => setActiveTab('reports')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'reports' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>التقارير</button>
               <button onClick={() => setActiveTab('images')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'images' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>الصور</button>
             </div>
-
-            {activeTab === 'info' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-700/30 rounded-lg p-4"><h3 className="font-bold text-white mb-3">المعلومات الشخصية</h3><div className="space-y-2"><div className="flex justify-between"><span className="text-gray-400">الاسم:</span><span className="text-white">{getPatientName(selectedPatient)}</span></div><div className="flex justify-between"><span className="text-gray-400">العمر:</span><span className="text-white">{selectedPatient.age} سنة</span></div><div className="flex justify-between"><span className="text-gray-400">الجوال:</span><span className="text-white">{selectedPatient.phone || '-'}</span></div></div></div>
-                <div className="bg-gray-700/30 rounded-lg p-4"><h3 className="font-bold text-white mb-3">المعلومات الطبية</h3><div className="space-y-2"><div className="flex justify-between"><span className="text-gray-400">التشخيص:</span><span className="text-white">{selectedPatient.diagnosis || '-'}</span></div><div className="flex justify-between"><span className="text-gray-400">درجة الحالة:</span><span className={getSeverityColor(selectedPatient.severity)}>{getSeverityText(selectedPatient.severity)}</span></div></div></div>
-              </div>
-            )}
-
-            {activeTab === 'progress' && (
-              <div className="space-y-4">
-                <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl p-6 text-center"><div className="text-5xl font-bold text-white mb-2">{Math.round(selectedPatient.progress || 0)}%</div><p className="text-gray-300">نسبة التقدم</p><div className="w-full bg-gray-700 rounded-full h-3 mt-4"><div className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full" style={{ width: `${selectedPatient.progress || 0}%` }}></div></div></div>
-                <div className="grid grid-cols-2 gap-4"><div className="bg-gray-700/30 rounded-lg p-4 text-center"><div className="text-2xl font-bold text-white">{selectedPatient.totalSessions || 0}</div><div className="text-sm text-gray-400">إجمالي الجلسات</div></div><div className="bg-gray-700/30 rounded-lg p-4 text-center"><div className="text-2xl font-bold text-green-400">{selectedPatient.completedSessions || 0}</div><div className="text-sm text-gray-400">الجلسات المكتملة</div></div></div>
-                <div className="flex gap-4 justify-center"><button onClick={() => handleUpdateSessionProgress(true)} className="bg-green-500/20 text-green-400 px-6 py-2 rounded-lg">تسجيل حضور +1</button><button onClick={() => handleUpdateSessionProgress(false)} className="bg-red-500/20 text-red-400 px-6 py-2 rounded-lg">تعديل -1</button></div>
-              </div>
-            )}
-
-            {activeTab === 'prescriptions' && (
-              <div className="space-y-3">
-                {prescriptions.filter(p => p.patientId === selectedPatient.id).length === 0 ? <p className="text-gray-400 text-center py-8">لا توجد روشتات</p> : prescriptions.filter(p => p.patientId === selectedPatient.id).map((pres) => (
-                  <div key={pres.id} className="bg-gray-700/30 rounded-lg p-4"><p className="font-bold text-white">{pres.prescriptionNumber}</p><p className="text-sm text-gray-400">{new Date(pres.prescriptionDate).toLocaleDateString()}</p><div className="mt-2 space-y-2">{pres.medications.map((med, idx) => (<div key={idx} className="bg-gray-800 rounded-lg p-2"><p className="font-semibold text-white">{med.name}</p><p className="text-xs text-gray-400">{med.dosage} | {med.frequency} | {med.duration}</p></div>))}</div></div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'reports' && (
-              <div className="space-y-3">
-                {selectedPatient.reports?.length === 0 ? <p className="text-gray-400 text-center py-8">لا توجد تقارير</p> : selectedPatient.reports.map((report) => (
-                  <div key={report.id} className="bg-gray-700/30 rounded-lg p-4"><p className="font-bold text-white">{report.title}</p><p className="text-sm text-gray-400">{new Date(report.date).toLocaleDateString()}</p><p className="text-gray-300 mt-2">{report.content}</p></div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'images' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {selectedPatient.images?.map((img, idx) => (<div key={img.id} className="bg-gray-700/50 rounded-lg overflow-hidden cursor-pointer" onClick={() => handleViewImage(selectedPatient.images, idx)}><img src={img.data} alt={img.title} className="w-full h-32 object-cover" /><div className="p-2"><p className="text-sm text-white truncate">{img.title}</p><button onClick={(e) => { e.stopPropagation(); handleDeleteImage(img.id); }} className="text-red-400 text-xs">حذف</button></div></div>))}
-                </div>
-                {(!selectedPatient.images || selectedPatient.images.length === 0) && <p className="text-gray-400 text-center py-8">لا توجد صور</p>}
-              </div>
-            )}
+            {activeTab === 'info' && (<div className="grid grid-cols-2 gap-4"><div className="bg-gray-700/30 rounded-lg p-4"><h3 className="font-bold text-white mb-3">المعلومات الشخصية</h3><div>الاسم: {getPatientName(selectedPatient)}</div><div>العمر: {selectedPatient.age} سنة</div><div>الجوال: {selectedPatient.phone || '-'}</div></div><div className="bg-gray-700/30 rounded-lg p-4"><h3 className="font-bold text-white mb-3">المعلومات الطبية</h3><div>التشخيص: {selectedPatient.diagnosis || '-'}</div><div>درجة الحالة: {getSeverityText(selectedPatient.severity)}</div><div>ملاحظات: {selectedPatient.notes || '-'}</div></div></div>)}
+            {activeTab === 'progress' && (<div><div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl p-6 text-center"><div className="text-5xl font-bold text-white">{Math.round(selectedPatient.progress || 0)}%</div><div className="progress-bar mt-4"><div className="progress-fill" style={{width:`${selectedPatient.progress||0}%`}}>{Math.round(selectedPatient.progress||0)}%</div></div></div><div className="flex gap-4 justify-center mt-4"><button onClick={()=>handleUpdateSessionProgress(true)} className="bg-green-500/20 text-green-400 px-6 py-2 rounded-lg">تسجيل حضور +1</button></div></div>)}
+            {activeTab === 'prescriptions' && (<div>{prescriptions.filter(p=>p.patientId===selectedPatient.id).length===0?<p>لا توجد روشتات</p>:prescriptions.filter(p=>p.patientId===selectedPatient.id).map(p=><div key={p.id} className="bg-gray-700/30 rounded-lg p-4 mb-2"><p className="font-bold">{p.prescriptionNumber}</p><p>{new Date(p.prescriptionDate).toLocaleDateString()}</p><div>{p.medications.map((m,i)=><div key={i} className="bg-gray-800 rounded-lg p-2 mt-1"><strong>{m.name}</strong> - {m.dosage} - {m.frequency}</div>)}</div></div>)}</div>)}
+            {activeTab === 'reports' && (<div>{selectedPatient.reports?.length===0?<p>لا توجد تقارير</p>:selectedPatient.reports.map(r=><div key={r.id} className="bg-gray-700/30 rounded-lg p-4 mb-2"><div className="flex justify-between"><div><p className="font-bold">{r.title}</p><p className="text-sm">{new Date(r.date).toLocaleDateString()}</p></div><div className="flex gap-2"><button onClick={()=>handleEditReport(r)} className="text-yellow-400"><Edit size={14}/></button><button onClick={()=>handleDeleteReport(r.id)} className="text-red-400"><Trash2 size={14}/></button></div></div><p>{r.content}</p></div>)}<button onClick={()=>setShowReportModal(true)} className="w-full bg-blue-500/20 text-blue-400 py-2 rounded-lg"><Plus size={16}/> إضافة تقرير</button></div>)}
+            {activeTab === 'images' && (<div><div className="grid grid-cols-3 gap-3">{selectedPatient.images?.map((img,idx)=><div key={img.id} className="bg-gray-700/50 rounded-lg overflow-hidden cursor-pointer" onClick={()=>handleViewImage(selectedPatient.images,idx)}><img src={img.data} className="w-full h-32 object-cover"/><div className="p-2"><p className="text-sm truncate">{img.title}</p><button onClick={(e)=>{e.stopPropagation();handleDeleteImage(img.id)}} className="text-red-400 text-xs">حذف</button></div></div>)}</div><button onClick={()=>setShowImageUpload(true)} className="w-full bg-orange-500/20 text-orange-400 py-2 rounded-lg mt-4"><Upload size={16}/> رفع صورة</button></div>)}
           </div>
         </div>
       )}
 
-      {showImageUpload && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">رفع صورة طبية</h2>
-            <div className="space-y-3">
-              <div className="flex gap-2"><button onClick={() => setUploadType('xray')} className="flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400">أشعة</button><button onClick={() => setUploadType('report')} className="flex-1 py-2 rounded-lg bg-gray-700 text-gray-400">تقرير</button></div>
-              <input type="text" placeholder="عنوان الصورة" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} />
-              <textarea placeholder="وصف الصورة" className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} />
-              <input type="file" accept="image/*" onChange={handleFileSelect} className="w-full p-2 bg-gray-700 rounded-lg text-white" />
-              {selectedFile && <p className="text-sm text-green-400">✓ {selectedFile.name}</p>}
-              <div className="flex gap-3 pt-4"><button onClick={handleUploadImage} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">رفع</button><button onClick={() => setShowImageUpload(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showImageUpload && (<div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-xl font-bold text-white mb-4">رفع صورة طبية</h2><div className="space-y-3"><div className="flex gap-2"><button onClick={()=>setUploadType('xray')} className="flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400">أشعة</button><button onClick={()=>setUploadType('report')} className="flex-1 py-2 rounded-lg bg-gray-700 text-gray-400">تقرير</button></div><input type="text" placeholder="عنوان الصورة" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={uploadTitle} onChange={(e)=>setUploadTitle(e.target.value)}/><textarea placeholder="وصف الصورة" className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={uploadDesc} onChange={(e)=>setUploadDesc(e.target.value)}/><input type="file" accept="image/*" onChange={handleFileSelect} className="w-full p-2 bg-gray-700 rounded-lg text-white"/>{selectedFile && <p className="text-sm text-green-400">✓ {selectedFile.name}</p>}<div className="flex gap-3 pt-4"><button onClick={handleUploadImage} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">رفع</button><button onClick={()=>setShowImageUpload(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div></div></div>)}
 
-      {showReportModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">إضافة تقرير طبي</h2>
-            <div className="space-y-3"><input type="text" placeholder="عنوان التقرير" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newReport.title} onChange={(e) => setNewReport({...newReport, title: e.target.value})} /><textarea placeholder="محتوى التقرير" className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="5" value={newReport.content} onChange={(e) => setNewReport({...newReport, content: e.target.value})} /><div className="flex gap-3"><button onClick={handleAddReport} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">إضافة</button><button onClick={() => setShowReportModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div>
-          </div>
-        </div>
-      )}
+      {showReportModal && (<div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-xl font-bold text-white mb-4">إضافة تقرير طبي</h2><input type="text" placeholder="عنوان التقرير" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newReport.title} onChange={(e)=>setNewReport({...newReport,title:e.target.value})}/><textarea placeholder="محتوى التقرير" className="w-full p-2 bg-gray-700 rounded-lg text-white mt-3" rows="5" value={newReport.content} onChange={(e)=>setNewReport({...newReport,content:e.target.value})}/><div className="flex gap-3 mt-4"><button onClick={handleAddReport} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">إضافة</button><button onClick={()=>setShowReportModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div></div>)}
 
-      {showPrescriptionModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">إضافة روشتة طبية</h2>
-            <div className="space-y-4">
-              <div><label className="block text-sm text-gray-400 mb-1">المريض</label><input type="text" value={getPatientName(selectedPatient)} disabled className="w-full p-2 bg-gray-700/50 rounded-lg text-white" /></div>
-              <div className="flex justify-between"><h3 className="text-white font-bold">الأدوية</h3><button onClick={handleAddMedicationField} className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm"><Plus size={14} /> إضافة دواء</button></div>
-              {prescriptionForm.medications.map((med, idx) => (<div key={idx} className="bg-gray-700/30 rounded-lg p-3"><div className="flex justify-between mb-2"><span>دواء #{idx+1}</span>{idx > 0 && <button onClick={() => handleRemoveMedicationField(idx)} className="text-red-400"><Trash2 size={14} /></button>}</div><div className="grid grid-cols-2 gap-2"><input type="text" placeholder="اسم الدواء" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.name} onChange={(e) => handleMedicationFieldChange(idx, 'name', e.target.value)} /><input type="text" placeholder="الجرعة" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.dosage} onChange={(e) => handleMedicationFieldChange(idx, 'dosage', e.target.value)} /><input type="text" placeholder="عدد المرات" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.frequency} onChange={(e) => handleMedicationFieldChange(idx, 'frequency', e.target.value)} /><input type="text" placeholder="المدة" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.duration} onChange={(e) => handleMedicationFieldChange(idx, 'duration', e.target.value)} /><textarea placeholder="تعليمات" className="w-full p-2 bg-gray-700 rounded-lg text-white text-sm" rows="1" value={med.instructions} onChange={(e) => handleMedicationFieldChange(idx, 'instructions', e.target.value)} /></div></div>))}
-              <textarea placeholder="ملاحظات" className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={prescriptionForm.notes} onChange={(e) => setPrescriptionForm({...prescriptionForm, notes: e.target.value})} />
-              <div className="flex gap-3 pt-4"><button onClick={handleAddPrescription} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">حفظ</button><button onClick={() => setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showPrescriptionModal && (<div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"><div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"><h2 className="text-xl font-bold text-white mb-4">إضافة روشتة طبية</h2><div><label>المريض</label><input type="text" value={getPatientName(selectedPatient)} disabled className="w-full p-2 bg-gray-700/50 rounded-lg text-white"/></div><div className="flex justify-between mt-4"><h3 className="text-white font-bold">الأدوية</h3><button onClick={handleAddMedicationField} className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm"><Plus size={14}/> إضافة دواء</button></div>{prescriptionForm.medications.map((med,idx)=><div key={idx} className="bg-gray-700/30 rounded-lg p-3 mt-2"><div className="flex justify-between"><span>دواء #{idx+1}</span>{idx>0 && <button onClick={()=>handleRemoveMedicationField(idx)} className="text-red-400"><Trash2 size={14}/></button>}</div><div className="grid grid-cols-2 gap-2 mt-2"><input type="text" placeholder="اسم الدواء" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.name} onChange={(e)=>handleMedicationFieldChange(idx,'name',e.target.value)}/><input type="text" placeholder="الجرعة" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.dosage} onChange={(e)=>handleMedicationFieldChange(idx,'dosage',e.target.value)}/><input type="text" placeholder="عدد المرات" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.frequency} onChange={(e)=>handleMedicationFieldChange(idx,'frequency',e.target.value)}/><input type="text" placeholder="المدة" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.duration} onChange={(e)=>handleMedicationFieldChange(idx,'duration',e.target.value)}/><textarea placeholder="تعليمات" className="col-span-2 p-2 bg-gray-700 rounded-lg text-white text-sm" rows="1" value={med.instructions} onChange={(e)=>handleMedicationFieldChange(idx,'instructions',e.target.value)}/></div></div>)}<textarea placeholder="ملاحظات" className="w-full p-2 bg-gray-700 rounded-lg text-white mt-4" rows="2" value={prescriptionForm.notes} onChange={(e)=>setPrescriptionForm({...prescriptionForm,notes:e.target.value})}/><div className="flex gap-3 mt-4"><button onClick={handleAddPrescription} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">حفظ</button><button onClick={()=>setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div></div>)}
 
-      {showImageViewer && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-lg z-50 flex items-center justify-center">
-          <button onClick={() => setShowImageViewer(false)} className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-full"><X size={24} /></button>
-          <div className="relative max-w-[90vw] max-h-[90vh]"><img src={viewerImages[0]?.data} alt="" className="max-w-full max-h-full object-contain" /></div>
-        </div>
-      )}
+      {showEditReportModal && (<div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-xl font-bold text-white mb-4">تعديل التقرير</h2><input type="text" placeholder="عنوان التقرير" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editReportData.title} onChange={(e)=>setEditReportData({...editReportData,title:e.target.value})}/><textarea placeholder="محتوى التقرير" className="w-full p-2 bg-gray-700 rounded-lg text-white mt-3" rows="5" value={editReportData.content} onChange={(e)=>setEditReportData({...editReportData,content:e.target.value})}/><div className="flex gap-3 mt-4"><button onClick={handleSaveReportEdit} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg">حفظ</button><button onClick={()=>setShowEditReportModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div></div>)}
+
+      {showImageViewer && (<div className="fixed inset-0 bg-black/95 backdrop-blur-lg z-50 flex items-center justify-center"><button onClick={()=>setShowImageViewer(false)} className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-full"><X size={24}/></button><div className="relative max-w-[90vw] max-h-[90vh]"><img src={viewerImages[0]?.data} alt="" className="max-w-full max-h-full object-contain"/></div></div>)}
     </div>
   )
 }
