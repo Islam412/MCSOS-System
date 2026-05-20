@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, UserCheck, CreditCard, FileCheck, CalendarDays } from 'lucide-react'
+import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -46,9 +46,6 @@ export default function DashboardLayout() {
     // روابط مشتركة للجميع
     const profileItem = { to: '/profile', label: 'sidebar.profile', icon: User }
     
-    // لوحة التحكم حسب الدور
-    let dashboardItem = { to: '/', label: 'sidebar.dashboard', icon: LayoutDashboard }
-    
     if (userRole === 'admin') {
       return [
         { to: '/admin', label: 'sidebar.dashboard', icon: LayoutDashboard },
@@ -79,8 +76,15 @@ export default function DashboardLayout() {
         { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
         profileItem
       ]
+    } else if (userRole === 'user' || userRole === 'patient') {
+      return [
+        { to: '/patient-dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        { to: '/profile', label: 'sidebar.profile', icon: User },
+        { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
+        { to: '/appointments', label: 'sidebar.appointments', icon: Calendar },
+        profileItem
+      ]
     } else {
-      // مستخدم عادي
       return [
         { to: '/dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
@@ -104,6 +108,7 @@ export default function DashboardLayout() {
     if (userRole === 'admin') return isRTL ? 'مدير النظام' : 'System Administrator'
     if (userRole === 'doctor') return isRTL ? 'طبيب' : 'Doctor'
     if (userRole === 'reception') return isRTL ? 'موظف استقبال' : 'Receptionist'
+    if (userRole === 'user' || userRole === 'patient') return isRTL ? 'مريض' : 'Patient'
     return isRTL ? 'مستخدم' : 'User'
   }
   
@@ -122,18 +127,32 @@ export default function DashboardLayout() {
             <p className="text-xs text-gray-400 mt-2">{user ? (isRTL ? user.name : user.nameEn) : t('app.name')}</p>
             <p className="text-xs text-blue-400 mt-1">{getRoleName()}</p>
           </div>
+          
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to} onClick={closeSidebar} className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'} ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <NavLink 
+                key={item.to} 
+                to={item.to} 
+                onClick={closeSidebar} 
+                className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'} ${isRTL ? 'flex-row-reverse' : ''}`}
+              >
                 <item.icon size={20} />
                 <span className="font-medium text-base">{t(item.label)}</span>
               </NavLink>
             ))}
           </nav>
+          
           <div className="p-4 border-t border-gray-700 space-y-3">
-            <div className="grid grid-cols-2 gap-3"><LanguageSwitcher /><ThemeSwitcher /></div>
-            <button onClick={handleLogout} className={`flex items-center gap-3 text-red-400 hover:text-red-300 w-full hover:bg-red-500/10 p-3 rounded-xl transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <LogOut size={20} /><span className="font-medium">{t('sidebar.logout')}</span>
+            <div className="grid grid-cols-2 gap-3">
+              <LanguageSwitcher />
+              <ThemeSwitcher />
+            </div>
+            <button 
+              onClick={handleLogout} 
+              className={`flex items-center gap-3 text-red-400 hover:text-red-300 w-full hover:bg-red-500/10 p-3 rounded-xl transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+            >
+              <LogOut size={20} />
+              <span className="font-medium">{t('sidebar.logout')}</span>
             </button>
           </div>
         </div>
@@ -141,7 +160,9 @@ export default function DashboardLayout() {
         {isMobile && sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30" onClick={closeSidebar} />}
         
         <main className={`min-h-screen transition-all duration-300 ${!isMobile && !isRTL ? 'ml-80' : ''} ${!isMobile && isRTL ? 'mr-80' : ''}`}>
-          <div className="p-4 md:p-8"><Outlet /></div>
+          <div className="p-4 md:p-8">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
