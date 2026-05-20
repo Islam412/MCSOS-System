@@ -22,10 +22,10 @@ export default function InvoiceManager() {
   const [invoiceType, setInvoiceType] = useState('examination')
 
   const [hospitalInfo, setHospitalInfo] = useState({
-    nameAr: 'مستشفى السلام',
-    nameEn: 'Al Salam Hospital',
-    addressAr: 'شارع الملك عبدالعزيز، الرياض',
-    addressEn: 'King Abdulaziz Road, Riyadh',
+    nameAr: 'مستشفى السلام الدولي',
+    nameEn: 'Al Salam International Hospital',
+    addressAr: 'شارع الملك عبدالعزيز، الرياض، المملكة العربية السعودية',
+    addressEn: 'King Abdulaziz Road, Riyadh, Saudi Arabia',
     phone: '+966 12 345 6788',
     email: 'info@alsalamhospital.com',
     logo: null,
@@ -50,6 +50,7 @@ export default function InvoiceManager() {
     subtotal: 0,
     discount: 0,
     discountType: 'percentage',
+    discountAmount: 0,
     total: 0,
     paymentMethod: 'cash',
     paymentStatus: 'unpaid',
@@ -208,13 +209,23 @@ export default function InvoiceManager() {
 
   const calculateTotals = (data) => {
     const subtotal = data.items.reduce((sum, item) => sum + (item.total || 0), 0)
-    let discountAmount = data.discountType === 'percentage' ? (subtotal * data.discount) / 100 : data.discount
+    let discountAmount = 0
+    if (data.discountType === 'percentage') {
+      discountAmount = (subtotal * data.discount) / 100
+    } else {
+      discountAmount = data.discount
+    }
     const total = subtotal - discountAmount
-    setFormData(prev => ({ ...prev, subtotal, total }))
+    setFormData(prev => ({ 
+      ...prev, 
+      subtotal, 
+      discountAmount,
+      total 
+    }))
   }
 
   const handleDiscountChange = (value) => {
-    const updatedForm = { ...formData, discount: value }
+    const updatedForm = { ...formData, discount: parseFloat(value) || 0 }
     calculateTotals(updatedForm)
     setFormData(updatedForm)
   }
@@ -275,7 +286,7 @@ export default function InvoiceManager() {
       procedureName: '',
       surgeryDate: '', diagnosis: '',
       items: [{ id: 1, description: '', quantity: 1, unitPrice: 0, total: 0 }],
-      subtotal: 0, discount: 0, discountType: 'percentage', total: 0,
+      subtotal: 0, discount: 0, discountType: 'percentage', discountAmount: 0, total: 0,
       paymentMethod: 'cash', paymentStatus: 'unpaid', notes: ''
     })
   }
@@ -306,6 +317,11 @@ export default function InvoiceManager() {
     const invoiceTypeText = invoice.invoiceType === 'surgery' ? 'عملية جراحية' : 'كشف طبي'
     const invoiceTypeIcon = invoice.invoiceType === 'surgery' ? '🔪' : '🩺'
     
+    // حساب الإجماليات للطباعة
+    const discountAmountDisplay = invoice.discountType === 'percentage' 
+      ? (invoice.subtotal * invoice.discount / 100).toFixed(2)
+      : invoice.discount.toFixed(2)
+    
     return `
       <!DOCTYPE html>
       <html dir="${isRTLPrint}" lang="ar">
@@ -334,9 +350,10 @@ export default function InvoiceManager() {
           .services-table th, .services-table td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: ${isRTLPrint ? 'right' : 'left'}; }
           .services-table th { background: #f3f4f6; font-weight: 600; }
           .totals { padding: 8px 12px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; }
-          .totals-box { width: 250px; }
-          .total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 10px; }
-          .final-total { font-size: 12px; font-weight: bold; color: #2563eb; border-top: 1px solid #d1d5db; padding-top: 5px; margin-top: 3px; }
+          .totals-box { width: 260px; }
+          .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; }
+          .total-row-border { border-top: 1px solid #d1d5db; padding-top: 6px; margin-top: 4px; }
+          .final-total { font-size: 14px; font-weight: bold; color: #2563eb; }
           .payment-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px; background: #fff; border-top: 1px solid #e5e7eb; }
           .payment-box, .notes-box { font-size: 10px; }
           .box-title { font-weight: 600; color: #1e3a5f; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; margin-bottom: 5px; font-size: 10px; }
@@ -389,17 +406,32 @@ export default function InvoiceManager() {
           </div>` : ''}
           
           <table class="services-table">
-            <thead><tr><th style="width:5%">#</th><th style="width:45%">الخدمة</th><th style="width:15%">الكمية</th><th style="width:17%">السعر</th><th style="width:18%">الإجمالي</th></tr></thead>
+            <thead>
+              <tr>
+                <th style="width:5%">#</th>
+                <th style="width:45%">الخدمة</th>
+                <th style="width:15%">الكمية</th>
+                <th style="width:17%">السعر (ر.س)</th>
+                <th style="width:18%">الإجمالي (ر.س)</th>
+              </tr>
+            </thead>
             <tbody>
-              ${invoice.items.map((item, idx) => `<tr><td style="text-align:center">${idx+1}</td><td>${item.description || '-'}</td><td style="text-align:center">${item.quantity}</td><td>${item.unitPrice.toFixed(2)}</td><td style="text-align:center">${item.total.toFixed(2)}</td></tr>`).join('')}
+              ${invoice.items.map((item, idx) => `
+              <tr>
+                <td style="text-align:center">${idx+1}</td>
+                <td>${item.description || '-'}</td>
+                <td style="text-align:center">${item.quantity}</td>
+                <td style="text-align:center">${item.unitPrice.toFixed(2)}</td>
+                <td style="text-align:center">${item.total.toFixed(2)}</td>
+              </tr>`).join('')}
             </tbody>
           </table>
           
           <div class="totals">
             <div class="totals-box">
-              <div class="total-row"><span>المجموع:</span><span>${invoice.subtotal.toFixed(2)} ر.س</span></div>
-              ${invoice.discount > 0 ? `<div class="total-row"><span>الخصم (${invoice.discount}${invoice.discountType === 'percentage' ? '%' : ' ر.س'}):</span><span style="color:red">- ${invoice.discountType === 'percentage' ? ((invoice.subtotal * invoice.discount) / 100).toFixed(2) : invoice.discount} ر.س</span></div>` : ''}
-              <div class="total-row final-total"><span>الإجمالي:</span><span>${invoice.total.toFixed(2)} ر.س</span></div>
+              <div class="total-row"><span>المجموع الفرعي:</span><span>${invoice.subtotal.toFixed(2)} ر.س</span></div>
+              ${invoice.discount > 0 ? `<div class="total-row"><span>الخصم (${invoice.discount}${invoice.discountType === 'percentage' ? '%' : ' ر.س'}):</span><span style="color:red">- ${discountAmountDisplay} ر.س</span></div>` : ''}
+              <div class="total-row total-row-border"><span class="final-total">الإجمالي النهائي:</span><span class="final-total">${invoice.total.toFixed(2)} ر.س</span></div>
             </div>
           </div>
           
@@ -407,11 +439,11 @@ export default function InvoiceManager() {
             <div class="payment-box">
               <div class="box-title">معلومات الدفع</div>
               <div class="info-item"><span>الحالة:</span><span>${invoice.paymentStatus === 'paid' ? 'مدفوع ✅' : 'غير مدفوع ❌'}</span></div>
-              <div class="info-item"><span>الطريقة:</span><span>${invoice.paymentMethod === 'cash' ? 'كاش' : invoice.paymentMethod === 'card' ? 'بطاقة' : 'تحويل'}</span></div>
+              <div class="info-item"><span>الطريقة:</span><span>${invoice.paymentMethod === 'cash' ? 'كاش' : invoice.paymentMethod === 'card' ? 'بطاقة' : 'تحويل بنكي'}</span></div>
             </div>
             <div class="notes-box">
               <div class="box-title">ملاحظات</div>
-              <div style="font-size:10px">${invoice.notes || 'لا توجد'}</div>
+              <div style="font-size:10px">${invoice.notes || 'لا توجد ملاحظات'}</div>
             </div>
           </div>
           
@@ -480,6 +512,7 @@ export default function InvoiceManager() {
                 <p className="text-2xl font-bold text-blue-400">{selectedInvoice.invoiceNumber}</p>
                 <p className="text-gray-400 text-sm mt-2">المريض: {selectedInvoice.patientName}</p>
                 <p className="text-gray-400 text-sm">النوع: {selectedInvoice.invoiceType === 'surgery' ? 'عملية جراحية' : 'كشف طبي'}</p>
+                <p className="text-gray-400 text-sm">الإجمالي: {selectedInvoice.total.toFixed(2)} ر.س</p>
               </div>
               <div className="text-center">
                 <label className="block text-sm text-gray-400 mb-3">عدد النسخ المطلوبة</label>
@@ -534,16 +567,20 @@ export default function InvoiceManager() {
             </div>
 
             <div className="mb-4"><div className="flex justify-between items-center mb-2"><h3 className="text-white font-bold">الخدمات</h3><button onClick={handleAddItem} className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm"><Plus size={14} /> إضافة</button></div>
-            {formData.items.map((item) => (<div key={item.id} className="grid grid-cols-12 gap-2 mb-2"><input type="text" className="col-span-5 p-2 bg-gray-700 rounded-lg text-white" placeholder="الخدمة" value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} /><input type="number" className="col-span-2 p-2 bg-gray-700 rounded-lg text-white" placeholder="الكمية" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} /><input type="number" className="col-span-3 p-2 bg-gray-700 rounded-lg text-white" placeholder="السعر" value={item.unitPrice} onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} /><div className="col-span-1 text-white">{item.total.toFixed(2)}</div><button onClick={() => handleRemoveItem(item.id)} className="col-span-1 text-red-400"><Trash2 size={16} /></button></div>))}</div>
+            {formData.items.map((item) => (<div key={item.id} className="grid grid-cols-12 gap-2 mb-2"><input type="text" className="col-span-5 p-2 bg-gray-700 rounded-lg text-white" placeholder="الخدمة" value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} /><input type="number" className="col-span-2 p-2 bg-gray-700 rounded-lg text-white" placeholder="الكمية" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} /><input type="number" className="col-span-3 p-2 bg-gray-700 rounded-lg text-white" placeholder="السعر (ر.س)" value={item.unitPrice} onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} /><div className="col-span-1 text-white text-center">{item.total.toFixed(2)}</div><button onClick={() => handleRemoveItem(item.id)} className="col-span-1 text-red-400"><Trash2 size={16} /></button></div>))}</div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">الخصم</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discount} onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)} /></div><div><label className="block text-sm text-gray-400 mb-1">نوع الخصم</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discountType} onChange={(e) => setFormData({...formData, discountType: e.target.value})}><option value="percentage">نسبة مئوية</option><option value="fixed">قيمة ثابتة</option></select></div></div>
+            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">الخصم</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discount} onChange={(e) => handleDiscountChange(e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">نوع الخصم</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discountType} onChange={(e) => { setFormData({...formData, discountType: e.target.value}); calculateTotals({...formData, discountType: e.target.value}); }}><option value="percentage">نسبة مئوية %</option><option value="fixed">قيمة ثابتة (ر.س)</option></select></div></div>
 
-            <div className="bg-gray-700/30 p-3 rounded-lg mb-4"><div className="flex justify-between"><span className="text-gray-400">المجموع:</span><span className="text-white">{formData.subtotal.toFixed(2)} ر.س</span></div>{formData.discount > 0 && (<div className="flex justify-between"><span className="text-gray-400">الخصم:</span><span className="text-red-400">- {(formData.discountType === 'percentage' ? (formData.subtotal * formData.discount / 100) : formData.discount).toFixed(2)} ر.س</span></div>)}<div className="flex justify-between pt-2 border-t border-gray-600 mt-2"><span className="text-lg font-bold text-white">الإجمالي:</span><span className="text-xl font-bold text-green-400">{formData.total.toFixed(2)} ر.س</span></div></div>
+            <div className="bg-gray-700/30 p-3 rounded-lg mb-4">
+              <div className="flex justify-between items-center py-1"><span className="text-gray-400">مجموع الخدمات:</span><span className="text-white font-semibold">{formData.subtotal.toFixed(2)} ر.س</span></div>
+              {formData.discount > 0 && (<div className="flex justify-between items-center py-1"><span className="text-gray-400">الخصم ({formData.discount}{formData.discountType === 'percentage' ? '%' : ' ر.س'}):</span><span className="text-red-400">- {formData.discountAmount.toFixed(2)} ر.س</span></div>)}
+              <div className="flex justify-between items-center py-2 mt-2 border-t border-gray-600"><span className="text-lg font-bold text-white">الإجمالي النهائي:</span><span className="text-xl font-bold text-green-400">{formData.total.toFixed(2)} ر.س</span></div>
+            </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">حالة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentStatus} onChange={(e) => setFormData({...formData, paymentStatus: e.target.value})}><option value="unpaid">غير مدفوع</option><option value="paid">مدفوع</option></select></div><div><label className="block text-sm text-gray-400 mb-1">طريقة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}><option value="cash">كاش</option><option value="card">بطاقة</option><option value="bank">تحويل</option></select></div></div>
-            <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">ملاحظات</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} /></div>
+            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">حالة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentStatus} onChange={(e) => setFormData({...formData, paymentStatus: e.target.value})}><option value="unpaid">غير مدفوع</option><option value="paid">مدفوع</option></select></div><div><label className="block text-sm text-gray-400 mb-1">طريقة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}><option value="cash">كاش</option><option value="card">بطاقة ائتمان</option><option value="bank">تحويل بنكي</option></select></div></div>
+            <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">ملاحظات إضافية</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} /></div>
 
-            <div className="flex gap-3 pt-4 border-t border-gray-700"><button onClick={handleSaveInvoice} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">حفظ</button><button onClick={() => setShowInvoiceModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div>
+            <div className="flex gap-3 pt-4 border-t border-gray-700"><button onClick={handleSaveInvoice} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">حفظ الفاتورة</button><button onClick={() => setShowInvoiceModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button></div>
           </div>
         </div>
       )}
