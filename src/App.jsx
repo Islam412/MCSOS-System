@@ -22,18 +22,6 @@ import PatientProfile from './pages/patient/PatientProfile'
 import Profile from './pages/profile/Profile'
 
 function App() {
-  // دالة للحصول على الدور وتوجيهه للوحة المناسبة
-  const getDashboardByRole = () => {
-    const user = localStorage.getItem('mcsos_user')
-    if (user) {
-      const userData = JSON.parse(user)
-      if (userData.role === 'admin') return <AdminDashboard />
-      if (userData.role === 'doctor') return <DoctorDashboard />
-      if (userData.role === 'reception') return <ReceptionDashboard />
-    }
-    return <HospitalDashboard />
-  }
-  
   return (
     <ThemeProvider>
       <Router>
@@ -46,13 +34,19 @@ function App() {
               <DashboardLayout />
             </ProtectedRoute>
           }>
-            <Route index element={getDashboardByRole()} />
-            <Route path="dashboard" element={<HospitalDashboard />} />
+            {/* مسارات الأدمن */}
             <Route path="admin" element={<AdminDashboard />} />
+            <Route path="dashboard" element={<HospitalDashboard />} />
+            
+            {/* مسارات الدكتور */}
             <Route path="doctor-dashboard" element={<DoctorDashboard />} />
+            <Route path="doctor" element={<DoctorPage />} />
+            
+            {/* مسارات الاستقبال */}
             <Route path="reception-dashboard" element={<ReceptionDashboard />} />
             <Route path="reception" element={<ReceptionPage />} />
-            <Route path="doctor" element={<DoctorPage />} />
+            
+            {/* المسارات المشتركة */}
             <Route path="finance" element={<FinanceManager />} />
             <Route path="operations" element={<OperationsDashboard />} />
             <Route path="scheduling" element={<SchedulingEngine />} />
@@ -62,6 +56,9 @@ function App() {
             <Route path="prescription" element={<PrescriptionManager />} />
             <Route path="patients" element={<PatientProfile />} />
             <Route path="profile" element={<Profile />} />
+            
+            {/* الصفحة الرئيسية الافتراضية - تظهر حسب الدور */}
+            <Route index element={<AdminDashboard />} />
           </Route>
         </Routes>
       </Router>

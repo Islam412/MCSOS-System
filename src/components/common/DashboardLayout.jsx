@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, UserCheck } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, UserCheck, CreditCard, FileCheck, CalendarDays } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -43,23 +43,25 @@ export default function DashboardLayout() {
   
   // قائمة الروابط حسب الدور
   const getNavItems = () => {
-    const commonItems = [
-      { to: '/profile', label: 'sidebar.profile', icon: User },
-    ]
+    // روابط مشتركة للجميع
+    const profileItem = { to: '/profile', label: 'sidebar.profile', icon: User }
+    
+    // لوحة التحكم حسب الدور
+    let dashboardItem = { to: '/', label: 'sidebar.dashboard', icon: LayoutDashboard }
     
     if (userRole === 'admin') {
       return [
         { to: '/admin', label: 'sidebar.dashboard', icon: LayoutDashboard },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
-        { to: '/doctor', label: 'sidebar.doctor', icon: Activity },
+        { to: '/doctor', label: 'sidebar.doctor', icon: Stethoscope },
         { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
-        { to: '/operations', label: 'sidebar.operations', icon: Calendar },
+        { to: '/operations', label: 'sidebar.operations', icon: CalendarDays },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
         { to: '/packages', label: 'sidebar.packages', icon: Package },
         { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
         { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
-        ...commonItems
+        profileItem
       ]
     } else if (userRole === 'doctor') {
       return [
@@ -67,7 +69,7 @@ export default function DashboardLayout() {
         { to: '/patients', label: 'sidebar.patients', icon: Users },
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
-        ...commonItems
+        profileItem
       ]
     } else if (userRole === 'reception') {
       return [
@@ -75,22 +77,15 @@ export default function DashboardLayout() {
         { to: '/reception', label: 'sidebar.reception', icon: Users },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
-        ...commonItems
+        profileItem
       ]
     } else {
+      // مستخدم عادي
       return [
         { to: '/dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
-        { to: '/', label: 'sidebar.reception', icon: Users },
-        { to: '/doctor', label: 'sidebar.doctor', icon: Activity },
-        { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
-        { to: '/operations', label: 'sidebar.operations', icon: Calendar },
-        { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
-        { to: '/packages', label: 'sidebar.packages', icon: Package },
-        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
-        { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
-        { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
-        { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
-        ...commonItems
+        { to: '/patients', label: 'sidebar.patients', icon: Users },
+        { to: '/appointments', label: 'sidebar.appointments', icon: Calendar },
+        profileItem
       ]
     }
   }
