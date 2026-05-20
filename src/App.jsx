@@ -11,6 +11,8 @@ import WhatsAppManager from './components/whatsapp/WhatsAppManager'
 import InvoiceManager from './components/invoice/InvoiceManager'
 import PrescriptionManager from './components/prescription/PrescriptionManager'
 import PatientProfile from './pages/patient/PatientProfile'
+import HospitalDashboard from './pages/dashboard/HospitalDashboard'
+
 
 function App() {
   return (
@@ -28,6 +30,7 @@ function App() {
             <Route path="invoice" element={<InvoiceManager />} />
             <Route path="prescription" element={<PrescriptionManager />} />
             <Route path="patients" element={<PatientProfile />} />
+            <Route path="dashboard" element={<HospitalDashboard />} />
           </Route>
         </Routes>
       </Router>

@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { useState, useEffect } from 'react'
 
 const navItems = [
+  { to: '/dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
   { to: '/', label: 'sidebar.reception', icon: Users },
   { to: '/doctor', label: 'sidebar.doctor', icon: Activity },
   { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
