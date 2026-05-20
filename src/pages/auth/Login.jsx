@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Mail, Lock, User, Shield, AlertCircle, Building, Heart } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-// بيانات المستخدمين (محاكاة قاعدة بيانات)
 const users = [
   {
     id: 1,
@@ -191,11 +190,11 @@ export default function Login() {
                   type={showPassword ? 'text' : 'password'}
                   required
                   className="w-full pl-10 pr-12 py-3 bg-gray-700/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition"
-                  placeholder={isRTL ? '********' : '********'}
+                  placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -206,7 +205,9 @@ export default function Login() {
                 <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500" />
                 <span className="text-sm text-gray-400">{isRTL ? 'تذكرني' : 'Remember me'}</span>
               </label>
-              <button type="button" className="text-sm text-blue-400 hover:text-blue-300 transition">{isRTL ? 'نسيت كلمة المرور؟' : 'Forgot password?'}</button>
+              <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm text-blue-400 hover:text-blue-300 transition">
+                {isRTL ? 'نسيت كلمة المرور؟' : 'Forgot password?'}
+              </button>
             </div>
             
             <button
