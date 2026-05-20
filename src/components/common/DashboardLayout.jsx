@@ -15,6 +15,7 @@ const navItems = [
   { to: '/packages', label: 'sidebar.packages', icon: Package },
   { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
   { to: '/prescription', label: 'sidebar.prescription', icon: FileText },
+  { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
 ]
 
 export default function DashboardLayout() {
