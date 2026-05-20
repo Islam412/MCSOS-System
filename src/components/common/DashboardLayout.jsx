@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -18,6 +18,7 @@ const navItems = [
   { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
   { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
   { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
+  { to: '/profile', label: 'sidebar.profile', icon: User },
 ]
 
 export default function DashboardLayout() {
