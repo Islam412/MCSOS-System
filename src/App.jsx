@@ -5,9 +5,12 @@ import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import DashboardLayout from './components/common/DashboardLayout'
+import AdminDashboard from './pages/dashboard/AdminDashboard'
+import DoctorDashboard from './pages/dashboard/DoctorDashboard'
+import ReceptionDashboard from './pages/dashboard/ReceptionDashboard'
 import HospitalDashboard from './pages/dashboard/HospitalDashboard'
-import ReceptionDashboard from './pages/ReceptionDashboard'
-import DoctorDashboard from './pages/DoctorDashboard'
+import ReceptionPage from './pages/ReceptionDashboard'
+import DoctorPage from './pages/DoctorDashboard'
 import FinanceManager from './components/finance/FinanceManager'
 import OperationsDashboard from './pages/OperationsDashboard'
 import SchedulingEngine from './components/scheduling/SchedulingEngine'
@@ -19,6 +22,18 @@ import PatientProfile from './pages/patient/PatientProfile'
 import Profile from './pages/profile/Profile'
 
 function App() {
+  // دالة للحصول على الدور وتوجيهه للوحة المناسبة
+  const getDashboardByRole = () => {
+    const user = localStorage.getItem('mcsos_user')
+    if (user) {
+      const userData = JSON.parse(user)
+      if (userData.role === 'admin') return <AdminDashboard />
+      if (userData.role === 'doctor') return <DoctorDashboard />
+      if (userData.role === 'reception') return <ReceptionDashboard />
+    }
+    return <HospitalDashboard />
+  }
+  
   return (
     <ThemeProvider>
       <Router>
@@ -31,9 +46,13 @@ function App() {
               <DashboardLayout />
             </ProtectedRoute>
           }>
+            <Route index element={getDashboardByRole()} />
             <Route path="dashboard" element={<HospitalDashboard />} />
-            <Route index element={<ReceptionDashboard />} />
-            <Route path="doctor" element={<DoctorDashboard />} />
+            <Route path="admin" element={<AdminDashboard />} />
+            <Route path="doctor-dashboard" element={<DoctorDashboard />} />
+            <Route path="reception-dashboard" element={<ReceptionDashboard />} />
+            <Route path="reception" element={<ReceptionPage />} />
+            <Route path="doctor" element={<DoctorPage />} />
             <Route path="finance" element={<FinanceManager />} />
             <Route path="operations" element={<OperationsDashboard />} />
             <Route path="scheduling" element={<SchedulingEngine />} />

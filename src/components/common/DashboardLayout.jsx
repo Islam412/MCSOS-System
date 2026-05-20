@@ -1,25 +1,10 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User } from 'lucide-react'
+import { Calendar, Users, DollarSign, Activity, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, UserCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
 import { useTheme } from '../../context/ThemeContext'
 import { useState, useEffect } from 'react'
-
-const navItems = [
-  { to: '/dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
-  { to: '/', label: 'sidebar.reception', icon: Users },
-  { to: '/doctor', label: 'sidebar.doctor', icon: Activity },
-  { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
-  { to: '/operations', label: 'sidebar.operations', icon: Calendar },
-  { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
-  { to: '/packages', label: 'sidebar.packages', icon: Package },
-  { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
-  { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
-  { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
-  { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
-  { to: '/profile', label: 'sidebar.profile', icon: User },
-]
 
 export default function DashboardLayout() {
   const { t, i18n } = useTranslation()
@@ -27,6 +12,7 @@ export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const [user, setUser] = useState(null)
+  const [userRole, setUserRole] = useState('')
   const isRTL = i18n.language === 'ar'
   
   useEffect(() => {
@@ -49,10 +35,67 @@ export default function DashboardLayout() {
   useEffect(() => {
     const userData = localStorage.getItem('mcsos_user')
     if (userData) {
-      setUser(JSON.parse(userData))
+      const parsed = JSON.parse(userData)
+      setUser(parsed)
+      setUserRole(parsed.role)
     }
   }, [])
   
+  // قائمة الروابط حسب الدور
+  const getNavItems = () => {
+    const commonItems = [
+      { to: '/profile', label: 'sidebar.profile', icon: User },
+    ]
+    
+    if (userRole === 'admin') {
+      return [
+        { to: '/admin', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        { to: '/patients', label: 'sidebar.patients', icon: Users },
+        { to: '/doctor', label: 'sidebar.doctor', icon: Activity },
+        { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
+        { to: '/operations', label: 'sidebar.operations', icon: Calendar },
+        { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
+        { to: '/packages', label: 'sidebar.packages', icon: Package },
+        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
+        { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
+        { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
+        ...commonItems
+      ]
+    } else if (userRole === 'doctor') {
+      return [
+        { to: '/doctor-dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        { to: '/patients', label: 'sidebar.patients', icon: Users },
+        { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
+        { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
+        ...commonItems
+      ]
+    } else if (userRole === 'reception') {
+      return [
+        { to: '/reception-dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        { to: '/reception', label: 'sidebar.reception', icon: Users },
+        { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
+        { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
+        ...commonItems
+      ]
+    } else {
+      return [
+        { to: '/dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        { to: '/', label: 'sidebar.reception', icon: Users },
+        { to: '/doctor', label: 'sidebar.doctor', icon: Activity },
+        { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
+        { to: '/operations', label: 'sidebar.operations', icon: Calendar },
+        { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
+        { to: '/packages', label: 'sidebar.packages', icon: Package },
+        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
+        { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
+        { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
+        { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
+        ...commonItems
+      ]
+    }
+  }
+  
+  const navItems = getNavItems()
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
   const closeSidebar = () => { if (isMobile) setSidebarOpen(false) }
   
@@ -60,6 +103,13 @@ export default function DashboardLayout() {
     localStorage.removeItem('mcsos_user')
     localStorage.removeItem('mcsos_token')
     window.location.href = '/login'
+  }
+  
+  const getRoleName = () => {
+    if (userRole === 'admin') return isRTL ? 'مدير النظام' : 'System Administrator'
+    if (userRole === 'doctor') return isRTL ? 'طبيب' : 'Doctor'
+    if (userRole === 'reception') return isRTL ? 'موظف استقبال' : 'Receptionist'
+    return isRTL ? 'مستخدم' : 'User'
   }
   
   return (
@@ -75,7 +125,7 @@ export default function DashboardLayout() {
           <div className={`p-6 border-b border-gray-700 ${isRTL ? 'text-right' : 'text-left'} ${isMobile ? 'mt-12' : 'mt-0'}`}>
             <div className="font-bold text-2xl"><span className="bg-gradient-to-r from-blue-500 to-teal-400 bg-clip-text text-transparent">{t('app.title')}</span></div>
             <p className="text-xs text-gray-400 mt-2">{user ? (isRTL ? user.name : user.nameEn) : t('app.name')}</p>
-            <p className="text-xs text-gray-500 mt-1">{user ? (isRTL ? user.roleAr : user.roleEn) : ''}</p>
+            <p className="text-xs text-blue-400 mt-1">{getRoleName()}</p>
           </div>
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {navItems.map((item) => (
