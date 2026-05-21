@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield } from 'lucide-react'
+import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -48,7 +48,6 @@ export default function DashboardLayout() {
     
     if (userRole === 'admin') {
       return [
-        // زرين منفصلين للمدير
         { to: '/admin', label: 'sidebar.admin_dashboard', icon: Shield },
         { to: '/dashboard', label: 'sidebar.hospital_dashboard', icon: Hospital },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
@@ -84,10 +83,10 @@ export default function DashboardLayout() {
     } else if (userRole === 'user' || userRole === 'patient') {
       return [
         { to: '/patient-dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
-        { to: '/profile', label: 'sidebar.profile', icon: User },
+        { to: '/book-appointment', label: 'sidebar.book_appointment', icon: CalendarCheck },
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
         { to: '/appointments', label: 'sidebar.appointments', icon: Calendar },
-        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle }, 
+        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
         profileItem
       ]
     } else {

@@ -24,6 +24,7 @@ import Profile from './pages/profile/Profile'
 import DoctorsManager from './components/admin/DoctorsManager'
 import UsersManager from './components/admin/UsersManager'
 import Appointments from './pages/patient/Appointments' 
+import BookAppointment from './pages/patient/BookAppointment'
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
             <Route path="prescription" element={<PrescriptionManager />} />
             <Route path="patients" element={<PatientProfile />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="book-appointment" element={<BookAppointment />} />
             
             {/* الصفحة الرئيسية الافتراضية */}
             <Route index element={<AdminDashboard />} />
