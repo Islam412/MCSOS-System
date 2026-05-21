@@ -420,6 +420,20 @@ export default function ReceptionDashboard() {
     setShowAppointmentModal(false)
   }
   
+  // ========== دالة فتح نافذة حجز موعد من تفاصيل المريض ==========
+  const handleBookAppointmentFromDetails = (patient) => {
+    setNewAppointment({
+      patientId: patient.id,
+      patientName: patient.nameAr || patient.name,
+      doctorId: '',
+      doctorName: '',
+      date: '',
+      time: ''
+    })
+    setShowPatientDetailsModal(false)
+    setShowAppointmentModal(true)
+  }
+  
   // دالة البحث عن مريض
   const handleSearchPatient = () => {
     if (!searchQuery.trim()) {
@@ -557,12 +571,8 @@ export default function ReceptionDashboard() {
                     <button onClick={() => handleCheckIn(app.id)} disabled={app.status !== 'scheduled'} className={`px-2 py-1 rounded-lg text-xs ${app.status === 'scheduled' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-gray-600 text-gray-500 cursor-not-allowed'}`}>تسجيل حضور</button>
                     {app.status === 'scheduled' && (
                       <>
-                        <button onClick={() => handleEditAppointment(app)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded opacity-0 group-hover:opacity-100 transition">
-                          <Edit size={14} />
-                        </button>
-                        <button onClick={() => handleDeleteAppointment(app.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded opacity-0 group-hover:opacity-100 transition">
-                          <Trash2 size={14} />
-                        </button>
+                        <button onClick={() => handleEditAppointment(app)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded opacity-0 group-hover:opacity-100 transition"><Edit size={14} /></button>
+                        <button onClick={() => handleDeleteAppointment(app.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded opacity-0 group-hover:opacity-100 transition"><Trash2 size={14} /></button>
                       </>
                     )}
                   </div>
@@ -592,15 +602,9 @@ export default function ReceptionDashboard() {
                         const found = patientsList.find(p => p.nameAr === patient.name || p.id === patient.id)
                         if (found) viewPatientDetails(found)
                         else viewPatientDetails(patient)
-                      }} className="text-blue-400 hover:bg-blue-500/20 p-1 rounded text-xs flex items-center gap-1">
-                        <Eye size={12} /> عرض
-                      </button>
-                      <button onClick={() => handleEditPatient(patient)} className="text-yellow-400 hover:bg-yellow-500/20 p-1 rounded text-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <Edit size={12} /> تعديل
-                      </button>
-                      <button onClick={() => handleDeletePatient(patient.id)} className="text-red-400 hover:bg-red-500/20 p-1 rounded text-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <Trash2 size={12} /> حذف
-                      </button>
+                      }} className="text-blue-400 hover:bg-blue-500/20 p-1 rounded text-xs flex items-center gap-1"><Eye size={12} /> عرض</button>
+                      <button onClick={() => handleEditPatient(patient)} className="text-yellow-400 hover:bg-yellow-500/20 p-1 rounded text-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition"><Edit size={12} /> تعديل</button>
+                      <button onClick={() => handleDeletePatient(patient.id)} className="text-red-400 hover:bg-red-500/20 p-1 rounded text-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition"><Trash2 size={12} /> حذف</button>
                     </div>
                   </div>
                 </div>
@@ -716,25 +720,15 @@ export default function ReceptionDashboard() {
         </div>
       )}
       
-      {/* ========== Modal عرض تفاصيل المريض (العين) ========== */}
+      {/* ========== Modal عرض تفاصيل المريض (العين) مع زر حجز موعد يعمل ========== */}
       {showPatientDetailsModal && selectedPatient && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-white">تفاصيل المريض</h2>
               <div className="flex gap-2">
-                <button 
-                  onClick={() => handleDeletePatient(selectedPatient.id)}
-                  className="p-1 text-red-400 hover:bg-red-500/20 rounded transition"
-                >
-                  <Trash2 size={18} />
-                </button>
-                <button 
-                  onClick={() => setShowPatientDetailsModal(false)}
-                  className="p-1 hover:bg-gray-700 rounded"
-                >
-                  <X size={20} className="text-gray-400" />
-                </button>
+                <button onClick={() => handleDeletePatient(selectedPatient.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded transition"><Trash2 size={18} /></button>
+                <button onClick={() => setShowPatientDetailsModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
               </div>
             </div>
             
@@ -780,35 +774,18 @@ export default function ReceptionDashboard() {
             {/* تقدم العلاج */}
             <div className="bg-gray-700/30 rounded-xl p-4 mb-6">
               <h4 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2"><Activity size={16} /> تقدم العلاج</h4>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-400 text-sm">الجلسات:</span>
-                <span className="text-white text-sm">{selectedPatient.completedSessions || 0} / {selectedPatient.totalSessions || 0}</span>
-              </div>
-              <div className="w-full bg-gray-700 rounded-full h-3">
-                <div 
-                  className="bg-gradient-to-r from-blue-500 to-teal-500 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${selectedPatient.progress || 0}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-gray-400 text-sm">نسبة التقدم:</span>
-                <span className="text-blue-400 font-bold">{selectedPatient.progress || 0}%</span>
-              </div>
+              <div className="flex justify-between items-center mb-2"><span className="text-gray-400 text-sm">الجلسات:</span><span className="text-white text-sm">{selectedPatient.completedSessions || 0} / {selectedPatient.totalSessions || 0}</span></div>
+              <div className="w-full bg-gray-700 rounded-full h-3"><div className="bg-gradient-to-r from-blue-500 to-teal-500 h-3 rounded-full transition-all duration-500" style={{ width: `${selectedPatient.progress || 0}%` }}></div></div>
+              <div className="flex justify-between items-center mt-2"><span className="text-gray-400 text-sm">نسبة التقدم:</span><span className="text-blue-400 font-bold">{selectedPatient.progress || 0}%</span></div>
             </div>
             
             {/* معلومات إضافية */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-700/30 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2"><AlertCircle size={16} /> الحساسية</h4>
-                <p className="text-gray-300 text-sm">{selectedPatient.allergies || 'لا توجد حساسية معروفة'}</p>
-              </div>
-              <div className="bg-gray-700/30 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2"><Heart size={16} /> الأمراض المزمنة</h4>
-                <p className="text-gray-300 text-sm">{selectedPatient.chronicDiseases || 'لا توجد أمراض مزمنة'}</p>
-              </div>
+              <div className="bg-gray-700/30 rounded-xl p-4"><h4 className="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2"><AlertCircle size={16} /> الحساسية</h4><p className="text-gray-300 text-sm">{selectedPatient.allergies || 'لا توجد حساسية معروفة'}</p></div>
+              <div className="bg-gray-700/30 rounded-xl p-4"><h4 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2"><Heart size={16} /> الأمراض المزمنة</h4><p className="text-gray-300 text-sm">{selectedPatient.chronicDiseases || 'لا توجد أمراض مزمنة'}</p></div>
             </div>
             
-            {/* أزرار الإجراءات */}
+            {/* أزرار الإجراءات - زر حجز موعد يعمل الآن */}
             <div className="flex gap-3 pt-4 mt-4 border-t border-gray-700">
               <button 
                 onClick={() => { handleEditPatient(selectedPatient); setShowPatientDetailsModal(false); }} 
@@ -816,7 +793,10 @@ export default function ReceptionDashboard() {
               >
                 <Edit size={16} /> تعديل
               </button>
-              <button className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition flex items-center justify-center gap-2">
+              <button 
+                onClick={() => handleBookAppointmentFromDetails(selectedPatient)}
+                className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
+              >
                 <Calendar size={16} /> حجز موعد
               </button>
               <button 
