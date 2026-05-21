@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserPlus, Calendar, Clock, Users, CheckCircle, Activity, Search, Phone, Mail, MapPin, X, Save, Eye, Printer, FileText, Edit, Trash2, Stethoscope } from 'lucide-react'
+import { 
+  UserPlus, Calendar, Clock, Users, CheckCircle, Activity, Search, 
+  Phone, Mail, MapPin, X, Save, Eye, Printer, FileText, 
+  Edit, Trash2, Stethoscope, Award, Heart, AlertCircle, Droplet,
+  User
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function ReceptionDashboard() {
@@ -14,6 +19,8 @@ export default function ReceptionDashboard() {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [showEditPatientModal, setShowEditPatientModal] = useState(false)
   const [showEditAppointmentModal, setShowEditAppointmentModal] = useState(false)
+  const [showPatientDetailsModal, setShowPatientDetailsModal] = useState(false)
+  const [selectedPatient, setSelectedPatient] = useState(null)
   const [searchResults, setSearchResults] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   
@@ -62,6 +69,7 @@ export default function ReceptionDashboard() {
   
   const [todayAppointments, setTodayAppointments] = useState([])
   const [recentPatients, setRecentPatients] = useState([])
+  const [patientsList, setPatientsList] = useState([])
   
   // قائمة الأطباء
   const doctors = [
@@ -107,16 +115,24 @@ export default function ReceptionDashboard() {
     
     if (patients.length === 0) {
       patients = [
-        { id: 1, nameAr: 'أحمد محمد', phone: '0501234567', age: 35, address: 'الرياض', registerDate: new Date().toISOString(), registeredBy: 'نورة' },
-        { id: 2, nameAr: 'سارة حسن', phone: '0507654321', age: 28, address: 'جدة', registerDate: new Date().toISOString(), registeredBy: 'أحمد' },
-        { id: 3, nameAr: 'محمود علي', phone: '0505566778', age: 42, address: 'الدمام', registerDate: new Date().toISOString(), registeredBy: 'نورة' }
+        { id: 1, nameAr: 'أحمد محمد', nameEn: 'Ahmed Mohamed', phone: '0501234567', age: 35, address: 'الرياض', bloodType: 'O+', diagnosis: 'تمزق في الرباط الصليبي', doctor: 'د. أحمد علي', lastVisit: '2024-05-18', totalSessions: 12, completedSessions: 8, progress: 66.7, status: 'active', registerDate: new Date().toISOString(), registeredBy: 'نورة' },
+        { id: 2, nameAr: 'سارة حسن', nameEn: 'Sara Hassan', phone: '0507654321', age: 28, address: 'جدة', bloodType: 'A+', diagnosis: 'انزلاق غضروفي', doctor: 'د. منى حسن', lastVisit: '2024-05-17', totalSessions: 10, completedSessions: 5, progress: 50, status: 'active', registerDate: new Date().toISOString(), registeredBy: 'أحمد' },
+        { id: 3, nameAr: 'محمود علي', nameEn: 'Mahmoud Ali', phone: '0505566778', age: 42, address: 'الدمام', bloodType: 'B+', diagnosis: 'التهاب المفاصل', doctor: 'د. خالد محمود', lastVisit: '2024-05-19', totalSessions: 8, completedSessions: 8, progress: 100, status: 'completed', registerDate: new Date().toISOString(), registeredBy: 'نورة' }
       ]
       localStorage.setItem('mcsos_patients_v2', JSON.stringify(patients))
     }
     
+    setPatientsList(patients)
+    
     // آخر 5 مرضى مسجلين
     const sortedPatients = [...patients].sort((a, b) => new Date(b.registerDate) - new Date(a.registerDate))
-    setRecentPatients(sortedPatients.slice(0, 5))
+    setRecentPatients(sortedPatients.slice(0, 5).map(p => ({
+      id: p.id,
+      name: p.nameAr,
+      phone: p.phone,
+      time: new Date(p.registerDate).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
+      registeredBy: p.registeredBy || 'موظف'
+    })))
     
     // حساب الإحصائيات
     const checkedIn = todayApps.filter(a => a.status === 'checked-in').length
@@ -141,6 +157,25 @@ export default function ReceptionDashboard() {
       case 'waiting': return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⏳ في الانتظار</span>
       default: return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">📅 مجدول</span>
     }
+  }
+  
+  const getPatientStatusBadge = (status) => {
+    if (status === 'active') {
+      return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ نشط</span>
+    } else if (status === 'completed') {
+      return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">✓ مكتمل</span>
+    }
+    return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status}</span>
+  }
+  
+  const getBloodTypeColor = (bloodType) => {
+    const colors = {
+      'A+': 'text-red-400', 'A-': 'text-red-300',
+      'B+': 'text-green-400', 'B-': 'text-green-300',
+      'O+': 'text-blue-400', 'O-': 'text-blue-300',
+      'AB+': 'text-purple-400', 'AB-': 'text-purple-300'
+    }
+    return colors[bloodType] || 'text-gray-400'
   }
   
   // دالة تسجيل حضور
@@ -236,9 +271,11 @@ export default function ReceptionDashboard() {
       
       patients = patients.filter(p => p.id !== id)
       localStorage.setItem('mcsos_patients_v2', JSON.stringify(patients))
-      
+      setPatientsList(patients)
       setRecentPatients(recentPatients.filter(p => p.id !== id))
       toast.success('تم حذف المريض بنجاح')
+      setShowPatientDetailsModal(false)
+      setSelectedPatient(null)
     }
   }
   
@@ -246,7 +283,7 @@ export default function ReceptionDashboard() {
   const handleEditPatient = (patient) => {
     setEditingPatient(patient)
     setEditPatientData({
-      name: patient.nameAr,
+      name: patient.nameAr || patient.name,
       age: patient.age || '',
       phone: patient.phone || '',
       address: patient.address || ''
@@ -270,6 +307,7 @@ export default function ReceptionDashboard() {
       } : p
     )
     localStorage.setItem('mcsos_patients_v2', JSON.stringify(patients))
+    setPatientsList(patients)
     
     setRecentPatients(recentPatients.map(p => 
       p.id === editingPatient.id ? {
@@ -278,6 +316,11 @@ export default function ReceptionDashboard() {
         phone: editPatientData.phone
       } : p
     ))
+    
+    if (selectedPatient && selectedPatient.id === editingPatient.id) {
+      const updated = patients.find(p => p.id === editingPatient.id)
+      setSelectedPatient(updated)
+    }
     
     setShowEditPatientModal(false)
     setEditingPatient(null)
@@ -298,10 +341,14 @@ export default function ReceptionDashboard() {
       age: parseInt(newPatient.age) || 0,
       phone: newPatient.phone || '',
       address: newPatient.address || '',
-      status: 'active',
-      completedSessions: 0,
+      bloodType: '',
+      diagnosis: 'قيد التشخيص',
+      doctor: '',
+      lastVisit: new Date().toISOString().split('T')[0],
       totalSessions: 6,
+      completedSessions: 0,
       progress: 0,
+      status: 'active',
       registerDate: new Date().toISOString(),
       registeredBy: user?.name || 'موظف الاستقبال'
     }
@@ -309,6 +356,7 @@ export default function ReceptionDashboard() {
     const existingPatients = JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
     existingPatients.push(patient)
     localStorage.setItem('mcsos_patients_v2', JSON.stringify(existingPatients))
+    setPatientsList(existingPatients)
     
     setRecentPatients([{
       id: patient.id,
@@ -351,7 +399,6 @@ export default function ReceptionDashboard() {
     existingAppointments.push(appointment)
     localStorage.setItem('mcsos_appointments', JSON.stringify(existingAppointments))
     
-    // إذا كان الموعد اليوم، أضفه للقائمة
     const today = new Date().toISOString().split('T')[0]
     if (appointment.date === today) {
       setTodayAppointments([...todayAppointments, {
@@ -388,9 +435,11 @@ export default function ReceptionDashboard() {
     setSearchResults(results)
   }
   
-  // دالة عرض تفاصيل المريض
+  // دالة عرض تفاصيل المريض (العين)
   const viewPatientDetails = (patient) => {
-    toast.success(`عرض بيانات المريض: ${patient.nameAr}`)
+    const fullPatient = patientsList.find(p => p.id === patient.id) || patient
+    setSelectedPatient(fullPatient)
+    setShowPatientDetailsModal(true)
   }
   
   // دالة إنشاء تقرير يومي
@@ -414,23 +463,25 @@ export default function ReceptionDashboard() {
       printWindow.document.write(`
         <!DOCTYPE html>
         <html dir="rtl">
-        <head><meta charset="UTF-8"><title>التقرير اليومي - ${today}</title>
-        <style>
-          body { font-family: 'Cairo', Arial, sans-serif; padding: 40px; background: white; margin: 0; }
-          .report { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; }
-          .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 20px; }
-          .title { font-size: 24px; font-weight: bold; color: #1e3a5f; }
-          .date { color: #6b7280; margin-top: 5px; }
-          .section { margin-bottom: 25px; }
-          .section-title { font-weight: bold; font-size: 18px; color: #2563eb; border-right: 3px solid #2563eb; padding-right: 10px; margin-bottom: 15px; }
-          .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; background: #f3f4f6; padding: 15px; border-radius: 8px; }
-          .stat-item { text-align: center; }
-          .stat-value { font-size: 24px; font-weight: bold; color: #1e3a5f; }
-          .stat-label { font-size: 12px; color: #6b7280; }
-          .list-item { padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
-          @media print { body { padding: 0; } .report { box-shadow: none; padding: 0; } }
-        </style>
+        <head>
+          <meta charset="UTF-8">
+          <title>التقرير اليومي - ${today}</title>
+          <style>
+            body { font-family: 'Cairo', Arial, sans-serif; padding: 40px; background: white; margin: 0; }
+            .report { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; }
+            .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 20px; }
+            .title { font-size: 24px; font-weight: bold; color: #1e3a5f; }
+            .date { color: #6b7280; margin-top: 5px; }
+            .section { margin-bottom: 25px; }
+            .section-title { font-weight: bold; font-size: 18px; color: #2563eb; border-right: 3px solid #2563eb; padding-right: 10px; margin-bottom: 15px; }
+            .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; background: #f3f4f6; padding: 15px; border-radius: 8px; }
+            .stat-item { text-align: center; }
+            .stat-value { font-size: 24px; font-weight: bold; color: #1e3a5f; }
+            .stat-label { font-size: 12px; color: #6b7280; }
+            .list-item { padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
+            @media print { body { padding: 0; } .report { box-shadow: none; padding: 0; } }
+          </style>
         </head>
         <body>
           <div class="report">
@@ -488,7 +539,7 @@ export default function ReceptionDashboard() {
       
       {/* مواعيد اليوم وآخر المرضى */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* مواعيد اليوم - مع إمكانية التعديل والحذف */}
+        {/* مواعيد اليوم */}
         <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
           <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Calendar size={20} className="text-blue-400" /> مواعيد اليوم</h2>
           <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -521,7 +572,7 @@ export default function ReceptionDashboard() {
           </div>
         </div>
         
-        {/* آخر المرضى المسجلين - مع إمكانية التعديل والحذف */}
+        {/* آخر المرضى المسجلين */}
         <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
           <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><UserPlus size={20} className="text-green-400" /> آخر المرضى المسجلين</h2>
           <div className="space-y-3">
@@ -537,6 +588,13 @@ export default function ReceptionDashboard() {
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-xs text-gray-400">بواسطة: {patient.registeredBy || 'موظف'}</span>
                     <div className="flex gap-2">
+                      <button onClick={() => {
+                        const found = patientsList.find(p => p.nameAr === patient.name || p.id === patient.id)
+                        if (found) viewPatientDetails(found)
+                        else viewPatientDetails(patient)
+                      }} className="text-blue-400 hover:bg-blue-500/20 p-1 rounded text-xs flex items-center gap-1">
+                        <Eye size={12} /> عرض
+                      </button>
                       <button onClick={() => handleEditPatient(patient)} className="text-yellow-400 hover:bg-yellow-500/20 p-1 rounded text-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                         <Edit size={12} /> تعديل
                       </button>
@@ -601,7 +659,27 @@ export default function ReceptionDashboard() {
           <div className="bg-gray-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">البحث عن مريض</h2><button onClick={() => setShowSearchModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
             <div className="flex gap-2 mb-4"><input type="text" placeholder="ابحث بالاسم أو رقم الجوال..." className="flex-1 p-2 bg-gray-700 rounded-lg text-white" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); handleSearchPatient(); }} /><button onClick={handleSearchPatient} className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30"><Search size={20} /></button></div>
-            <div className="overflow-y-auto max-h-96">{searchResults.length === 0 && searchQuery && <div className="text-center text-gray-400 py-8">لا توجد نتائج</div>}{searchResults.map(patient => (<div key={patient.id} className="bg-gray-700/50 rounded-lg p-3 mb-2 flex justify-between items-center"><div><div className="font-semibold text-white">{patient.nameAr}</div><div className="text-xs text-gray-400">{patient.phone || 'لا يوجد رقم'} | العمر: {patient.age || '-'}</div></div><button onClick={() => viewPatientDetails(patient)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 transition flex items-center gap-1"><Eye size={14} /> عرض</button></div>))}</div>
+            <div className="overflow-y-auto max-h-96">
+              {searchResults.length === 0 && searchQuery && <div className="text-center text-gray-400 py-8">لا توجد نتائج</div>}
+              {searchResults.map(patient => (
+                <div key={patient.id} className="bg-gray-700/50 rounded-lg p-3 mb-2 flex justify-between items-center">
+                  <div>
+                    <div className="font-semibold text-white">{patient.nameAr}</div>
+                    <div className="text-xs text-gray-400">{patient.phone || 'لا يوجد رقم'} | العمر: {patient.age || '-'}</div>
+                    <div className="text-xs text-gray-500 mt-1">{patient.diagnosis || 'لا يوجد تشخيص'}</div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      viewPatientDetails(patient)
+                      setShowSearchModal(false)
+                    }} 
+                    className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 transition flex items-center gap-1"
+                  >
+                    <Eye size={14} /> عرض
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -633,6 +711,120 @@ export default function ReceptionDashboard() {
               <input type="tel" placeholder="رقم الجوال" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.phone} onChange={(e) => setEditPatientData({...editPatientData, phone: e.target.value})} />
               <input type="text" placeholder="العنوان" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.address} onChange={(e) => setEditPatientData({...editPatientData, address: e.target.value})} />
               <div className="flex gap-3 pt-4"><button onClick={handleSavePatientEdit} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition"><Save size={16} className="inline ml-1" /> حفظ</button><button onClick={() => setShowEditPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button></div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* ========== Modal عرض تفاصيل المريض (العين) ========== */}
+      {showPatientDetailsModal && selectedPatient && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">تفاصيل المريض</h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleDeletePatient(selectedPatient.id)}
+                  className="p-1 text-red-400 hover:bg-red-500/20 rounded transition"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <button 
+                  onClick={() => setShowPatientDetailsModal(false)}
+                  className="p-1 hover:bg-gray-700 rounded"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
+              </div>
+            </div>
+            
+            {/* صورة تعريفية */}
+            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-700">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-2xl text-white font-bold">
+                {selectedPatient.nameAr?.charAt(0) || selectedPatient.name?.charAt(0) || '?'}
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white">{selectedPatient.nameAr || selectedPatient.name}</h3>
+                <p className="text-gray-400">{selectedPatient.nameEn || ''}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {getPatientStatusBadge(selectedPatient.status)}
+                  <span className="text-xs text-gray-500">رقم الملف: PAT-{selectedPatient.id}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* المعلومات الشخصية */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2"><User size={16} /> المعلومات الشخصية</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-400">العمر:</span><span className="text-white">{selectedPatient.age || '-'} سنة</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">رقم الجوال:</span><span className="text-white dir-ltr">{selectedPatient.phone || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">البريد الإلكتروني:</span><span className="text-white">{selectedPatient.email || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">العنوان:</span><span className="text-white">{selectedPatient.address || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">فصيلة الدم:</span><span className={getBloodTypeColor(selectedPatient.bloodType)}>{selectedPatient.bloodType || '-'}</span></div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-2"><Stethoscope size={16} /> المعلومات الطبية</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-400">التشخيص:</span><span className="text-white">{selectedPatient.diagnosis || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">الطبيب المعالج:</span><span className="text-white">{selectedPatient.doctor || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">آخر زيارة:</span><span className="text-white">{selectedPatient.lastVisit || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">تاريخ التسجيل:</span><span className="text-white">{selectedPatient.registerDate ? new Date(selectedPatient.registerDate).toLocaleDateString() : '-'}</span></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* تقدم العلاج */}
+            <div className="bg-gray-700/30 rounded-xl p-4 mb-6">
+              <h4 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2"><Activity size={16} /> تقدم العلاج</h4>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-400 text-sm">الجلسات:</span>
+                <span className="text-white text-sm">{selectedPatient.completedSessions || 0} / {selectedPatient.totalSessions || 0}</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-teal-500 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${selectedPatient.progress || 0}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-gray-400 text-sm">نسبة التقدم:</span>
+                <span className="text-blue-400 font-bold">{selectedPatient.progress || 0}%</span>
+              </div>
+            </div>
+            
+            {/* معلومات إضافية */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2"><AlertCircle size={16} /> الحساسية</h4>
+                <p className="text-gray-300 text-sm">{selectedPatient.allergies || 'لا توجد حساسية معروفة'}</p>
+              </div>
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2"><Heart size={16} /> الأمراض المزمنة</h4>
+                <p className="text-gray-300 text-sm">{selectedPatient.chronicDiseases || 'لا توجد أمراض مزمنة'}</p>
+              </div>
+            </div>
+            
+            {/* أزرار الإجراءات */}
+            <div className="flex gap-3 pt-4 mt-4 border-t border-gray-700">
+              <button 
+                onClick={() => { handleEditPatient(selectedPatient); setShowPatientDetailsModal(false); }} 
+                className="flex-1 bg-yellow-500/20 text-yellow-400 py-2 rounded-lg hover:bg-yellow-500/30 transition flex items-center justify-center gap-2"
+              >
+                <Edit size={16} /> تعديل
+              </button>
+              <button className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition flex items-center justify-center gap-2">
+                <Calendar size={16} /> حجز موعد
+              </button>
+              <button 
+                onClick={() => setShowPatientDetailsModal(false)} 
+                className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition"
+              >
+                إغلاق
+              </button>
             </div>
           </div>
         </div>

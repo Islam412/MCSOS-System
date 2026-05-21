@@ -29,7 +29,7 @@ export default function DoctorDashboard() {
     averageRating: 4.8
   })
   
-  // جدول المواعيد اليوم (المرضى الذين لديهم مواعيد)
+  // جدول المواعيد اليوم
   const [todaySchedule, setTodaySchedule] = useState([
     { id: 1, time: '09:00', patient: 'أحمد محمد', patientId: 1, age: 35, phone: '0501234567', type: 'كشف', status: 'completed' },
     { id: 2, time: '10:00', patient: 'سارة حسن', patientId: 2, age: 28, phone: '0507654321', type: 'متابعة', status: 'completed' },
@@ -39,7 +39,7 @@ export default function DoctorDashboard() {
     { id: 6, time: '14:00', patient: 'فاطمة إبراهيم', patientId: 6, age: 32, phone: '0503344556', type: 'متابعة', status: 'scheduled' },
   ])
   
-  // قائمة المرضى
+  // قائمة آخر المرضى
   const [recentPatients, setRecentPatients] = useState([
     { id: 1, name: 'أحمد محمد', age: 35, lastVisit: '2024-05-18', diagnosis: 'تمزق في الرباط الصليبي', progress: 75, phone: '0501234567' },
     { id: 2, name: 'سارة حسن', age: 28, lastVisit: '2024-05-17', diagnosis: 'انزلاق غضروفي', progress: 60, phone: '0507654321' },
@@ -74,7 +74,6 @@ export default function DoctorDashboard() {
 
   // ========== دالة فتح نافذة تسجيل الحضور ==========
   const handleOpenCheckIn = () => {
-    // جلب المرضى الذين لديهم مواعيد اليوم ولم يتم تسجيل حضورهم بعد
     const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled')
     if (scheduledPatients.length === 0) {
       toast.info('لا توجد مواعيد قادمة لتسجيل الحضور')
@@ -106,10 +105,12 @@ export default function DoctorDashboard() {
 
   // ========== دالة تحديث التقرير ==========
   const handleRefreshReport = () => {
+    // تحديث الإحصائيات بشكل تدريجي
     setStats(prev => ({
       ...prev,
-      completedSessions: prev.completedSessions + Math.floor(Math.random() * 2),
-      totalPatients: prev.totalPatients + Math.floor(Math.random() * 2)
+      completedSessions: Math.min(prev.completedSessions + 1, 100),
+      totalPatients: Math.min(prev.totalPatients + 1, 200),
+      todayPatients: Math.min(prev.todayPatients + 1, 50)
     }))
     toast.success('تم تحديث التقرير بنجاح')
   }
@@ -201,6 +202,9 @@ export default function DoctorDashboard() {
             .stat-card { background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center; }
             .stat-value { font-size: 24px; font-weight: bold; color: #1e3a5f; }
             .stat-label { font-size: 12px; color: #6b7280; }
+            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+            th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: right; }
+            th { background: #f1f5f9; }
             .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
           </style>
         </head>
@@ -228,7 +232,6 @@ export default function DoctorDashboard() {
     toast.success('جاري طباعة التقرير...')
   }
 
-  // المرضى الذين لديهم مواعيد اليوم ولم يتم تسجيل حضورهم
   const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled')
 
   if (loading) {
@@ -238,7 +241,7 @@ export default function DoctorDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <div>
           <h1 className="text-3xl font-bold gradient-text">لوحة تحكم الطبيب</h1>
           <p className="text-gray-400 mt-1">مرحباً د.{user?.name || 'أحمد علي'} | ملخص عملك اليوم</p>
@@ -252,32 +255,44 @@ export default function DoctorDashboard() {
       </div>
       
       {/* إحصائيات سريعة */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl p-5 border border-blue-500/30">
-          <div className="flex items-center justify-between"><div><p className="text-gray-400 text-sm">مرضى اليوم</p><p className="text-3xl font-bold text-white">{stats.todayPatients}</p></div><div className="p-3 bg-blue-500/20 rounded-xl"><Users className="text-blue-400" size={28} /></div></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl p-4 border border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <div><p className="text-gray-400 text-sm">مرضى اليوم</p><p className="text-2xl font-bold text-white">{stats.todayPatients}</p></div>
+            <div className="p-2 bg-blue-500/20 rounded-xl"><Users className="text-blue-400" size={24} /></div>
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-2xl p-5 border border-green-500/30">
-          <div className="flex items-center justify-between"><div><p className="text-gray-400 text-sm">إجمالي المرضى</p><p className="text-3xl font-bold text-white">{stats.totalPatients}</p></div><div className="p-3 bg-green-500/20 rounded-xl"><User className="text-green-400" size={28} /></div></div>
+        <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-2xl p-4 border border-green-500/30">
+          <div className="flex items-center justify-between">
+            <div><p className="text-gray-400 text-sm">إجمالي المرضى</p><p className="text-2xl font-bold text-white">{stats.totalPatients}</p></div>
+            <div className="p-2 bg-green-500/20 rounded-xl"><User className="text-green-400" size={24} /></div>
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl p-5 border border-purple-500/30">
-          <div className="flex items-center justify-between"><div><p className="text-gray-400 text-sm">الجلسات المكتملة</p><p className="text-3xl font-bold text-white">{stats.completedSessions}</p></div><div className="p-3 bg-purple-500/20 rounded-xl"><CheckCircle className="text-purple-400" size={28} /></div></div>
+        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl p-4 border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div><p className="text-gray-400 text-sm">الجلسات المكتملة</p><p className="text-2xl font-bold text-white">{stats.completedSessions}</p></div>
+            <div className="p-2 bg-purple-500/20 rounded-xl"><CheckCircle className="text-purple-400" size={24} /></div>
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 rounded-2xl p-5 border border-orange-500/30">
-          <div className="flex items-center justify-between"><div><p className="text-gray-400 text-sm">تقييم المرضى</p><p className="text-3xl font-bold text-white">{stats.averageRating}</p></div><div className="p-3 bg-orange-500/20 rounded-xl"><Star className="text-orange-400" size={28} /></div></div>
+        <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 rounded-2xl p-4 border border-orange-500/30">
+          <div className="flex items-center justify-between">
+            <div><p className="text-gray-400 text-sm">تقييم المرضى</p><p className="text-2xl font-bold text-white">{stats.averageRating}</p></div>
+            <div className="p-2 bg-orange-500/20 rounded-xl"><Star className="text-orange-400" size={24} /></div>
+          </div>
         </div>
       </div>
       
       {/* جدول المواعيد اليوم وآخر المرضى */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* مواعيد اليوم */}
-        <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Calendar size={20} className="text-blue-400" /> جدول المواعيد اليوم</h2>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
+          <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><Calendar size={18} className="text-blue-400" /> جدول المواعيد اليوم</h2>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
             {todaySchedule.map((app) => (
-              <div key={app.id} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 text-white font-medium">{app.time}</div>
-                  <div><p className="text-white">{app.patient}</p><p className="text-xs text-gray-400">{app.type}</p></div>
+              <div key={app.id} className="flex items-center justify-between p-2 bg-gray-700/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-14 text-white text-sm font-medium">{app.time}</div>
+                  <div><p className="text-white text-sm">{app.patient}</p><p className="text-xs text-gray-400">{app.type}</p></div>
                 </div>
                 {getStatusBadge(app.status)}
               </div>
@@ -286,14 +301,14 @@ export default function DoctorDashboard() {
         </div>
         
         {/* آخر المرضى */}
-        <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Activity size={20} className="text-green-400" /> آخر المرضى</h2>
-          <div className="space-y-3">
+        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
+          <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><Activity size={18} className="text-green-400" /> آخر المرضى</h2>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
             {recentPatients.map((patient) => (
-              <div key={patient.id} className="p-3 bg-gray-700/30 rounded-lg">
+              <div key={patient.id} className="p-2 bg-gray-700/30 rounded-lg">
                 <div className="flex justify-between items-start">
-                  <div><p className="font-semibold text-white">{patient.name}</p><p className="text-xs text-gray-400">{patient.age} سنة - آخر زيارة: {patient.lastVisit}</p><p className="text-sm text-gray-300 mt-1">{patient.diagnosis}</p></div>
-                  <div className="text-right"><div className="text-sm text-blue-400">{patient.progress}%</div><div className="w-24 bg-gray-600 rounded-full h-1.5 mt-1"><div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${patient.progress}%` }}></div></div></div>
+                  <div><p className="font-semibold text-white text-sm">{patient.name}</p><p className="text-xs text-gray-400">{patient.age} سنة - آخر زيارة: {patient.lastVisit}</p><p className="text-xs text-gray-300 mt-1">{patient.diagnosis}</p></div>
+                  <div className="text-right"><div className="text-xs text-blue-400">{patient.progress}%</div><div className="w-16 bg-gray-600 rounded-full h-1 mt-1"><div className="bg-blue-500 h-1 rounded-full" style={{ width: `${patient.progress}%` }}></div></div></div>
                 </div>
               </div>
             ))}
@@ -302,70 +317,67 @@ export default function DoctorDashboard() {
       </div>
       
       {/* إجراءات سريعة */}
-      <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
-        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Zap size={20} className="text-yellow-400" /> إجراءات سريعة</h2>
+      <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
+        <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><Zap size={18} className="text-yellow-400" /> إجراءات سريعة</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button 
             onClick={handleViewPatients}
-            className="p-3 bg-blue-500/20 rounded-xl text-blue-400 hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
+            className="p-2 bg-blue-500/20 rounded-xl text-blue-400 hover:bg-blue-500/30 transition flex items-center justify-center gap-2 text-sm"
           >
-            <Eye size={18} /> عرض المرضى
+            <Eye size={16} /> عرض المرضى
           </button>
           
-          {/* زر تسجيل حضور - يفتح نافذة اختيار المريض */}
           <button 
             onClick={handleOpenCheckIn}
-            className="p-3 bg-green-500/20 rounded-xl text-green-400 hover:bg-green-500/30 transition flex items-center justify-center gap-2"
+            className="p-2 bg-green-500/20 rounded-xl text-green-400 hover:bg-green-500/30 transition flex items-center justify-center gap-2 text-sm"
           >
-            <LogIn size={18} /> تسجيل حضور
+            <LogIn size={16} /> تسجيل حضور
           </button>
           
           <button 
             onClick={handleOpenPrescription}
-            className="p-3 bg-purple-500/20 rounded-xl text-purple-400 hover:bg-purple-500/30 transition flex items-center justify-center gap-2"
+            className="p-2 bg-purple-500/20 rounded-xl text-purple-400 hover:bg-purple-500/30 transition flex items-center justify-center gap-2 text-sm"
           >
-            <Pill size={18} /> كتابة روشتة
+            <Pill size={16} /> كتابة روشتة
           </button>
           
           <button 
             onClick={handleRefreshReport}
-            className="p-3 bg-orange-500/20 rounded-xl text-orange-400 hover:bg-orange-500/30 transition flex items-center justify-center gap-2"
+            className="p-2 bg-orange-500/20 rounded-xl text-orange-400 hover:bg-orange-500/30 transition flex items-center justify-center gap-2 text-sm"
           >
-            <RefreshCw size={18} /> تحديث التقرير
+            <RefreshCw size={16} /> تحديث التقرير
           </button>
         </div>
       </div>
 
-      {/* Modal تسجيل حضور - اختيار المريض */}
+      {/* Modal تسجيل حضور */}
       {showCheckInModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">تسجيل حضور المريض</h2>
-              <button onClick={() => { setShowCheckInModal(false); setSelectedPatientForCheckIn(null); }} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden p-5 border border-gray-700">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-bold text-white">تسجيل حضور المريض</h2>
+              <button onClick={() => { setShowCheckInModal(false); setSelectedPatientForCheckIn(null); }} className="p-1 hover:bg-gray-700 rounded"><X size={18} className="text-gray-400" /></button>
             </div>
             
-            <div className="mb-4">
-              <p className="text-gray-400 text-sm mb-3">اختر المريض من قائمة المواعيد القادمة:</p>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="mb-3">
+              <p className="text-gray-400 text-xs mb-2">اختر المريض من قائمة المواعيد القادمة:</p>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
                 {scheduledPatients.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">لا توجد مواعيد قادمة</div>
+                  <div className="text-center py-6 text-gray-400 text-sm">لا توجد مواعيد قادمة</div>
                 ) : (
                   scheduledPatients.map((patient) => (
                     <div 
                       key={patient.id}
                       onClick={() => setSelectedPatientForCheckIn(patient)}
-                      className={`p-3 rounded-lg cursor-pointer transition border-2 ${selectedPatientForCheckIn?.id === patient.id ? 'bg-blue-500/20 border-blue-500' : 'bg-gray-700/30 border-transparent hover:bg-gray-700/50'}`}
+                      className={`p-2 rounded-lg cursor-pointer transition border ${selectedPatientForCheckIn?.id === patient.id ? 'bg-blue-500/20 border-blue-500' : 'bg-gray-700/30 border-transparent hover:bg-gray-700/50'}`}
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-semibold text-white">{patient.patient}</p>
-                          <p className="text-xs text-gray-400">الوقت: {patient.time} - النوع: {patient.type}</p>
-                          <p className="text-xs text-gray-500">العمر: {patient.age} سنة - الجوال: {patient.phone}</p>
+                          <p className="font-semibold text-white text-sm">{patient.patient}</p>
+                          <p className="text-xs text-gray-400">الوقت: {patient.time} - {patient.type}</p>
+                          <p className="text-xs text-gray-500">العمر: {patient.age} سنة</p>
                         </div>
-                        {selectedPatientForCheckIn?.id === patient.id && (
-                          <CheckCircle size={20} className="text-green-400" />
-                        )}
+                        {selectedPatientForCheckIn?.id === patient.id && <CheckCircle size={16} className="text-green-400" />}
                       </div>
                     </div>
                   ))
@@ -373,11 +385,11 @@ export default function DoctorDashboard() {
               </div>
             </div>
             
-            <div className="flex gap-3 pt-4 border-t border-gray-700">
-              <button onClick={handleConfirmCheckIn} disabled={!selectedPatientForCheckIn} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                <CheckCircle size={16} className="inline ml-1" /> تأكيد الحضور
+            <div className="flex gap-2 pt-3 border-t border-gray-700">
+              <button onClick={handleConfirmCheckIn} disabled={!selectedPatientForCheckIn} className="flex-1 bg-green-500/20 text-green-400 py-1.5 rounded-lg text-sm hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                <CheckCircle size={14} className="inline ml-1" /> تأكيد الحضور
               </button>
-              <button onClick={() => { setShowCheckInModal(false); setSelectedPatientForCheckIn(null); }} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
+              <button onClick={() => { setShowCheckInModal(false); setSelectedPatientForCheckIn(null); }} className="flex-1 bg-gray-600 text-gray-300 py-1.5 rounded-lg text-sm hover:bg-gray-500 transition">
                 إلغاء
               </button>
             </div>
@@ -385,37 +397,37 @@ export default function DoctorDashboard() {
         </div>
       )}
 
-      {/* Modal إنشاء روشتة جديدة */}
+      {/* Modal إنشاء روشتة */}
       {showPrescriptionModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">روشتة طبية جديدة</h2>
-              <button onClick={() => setShowPrescriptionModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 border border-gray-700">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-bold text-white">روشتة طبية جديدة</h2>
+              <button onClick={() => setShowPrescriptionModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={18} className="text-gray-400" /></button>
             </div>
-            <div className="space-y-4">
-              <div><label className="block text-sm text-gray-400 mb-1">اسم المريض *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="أدخل اسم المريض" value={newPrescription.patientName} onChange={(e) => setNewPrescription({...newPrescription, patientName: e.target.value})} /></div>
+            <div className="space-y-3">
+              <div><label className="block text-xs text-gray-400 mb-1">اسم المريض *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white text-sm" placeholder="أدخل اسم المريض" value={newPrescription.patientName} onChange={(e) => setNewPrescription({...newPrescription, patientName: e.target.value})} /></div>
               
-              <div><label className="block text-sm text-gray-400 mb-2">الأدوية</label>
+              <div><label className="block text-xs text-gray-400 mb-1">الأدوية</label>
                 {newPrescription.medications.map((med, idx) => (
-                  <div key={idx} className="bg-gray-700/30 rounded-lg p-3 mb-2">
-                    <div className="flex justify-between items-center mb-2"><span className="text-sm text-gray-400">دواء #{idx + 1}</span>{idx > 0 && <button onClick={() => handleRemoveMedication(idx)} className="text-red-400"><Trash2 size={16} /></button>}</div>
+                  <div key={idx} className="bg-gray-700/30 rounded-lg p-2 mb-2">
+                    <div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-400">دواء #{idx + 1}</span>{idx > 0 && <button onClick={() => handleRemoveMedication(idx)} className="text-red-400"><Trash2 size={14} /></button>}</div>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="text" placeholder="اسم الدواء" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.name} onChange={(e) => handleMedicationChange(idx, 'name', e.target.value)} />
-                      <input type="text" placeholder="الجرعة" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.dosage} onChange={(e) => handleMedicationChange(idx, 'dosage', e.target.value)} />
-                      <input type="text" placeholder="عدد المرات" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.frequency} onChange={(e) => handleMedicationChange(idx, 'frequency', e.target.value)} />
-                      <input type="text" placeholder="المدة" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.duration} onChange={(e) => handleMedicationChange(idx, 'duration', e.target.value)} />
+                      <input type="text" placeholder="اسم الدواء" className="p-1.5 bg-gray-700 rounded-lg text-white text-xs" value={med.name} onChange={(e) => handleMedicationChange(idx, 'name', e.target.value)} />
+                      <input type="text" placeholder="الجرعة" className="p-1.5 bg-gray-700 rounded-lg text-white text-xs" value={med.dosage} onChange={(e) => handleMedicationChange(idx, 'dosage', e.target.value)} />
+                      <input type="text" placeholder="عدد المرات" className="p-1.5 bg-gray-700 rounded-lg text-white text-xs" value={med.frequency} onChange={(e) => handleMedicationChange(idx, 'frequency', e.target.value)} />
+                      <input type="text" placeholder="المدة" className="p-1.5 bg-gray-700 rounded-lg text-white text-xs" value={med.duration} onChange={(e) => handleMedicationChange(idx, 'duration', e.target.value)} />
                     </div>
                   </div>
                 ))}
-                <button onClick={handleAddMedication} className="w-full mt-2 bg-green-500/20 text-green-400 py-2 rounded-lg text-sm hover:bg-green-500/30 transition flex items-center justify-center gap-2"><Plus size={14} /> إضافة دواء</button>
+                <button onClick={handleAddMedication} className="w-full mt-1 bg-green-500/20 text-green-400 py-1.5 rounded-lg text-xs hover:bg-green-500/30 transition flex items-center justify-center gap-1"><Plus size={12} /> إضافة دواء</button>
               </div>
               
-              <div><label className="block text-sm text-gray-400 mb-1">ملاحظات</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="3" placeholder="ملاحظات إضافية..." value={newPrescription.notes} onChange={(e) => setNewPrescription({...newPrescription, notes: e.target.value})} /></div>
+              <div><label className="block text-xs text-gray-400 mb-1">ملاحظات</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white text-sm" rows="2" placeholder="ملاحظات إضافية..." value={newPrescription.notes} onChange={(e) => setNewPrescription({...newPrescription, notes: e.target.value})} /></div>
               
-              <div className="flex gap-3 pt-4">
-                <button onClick={handleSavePrescription} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition">حفظ الروشتة</button>
-                <button onClick={() => setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
+              <div className="flex gap-2 pt-3 border-t border-gray-700">
+                <button onClick={handleSavePrescription} className="flex-1 bg-green-500/20 text-green-400 py-1.5 rounded-lg text-sm hover:bg-green-500/30 transition">حفظ الروشتة</button>
+                <button onClick={() => setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-1.5 rounded-lg text-sm hover:bg-gray-500 transition">إلغاء</button>
               </div>
             </div>
           </div>
