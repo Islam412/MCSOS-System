@@ -56,6 +56,59 @@ const users = [
     avatar: null,
     department: 'المالية',
     departmentEn: 'Finance Department'
+  },
+  // ========== حسابات المرضى والمستخدمين العاديين ==========
+  {
+    id: 5,
+    email: 'patient@medical.com',
+    password: 'patient123',
+    name: 'أحمد محمد (مريض)',
+    nameEn: 'Ahmed Mohamed (Patient)',
+    role: 'patient',
+    roleAr: 'مريض',
+    roleEn: 'Patient',
+    avatar: null,
+    department: 'مرضى',
+    departmentEn: 'Patients'
+  },
+  {
+    id: 6,
+    email: 'user@medical.com',
+    password: 'user123',
+    name: 'عمر خالد',
+    nameEn: 'Omar Khaled',
+    role: 'user',
+    roleAr: 'مستخدم عادي',
+    roleEn: 'Regular User',
+    avatar: null,
+    department: 'مستخدمين',
+    departmentEn: 'Users'
+  },
+  {
+    id: 7,
+    email: 'sara.patient@medical.com',
+    password: 'sara123',
+    name: 'سارة حسن',
+    nameEn: 'Sara Hassan',
+    role: 'patient',
+    roleAr: 'مريضة',
+    roleEn: 'Patient',
+    avatar: null,
+    department: 'مرضى',
+    departmentEn: 'Patients'
+  },
+  {
+    id: 8,
+    email: 'mahmoud@medical.com',
+    password: 'mahmoud123',
+    name: 'محمود علي',
+    nameEn: 'Mahmoud Ali',
+    role: 'patient',
+    roleAr: 'مريض',
+    roleEn: 'Patient',
+    avatar: null,
+    department: 'مرضى',
+    departmentEn: 'Patients'
   }
 ]
 
@@ -74,7 +127,13 @@ export default function Login() {
   useEffect(() => {
     const savedUser = localStorage.getItem('mcsos_user')
     if (savedUser) {
-      navigate('/dashboard')
+      const user = JSON.parse(savedUser)
+      // توجيه المستخدم حسب دوره إذا كان مسجل بالفعل
+      if (user.role === 'admin') navigate('/admin')
+      else if (user.role === 'doctor') navigate('/doctor-dashboard')
+      else if (user.role === 'reception') navigate('/reception-dashboard')
+      else if (user.role === 'finance') navigate('/finance')
+      else navigate('/patient-dashboard')
     }
     const savedEmail = localStorage.getItem('mcsos_saved_email')
     if (savedEmail) {
@@ -118,14 +177,17 @@ export default function Login() {
         
         toast.success(`مرحباً ${user.name}`)
         
+        // التوجيه الصحيح حسب الدور
         if (user.role === 'admin') {
-          navigate('/dashboard')
+          navigate('/admin')
         } else if (user.role === 'doctor') {
-          navigate('/doctor')
+          navigate('/doctor-dashboard')
         } else if (user.role === 'reception') {
-          navigate('/')
+          navigate('/reception-dashboard')
+        } else if (user.role === 'finance') {
+          navigate('/finance')
         } else {
-          navigate('/dashboard')
+          navigate('/patient-dashboard')
         }
       } else {
         setError(isRTL ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Invalid email or password')
@@ -235,10 +297,12 @@ export default function Login() {
           <div className="mt-6 pt-6 border-t border-gray-700">
             <p className="text-center text-sm text-gray-400 mb-3">{isRTL ? 'حسابات تجريبية' : 'Demo Accounts'}</p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-blue-400 font-semibold">Admin</p><p className="text-gray-500">admin@medical.com</p><p className="text-gray-500">admin123</p></div>
-              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-green-400 font-semibold">Doctor</p><p className="text-gray-500">doctor@medical.com</p><p className="text-gray-500">doctor123</p></div>
-              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-yellow-400 font-semibold">Reception</p><p className="text-gray-500">reception@medical.com</p><p className="text-gray-500">reception123</p></div>
-              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-purple-400 font-semibold">Finance</p><p className="text-gray-500">finance@medical.com</p><p className="text-gray-500">finance123</p></div>
+              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-blue-400 font-semibold">👑 Admin</p><p className="text-gray-500">admin@medical.com</p><p className="text-gray-500">admin123</p></div>
+              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-green-400 font-semibold">👨‍⚕️ Doctor</p><p className="text-gray-500">doctor@medical.com</p><p className="text-gray-500">doctor123</p></div>
+              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-yellow-400 font-semibold">📞 Reception</p><p className="text-gray-500">reception@medical.com</p><p className="text-gray-500">reception123</p></div>
+              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-purple-400 font-semibold">💰 Finance</p><p className="text-gray-500">finance@medical.com</p><p className="text-gray-500">finance123</p></div>
+              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-pink-400 font-semibold">👤 Patient</p><p className="text-gray-500">patient@medical.com</p><p className="text-gray-500">patient123</p></div>
+              <div className="bg-gray-700/30 rounded-lg p-2 text-center"><p className="text-gray-400 font-semibold">🧑 User</p><p className="text-gray-500">user@medical.com</p><p className="text-gray-500">user123</p></div>
             </div>
           </div>
         </div>

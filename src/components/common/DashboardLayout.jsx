@@ -69,6 +69,7 @@ export default function DashboardLayout() {
         { to: '/patients', label: 'sidebar.patients', icon: Users },
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
+        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
         profileItem
       ]
     } else if (userRole === 'reception') {
@@ -77,6 +78,7 @@ export default function DashboardLayout() {
         { to: '/reception', label: 'sidebar.reception', icon: Users },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
+        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
         profileItem
       ]
     } else if (userRole === 'user' || userRole === 'patient') {
@@ -85,6 +87,7 @@ export default function DashboardLayout() {
         { to: '/profile', label: 'sidebar.profile', icon: User },
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
         { to: '/appointments', label: 'sidebar.appointments', icon: Calendar },
+        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle }, 
         profileItem
       ]
     } else {
