@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays } from 'lucide-react'
+import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -48,9 +48,11 @@ export default function DashboardLayout() {
     
     if (userRole === 'admin') {
       return [
-        { to: '/admin', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        // زرين منفصلين للمدير
+        { to: '/admin', label: 'sidebar.admin_dashboard', icon: Shield },
+        { to: '/dashboard', label: 'sidebar.hospital_dashboard', icon: Hospital },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
-        { to: '/doctors-manager', label: 'sidebar.doctors_manager', icon: Stethoscope },  // <-- أضف هذا السطر
+        { to: '/doctors-manager', label: 'sidebar.doctors_manager', icon: Stethoscope },
         { to: '/doctor', label: 'sidebar.doctor', icon: Stethoscope },
         { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
         { to: '/operations', label: 'sidebar.operations', icon: CalendarDays },
