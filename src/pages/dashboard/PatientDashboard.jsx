@@ -9,11 +9,12 @@ import {
   DollarSign, CreditCard, Bell, Shield, HelpCircle, Settings,
   LogOut, Menu, X, Home, History, FileBadge, Brain, Bone,
   Thermometer, Droplet, Microscope, Scissors, Ambulance,
-  Printer  // <-- أضف هذا السطر
+  Printer, Bookmark, CalendarCheck, VideoIcon, PhoneCall, Clock8,
+  Filter as FilterIcon, ChevronLeft, ChevronRight, XCircle, Briefcase
 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function PatientDashboard() {
   const { t, i18n } = useTranslation()
@@ -23,14 +24,276 @@ export default function PatientDashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'تذكير بموعد', message: 'لديك موعد غداً الساعة 10:00 صباحاً', time: '2024-05-25 09:00', read: false, type: 'reminder' },
-    { id: 2, title: 'نتائج الفحوصات', message: 'نتائج فحص الدم جاهزة للاطلاع', time: '2024-05-24 14:30', read: false, type: 'lab' },
-    { id: 3, title: 'روشتة جديدة', message: 'تم إضافة روشتة جديدة من قبل الدكتور', time: '2024-05-23 11:00', read: true, type: 'prescription' }
-  ])
-  const [showNotifications, setShowNotifications] = useState(false)
+  const [selectedDoctor, setSelectedDoctor] = useState(null)
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [bookingType, setBookingType] = useState('clinic')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSpecialty, setSelectedSpecialty] = useState('all')
+  const [showDoctorDetails, setShowDoctorDetails] = useState(false)
+  const [viewingDoctor, setViewingDoctor] = useState(null)
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [reviewData, setReviewData] = useState({ rating: 5, comment: '' })
 
-  // بيانات المريض الكاملة
+  // قائمة التخصصات
+  const specialties = [
+    { id: 'all', name: 'جميع التخصصات', nameEn: 'All Specialties', icon: '🏥' },
+    { id: 'Orthopedic', name: 'جراحة عظام', nameEn: 'Orthopedic', icon: '🦴' },
+    { id: 'Physical Therapy', name: 'علاج طبيعي', nameEn: 'Physical Therapy', icon: '💪' },
+    { id: 'Neurology', name: 'أعصاب', nameEn: 'Neurology', icon: '🧠' },
+    { id: 'Pediatrics', name: 'أطفال', nameEn: 'Pediatrics', icon: '👶' },
+    { id: 'General Surgery', name: 'جراحة عامة', nameEn: 'General Surgery', icon: '🔪' },
+    { id: 'Dermatology', name: 'جلدية', nameEn: 'Dermatology', icon: '✨' },
+    { id: 'Cardiology', name: 'قلب', nameEn: 'Cardiology', icon: '❤️' },
+    { id: 'Dentistry', name: 'أسنان', nameEn: 'Dentistry', icon: '🦷' },
+    { id: 'Ophthalmology', name: 'عيون', nameEn: 'Ophthalmology', icon: '👁️' },
+    { id: 'ENT', name: 'أنف وأذن وحنجرة', nameEn: 'ENT', icon: '👂' },
+    { id: 'Urology', name: 'مسالك بولية', nameEn: 'Urology', icon: '💧' },
+    { id: 'Gynecology', name: 'نساء وتوليد', nameEn: 'Gynecology', icon: '👩' },
+    { id: 'Psychiatry', name: 'طب نفسي', nameEn: 'Psychiatry', icon: '🧘' },
+    { id: 'Radiology', name: 'أشعة', nameEn: 'Radiology', icon: '📷' }
+  ]
+
+  // بيانات الأطباء الكاملة
+  const [doctors, setDoctors] = useState([
+    { 
+      id: 1, 
+      name: 'د. أحمد علي', 
+      nameEn: 'Dr. Ahmed Ali',
+      specialization: 'جراحة عظام', 
+      specializationEn: 'Orthopedic',
+      experience: 15,
+      rating: 4.8,
+      reviews: 128,
+      price: 300,
+      available: true,
+      image: null,
+      bio: 'استشاري جراحة العظام والمفاصل، خبرة 15 سنة في المملكة المتحدة ومصر. حاصل على الزمالة البريطانية في جراحة العظام.',
+      phone: '+966 50 111 2222',
+      email: 'ahmed.ali@medical.com',
+      education: [
+        'دكتوراه في جراحة العظام - جامعة القاهرة',
+        'زمالة جراحة المفاصل - المملكة المتحدة',
+        'بكالوريوس الطب والجراحة - جامعة الملك سعود'
+      ],
+      languages: ['العربية', 'الإنجليزية', 'الفرنسية'],
+      clinicHours: {
+        sat: '9:00 - 17:00',
+        sun: '9:00 - 17:00',
+        mon: '9:00 - 17:00',
+        tue: '9:00 - 17:00',
+        wed: '9:00 - 14:00',
+        thu: 'off',
+        fri: 'off'
+      },
+      availableSlots: [
+        { date: '2024-05-25', time: '09:00', available: true },
+        { date: '2024-05-25', time: '10:00', available: true },
+        { date: '2024-05-25', time: '11:00', available: false },
+        { date: '2024-05-26', time: '09:00', available: true },
+        { date: '2024-05-26', time: '14:00', available: true },
+        { date: '2024-05-27', time: '10:00', available: true }
+      ],
+      nextAvailable: '2024-05-25',
+      awards: ['أفضل طبيب عظام 2023', 'جائزة التميز الطبي'],
+      patientsCount: 245,
+      satisfactionRate: 96
+    },
+    { 
+      id: 2, 
+      name: 'د. منى حسن', 
+      nameEn: 'Dr. Mona Hassan',
+      specialization: 'علاج طبيعي', 
+      specializationEn: 'Physical Therapy',
+      experience: 10,
+      rating: 4.9,
+      reviews: 95,
+      price: 250,
+      available: true,
+      image: null,
+      bio: 'أخصائية علاج طبيعي، حاصلة على دكتوراه في العلاج الطبيعي من جامعة لندن. متخصصة في إعادة التأهيل الرياضي.',
+      phone: '+966 50 222 3333',
+      email: 'mona.hassan@medical.com',
+      education: [
+        'دكتوراه في العلاج الطبيعي - جامعة لندن',
+        'ماجستير في إعادة التأهيل الرياضي - جامعة القاهرة'
+      ],
+      languages: ['العربية', 'الإنجليزية'],
+      clinicHours: {
+        sat: '10:00 - 18:00',
+        sun: '10:00 - 18:00',
+        mon: '10:00 - 18:00',
+        tue: '10:00 - 18:00',
+        wed: '10:00 - 14:00',
+        thu: 'off',
+        fri: 'off'
+      },
+      availableSlots: [
+        { date: '2024-05-24', time: '10:00', available: true },
+        { date: '2024-05-24', time: '11:00', available: true },
+        { date: '2024-05-25', time: '14:00', available: true }
+      ],
+      nextAvailable: '2024-05-24',
+      awards: ['أفضل أخصائي علاج طبيعي 2022'],
+      patientsCount: 189,
+      satisfactionRate: 98
+    },
+    { 
+      id: 3, 
+      name: 'د. خالد محمود', 
+      nameEn: 'Dr. Khaled Mahmoud',
+      specialization: 'أعصاب', 
+      specializationEn: 'Neurology',
+      experience: 20,
+      rating: 4.7,
+      reviews: 210,
+      price: 400,
+      available: true,
+      image: null,
+      bio: 'استشاري أمراض المخ والأعصاب، زمالة أوروبية في طب الأعصاب. خبرة واسعة في علاج الصرع والتصلب المتعدد.',
+      phone: '+966 50 333 4444',
+      email: 'khaled.mahmoud@medical.com',
+      education: [
+        'دكتوراه في طب الأعصاب - جامعة باريس',
+        'زمالة طب الأعصاب - ألمانيا'
+      ],
+      languages: ['العربية', 'الإنجليزية', 'الفرنسية'],
+      clinicHours: {
+        sat: '9:00 - 15:00',
+        sun: '9:00 - 15:00',
+        mon: '9:00 - 15:00',
+        tue: '9:00 - 15:00',
+        wed: '9:00 - 12:00',
+        thu: 'off',
+        fri: 'off'
+      },
+      availableSlots: [
+        { date: '2024-05-27', time: '09:00', available: true },
+        { date: '2024-05-27', time: '11:00', available: true }
+      ],
+      nextAvailable: '2024-05-27',
+      awards: ['جائزة البحث العلمي في طب الأعصاب 2021'],
+      patientsCount: 312,
+      satisfactionRate: 94
+    },
+    { 
+      id: 4, 
+      name: 'د. نورة سعيد', 
+      nameEn: 'Dr. Noura Saeed',
+      specialization: 'أطفال', 
+      specializationEn: 'Pediatrics',
+      experience: 12,
+      rating: 4.9,
+      reviews: 156,
+      price: 280,
+      available: true,
+      image: null,
+      bio: 'استشارية طب الأطفال وحديثي الولادة. حاصلة على الزمالة الكندية في طب الأطفال.',
+      phone: '+966 50 444 5555',
+      email: 'noura.saeed@medical.com',
+      education: [
+        'زمالة طب الأطفال - كندا',
+        'ماجستير طب الأطفال - جامعة الملك عبدالعزيز'
+      ],
+      languages: ['العربية', 'الإنجليزية'],
+      clinicHours: {
+        sat: '9:00 - 16:00',
+        sun: '9:00 - 16:00',
+        mon: '9:00 - 16:00',
+        tue: '9:00 - 16:00',
+        wed: '9:00 - 13:00',
+        thu: 'off',
+        fri: 'off'
+      },
+      availableSlots: [
+        { date: '2024-05-23', time: '14:00', available: true },
+        { date: '2024-05-24', time: '09:00', available: true }
+      ],
+      nextAvailable: '2024-05-23',
+      awards: ['أفضل طبيبة أطفال 2023'],
+      patientsCount: 278,
+      satisfactionRate: 97
+    },
+    { 
+      id: 5, 
+      name: 'د. محمد عبدالله', 
+      nameEn: 'Dr. Mohamed Abdullah',
+      specialization: 'جراحة عامة', 
+      specializationEn: 'General Surgery',
+      experience: 18,
+      rating: 4.8,
+      reviews: 180,
+      price: 350,
+      available: true,
+      image: null,
+      bio: 'استشاري الجراحة العامة والمناظير. خبرة في جراحات السمنة والمناظير المتقدمة.',
+      phone: '+966 50 555 6666',
+      email: 'mohamed.abdullah@medical.com',
+      education: [
+        'دكتوراه في الجراحة العامة - جامعة القاهرة',
+        'زمالة جراحة المناظير - فرنسا'
+      ],
+      languages: ['العربية', 'الإنجليزية'],
+      clinicHours: {
+        sat: '8:00 - 16:00',
+        sun: '8:00 - 16:00',
+        mon: '8:00 - 16:00',
+        tue: '8:00 - 16:00',
+        wed: '8:00 - 12:00',
+        thu: 'off',
+        fri: 'off'
+      },
+      availableSlots: [
+        { date: '2024-05-26', time: '10:00', available: true },
+        { date: '2024-05-26', time: '11:00', available: true }
+      ],
+      nextAvailable: '2024-05-26',
+      awards: ['جائزة الابتكار في الجراحة 2022'],
+      patientsCount: 367,
+      satisfactionRate: 95
+    },
+    { 
+      id: 6, 
+      name: 'د. سارة أحمد', 
+      nameEn: 'Dr. Sara Ahmed',
+      specialization: 'جلدية', 
+      specializationEn: 'Dermatology',
+      experience: 8,
+      rating: 4.8,
+      reviews: 89,
+      price: 320,
+      available: true,
+      image: null,
+      bio: 'أخصائية الأمراض الجلدية والتجميل. خبرة في علاج حب الشباب والليزر والتقشير الكيميائي.',
+      phone: '+966 50 666 7777',
+      email: 'sara.ahmed@medical.com',
+      education: [
+        'ماجستير الأمراض الجلدية - جامعة عين شمس',
+        'دبلوم التجميل الطبي - لندن'
+      ],
+      languages: ['العربية', 'الإنجليزية', 'الفرنسية'],
+      clinicHours: {
+        sat: '10:00 - 18:00',
+        sun: '10:00 - 18:00',
+        mon: '10:00 - 18:00',
+        tue: '10:00 - 18:00',
+        wed: '10:00 - 14:00',
+        thu: 'off',
+        fri: 'off'
+      },
+      availableSlots: [
+        { date: '2024-05-28', time: '10:00', available: true },
+        { date: '2024-05-28', time: '11:00', available: true }
+      ],
+      nextAvailable: '2024-05-28',
+      awards: ['أفضل طبيبة جلدية 2023'],
+      patientsCount: 156,
+      satisfactionRate: 96
+    }
+  ])
+
+  // بيانات المريض
   const [patientData, setPatientData] = useState({
     id: 1,
     name: 'أحمد محمد',
@@ -38,80 +301,54 @@ export default function PatientDashboard() {
     age: 35,
     phone: '+966 50 123 4567',
     email: 'ahmed@example.com',
-    address: 'الرياض، حي النخيل، شارع الأمير سلطان',
     bloodType: 'O+',
-    allergies: ['لا يوجد حساسية معروفة'],
-    chronicDiseases: ['ضغط الدم (بسيط)'],
+    allergies: ['لا يوجد'],
+    chronicDiseases: ['لا يوجد'],
     doctor: 'د. أحمد علي',
     doctorSpecialization: 'جراحة عظام',
-    doctorPhone: '+966 50 111 2222',
     nextAppointment: '2024-05-25',
     nextAppointmentTime: '10:00',
     totalSessions: 12,
     completedSessions: 8,
     progress: 66.7,
-    diagnosis: 'تمزق جزئي في الرباط الصليبي الأمامي للركبة اليمنى',
-    diagnosisDate: '2024-01-15',
-    treatmentPlan: 'علاج طبيعي مكثف (3 مرات أسبوعياً) + تمارين إطالة وتقوية عضلات الفخذ + جلسات علاج طبيعي',
+    diagnosis: 'تمزق في الرباط الصليبي',
+    treatmentPlan: 'علاج طبيعي مكثف + تمارين إطالة',
     joinDate: '2024-01-15',
     lastVisit: '2024-05-18',
     upcomingAppointments: [
-      { id: 1, date: '2024-05-25', time: '10:00', doctor: 'د. أحمد علي', type: 'جلسة علاج طبيعي', location: 'الطابق الأول - عيادة 3', status: 'upcoming' },
-      { id: 2, date: '2024-05-28', time: '11:00', doctor: 'د. أحمد علي', type: 'متابعة', location: 'الطابق الأول - عيادة 3', status: 'upcoming' },
-      { id: 3, date: '2024-06-01', time: '09:30', doctor: 'د. منى حسن', type: 'جلسة علاج طبيعي', location: 'الطابق الثاني - قسم العلاج الطبيعي', status: 'upcoming' },
+      { id: 1, date: '2024-05-25', time: '10:00', doctor: 'د. أحمد علي', type: 'جلسة علاج', status: 'upcoming' },
+      { id: 2, date: '2024-05-28', time: '11:00', doctor: 'د. أحمد علي', type: 'متابعة', status: 'upcoming' },
     ],
     pastAppointments: [
-      { id: 1, date: '2024-05-18', time: '10:00', doctor: 'د. أحمد علي', type: 'جلسة علاج', status: 'completed', notes: 'تحسن ملحوظ في نطاق الحركة' },
-      { id: 2, date: '2024-05-15', time: '11:00', doctor: 'د. أحمد علي', type: 'متابعة', status: 'completed', notes: 'تم تعديل خطة العلاج' },
-      { id: 3, date: '2024-05-10', time: '09:00', doctor: 'د. منى حسن', type: 'علاج طبيعي', status: 'completed', notes: 'جلسة مكثفة' },
-      { id: 4, date: '2024-05-05', time: '10:30', doctor: 'د. أحمد علي', type: 'كشف', status: 'completed', notes: 'تقييم الحالة' },
+      { id: 1, date: '2024-05-18', time: '10:00', doctor: 'د. أحمد علي', type: 'جلسة علاج', status: 'completed' },
+      { id: 2, date: '2024-05-15', time: '11:00', doctor: 'د. أحمد علي', type: 'متابعة', status: 'completed' },
     ],
     prescriptions: [
-      { id: 1, date: '2024-05-15', doctor: 'د. أحمد علي', medications: [{ name: 'بروفين', dosage: '500mg', frequency: 'مرتين يومياً', duration: 'أسبوع' }], notes: 'تناول بعد الأكل مع كوب ماء', refillable: false },
-      { id: 2, date: '2024-05-01', doctor: 'د. أحمد علي', medications: [{ name: 'فولتارين', dosage: '75mg', frequency: 'مرة يومياً', duration: 'أسبوعين' }, { name: 'بانادول', dosage: '500mg', frequency: 'عند الحاجة', duration: '' }], notes: 'مرهم للركبة مرتين يومياً', refillable: true },
+      { id: 1, date: '2024-05-15', doctor: 'د. أحمد علي', medications: [{ name: 'بروفين', dosage: '500mg', frequency: 'مرتين يومياً' }], notes: 'تناول بعد الأكل' },
     ],
     medicalReports: [
-      { id: 1, title: 'تقرير الأشعة المقطعية', date: '2024-05-10', type: 'ct_scan', doctor: 'د. أحمد علي', description: 'تظهر الأشعة تمزقاً جزئياً في الرباط الصليبي الأمامي مع وجود تورم بسيط حول المفصل', fileUrl: null },
-      { id: 2, title: 'تقرير تحليل الدم', date: '2024-05-05', type: 'blood_test', doctor: 'د. أحمد علي', description: 'نسبة الالتهاب مرتفعة قليلاً، باقي التحاليل ضمن المعدل الطبيعي', fileUrl: null },
-      { id: 3, title: 'تقرير الأشعة السينية', date: '2024-04-20', type: 'xray', doctor: 'د. أحمد علي', description: 'لا توجد كسور أو تشوهات في العظام', fileUrl: null },
+      { id: 1, title: 'تقرير الأشعة', date: '2024-05-10', type: 'xray', doctor: 'د. أحمد علي' },
     ],
     progressHistory: [
-      { date: '2024-01-15', progress: 0, note: 'بداية العلاج - تشخيص الحالة', phase: 'التشخيص' },
-      { date: '2024-01-30', progress: 10, note: 'بدء جلسات العلاج الطبيعي', phase: 'العلاج' },
-      { date: '2024-02-15', progress: 25, note: 'تحسن ملحوظ في الحركة', phase: 'العلاج' },
-      { date: '2024-03-01', progress: 35, note: 'انخفاض ملحوظ في الألم', phase: 'العلاج' },
-      { date: '2024-03-20', progress: 45, note: 'استمرار التحسن', phase: 'العلاج' },
-      { date: '2024-04-10', progress: 55, note: 'تحسن كبير في نطاق الحركة', phase: 'العلاج' },
-      { date: '2024-05-01', progress: 60, note: 'التقدم جيد جداً', phase: 'العلاج' },
-      { date: '2024-05-18', progress: 66.7, note: 'تقدم جيد - 8 جلسات مكتملة', phase: 'العلاج' },
+      { date: '2024-05-01', progress: 0, note: 'بداية العلاج' },
+      { date: '2024-05-08', progress: 25, note: 'تحسن ملحوظ' },
+      { date: '2024-05-15', progress: 50, note: 'استمرار التحسن' },
+      { date: '2024-05-20', progress: 66.7, note: 'تقدم جيد' },
     ],
     vitals: {
       bloodPressure: '120/80',
       heartRate: 72,
       weight: 75,
       height: 175,
-      bmi: 24.5,
-      temperature: 36.6,
-      oxygenLevel: 98
+      bmi: 24.5
     },
-    payments: [
-      { id: 1, date: '2024-01-15', amount: 2000, type: 'باقة علاجية', status: 'paid' },
-      { id: 2, date: '2024-02-15', amount: 2000, type: 'باقة علاجية', status: 'paid' },
-      { id: 3, date: '2024-03-15', amount: 2000, type: 'باقة علاجية', status: 'paid' },
-      { id: 4, date: '2024-04-15', amount: 2000, type: 'باقة علاجية', status: 'paid' },
-      { id: 5, date: '2024-05-15', amount: 2000, type: 'باقة علاجية', status: 'pending' },
-    ],
-    healthMetrics: [
-      { month: 'يناير', pain: 8, mobility: 3, inflammation: 7 },
-      { month: 'فبراير', pain: 6, mobility: 5, inflammation: 5 },
-      { month: 'مارس', pain: 4, mobility: 7, inflammation: 3 },
-      { month: 'أبريل', pain: 3, mobility: 8, inflammation: 2 },
-      { month: 'مايو', pain: 2, mobility: 9, inflammation: 1 },
-    ]
+    bookedAppointments: []
   })
 
+  // المواعيد المتاحة
+  const [availableSlots, setAvailableSlots] = useState([])
+
   useEffect(() => {
-    // محاكاة تحميل البيانات
     setTimeout(() => {
       const userData = localStorage.getItem('mcsos_user')
       if (userData) {
@@ -120,48 +357,136 @@ export default function PatientDashboard() {
       }
       setPatient(patientData)
       setLoading(false)
+      
+      // تجميع جميع المواعيد المتاحة من الأطباء
+      const allSlots = doctors.flatMap(doctor => 
+        doctor.availableSlots
+          .filter(slot => slot.available)
+          .map(slot => ({
+            id: `${doctor.id}-${slot.date}-${slot.time}`,
+            doctorId: doctor.id,
+            doctorName: doctor.name,
+            doctorSpecialization: doctor.specialization,
+            date: slot.date,
+            time: slot.time,
+            price: doctor.price,
+            available: true
+          }))
+      )
+      setAvailableSlots(allSlots)
     }, 500)
   }, [])
 
-  const getStatusBadge = (status) => {
-    if (status === 'completed') {
-      return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ مكتمل</span>
-    } else if (status === 'upcoming') {
-      return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">⏰ قادم</span>
-    } else if (status === 'paid') {
-      return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ مدفوع</span>
-    } else if (status === 'pending') {
-      return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⏳ معلق</span>
+  const renderStars = (rating) => {
+    const stars = []
+    const fullStars = Math.floor(rating)
+    const hasHalfStar = rating % 1 >= 0.5
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<Star key={i} size={16} className="fill-yellow-500 text-yellow-500" />)
     }
-    return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400 border border-gray-500/30">{status}</span>
+    if (hasHalfStar) {
+      stars.push(<StarHalf key="half" size={16} className="fill-yellow-500 text-yellow-500" />)
+    }
+    while (stars.length < 5) {
+      stars.push(<Star key={stars.length} size={16} className="text-gray-500" />)
+    }
+    return stars
   }
 
-  const getReportTypeIcon = (type) => {
-    switch(type) {
-      case 'ct_scan': return <Microscope size={16} className="text-purple-400" />
-      case 'blood_test': return <Droplet size={16} className="text-red-400" />
-      case 'xray': return <Bone size={16} className="text-blue-400" />
-      default: return <FileText size={16} className="text-gray-400" />
+  const getSpecialtyIcon = (specialty) => {
+    const icons = {
+      'جراحة عظام': '🦴',
+      'علاج طبيعي': '💪',
+      'أعصاب': '🧠',
+      'أطفال': '👶',
+      'جراحة عامة': '🔪',
+      'جلدية': '✨'
+    }
+    return icons[specialty] || '👨‍⚕️'
+  }
+
+  const filteredDoctors = doctors.filter(doctor => {
+    const matchesSearch = doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          doctor.nameEn.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSpecialty = selectedSpecialty === 'all' || doctor.specializationEn === selectedSpecialty || doctor.specialization === selectedSpecialty
+    return matchesSearch && matchesSpecialty
+  })
+
+  const handleBookAppointment = (doctor) => {
+    setSelectedDoctor(doctor)
+    setSelectedDate('')
+    setSelectedTime('')
+    setShowBookingModal(true)
+  }
+
+  const handleConfirmBooking = () => {
+    if (!selectedDate || !selectedTime) {
+      toast.error('الرجاء اختيار التاريخ والوقت')
+      return
+    }
+
+    const newAppointment = {
+      id: Date.now(),
+      date: selectedDate,
+      time: selectedTime,
+      doctor: selectedDoctor.name,
+      doctorId: selectedDoctor.id,
+      type: bookingType === 'clinic' ? 'كشف طبي' : 'استشارة أونلاين',
+      status: 'upcoming',
+      location: bookingType === 'clinic' ? 'العيادة - الطابق الأول' : 'رابط الاجتماع: سيتم إرساله لاحقاً'
+    }
+
+    setPatientData(prev => ({
+      ...prev,
+      upcomingAppointments: [...prev.upcomingAppointments, newAppointment]
+    }))
+
+    toast.success(`تم حجز موعد مع ${selectedDoctor.name} يوم ${selectedDate} الساعة ${selectedTime}`)
+    setShowBookingModal(false)
+    setSelectedDoctor(null)
+  }
+
+  const handleViewDoctorDetails = (doctor) => {
+    setViewingDoctor(doctor)
+    setShowDoctorDetails(true)
+  }
+
+  const handleContactDoctor = (doctor) => {
+    toast.success(`سيتم التواصل مع ${doctor.name} عبر واتساب`)
+  }
+
+  const handleCancelAppointment = (id) => {
+    if (window.confirm('هل أنت متأكد من إلغاء هذا الموعد؟')) {
+      setPatientData(prev => ({
+        ...prev,
+        upcomingAppointments: prev.upcomingAppointments.filter(apt => apt.id !== id)
+      }))
+      toast.success('تم إلغاء الموعد بنجاح')
     }
   }
 
-  const getReportTypeName = (type) => {
-    switch(type) {
-      case 'ct_scan': return isRTL ? 'أشعة مقطعية' : 'CT Scan'
-      case 'blood_test': return isRTL ? 'تحليل دم' : 'Blood Test'
-      case 'xray': return isRTL ? 'أشعة سينية' : 'X-Ray'
-      default: return isRTL ? 'تقرير طبي' : 'Medical Report'
-    }
+  const handleSubmitReview = () => {
+    toast.success(`شكراً لتقييمك ${reviewData.rating} نجوم`)
+    setShowReviewModal(false)
+    setReviewData({ rating: 5, comment: '' })
   }
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString(isRTL ? 'ar' : 'en', { year: 'numeric', month: 'long', day: 'numeric' })
+  const getAvailableTimesForDate = (date) => {
+    if (!selectedDoctor) return []
+    return selectedDoctor.availableSlots
+      .filter(slot => slot.date === date && slot.available)
+      .map(slot => slot.time)
   }
 
-  const totalPaid = patientData.payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0)
-  const totalPending = patientData.payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0)
-
-  const progressData = patientData.progressHistory.map(p => ({ date: p.date, progress: p.progress }))
+  const getAvailableDates = () => {
+    if (!selectedDoctor) return []
+    const dates = [...new Set(selectedDoctor.availableSlots
+      .filter(slot => slot.available)
+      .map(slot => slot.date))]
+    return dates.sort()
+  }
 
   if (loading) {
     return (
@@ -189,57 +514,18 @@ export default function PatientDashboard() {
                   <Stethoscope size={20} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-white">مرحبا، {patient?.name}</h1>
-                  <p className="text-xs text-gray-400">آخر زيارة: {formatDate(patient?.lastVisit)}</p>
+                  <h1 className="text-xl font-bold text-white">مرحباً، {patient?.name}</h1>
+                  <p className="text-xs text-gray-400">آخر زيارة: {new Date(patientData.lastVisit).toLocaleDateString('ar')}</p>
                 </div>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
-              {/* الإشعارات */}
               <div className="relative">
-                <button 
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2 rounded-lg bg-gray-700/50 text-gray-400 hover:text-white transition"
-                >
+                <button className="relative p-2 rounded-lg bg-gray-700/50 text-gray-400 hover:text-white transition">
                   <Bell size={20} />
-                  {notifications.filter(n => !n.read).length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                      {notifications.filter(n => !n.read).length}
-                    </span>
-                  )}
                 </button>
-                
-                {showNotifications && (
-                  <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} top-full mt-2 w-80 bg-gray-800 rounded-xl shadow-xl border border-gray-700 z-50`}>
-                    <div className="p-3 border-b border-gray-700 flex justify-between items-center">
-                      <h3 className="text-white font-bold">الإشعارات</h3>
-                      <button className="text-xs text-blue-400 hover:text-blue-300">تحديد الكل كمقروء</button>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.map(notif => (
-                        <div key={notif.id} className={`p-3 border-b border-gray-700 hover:bg-gray-700/30 transition cursor-pointer ${!notif.read ? 'bg-blue-500/10' : ''}`}>
-                          <div className="flex items-start gap-2">
-                            <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                              {notif.type === 'reminder' ? <Calendar size={14} className="text-blue-400" /> : 
-                               notif.type === 'lab' ? <Microscope size={14} className="text-purple-400" /> : 
-                               <Pill size={14} className="text-green-400" />}
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-white text-sm font-semibold">{notif.title}</p>
-                              <p className="text-gray-400 text-xs">{notif.message}</p>
-                              <p className="text-gray-500 text-xs mt-1">{new Date(notif.time).toLocaleString()}</p>
-                            </div>
-                            {!notif.read && <div className="w-2 h-2 bg-blue-400 rounded-full"></div>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-              
-              {/* صورة المستخدم */}
               <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-teal-500 flex items-center justify-center">
                 <User size={20} className="text-white" />
               </div>
@@ -260,10 +546,10 @@ export default function PatientDashboard() {
             </div>
             <nav className="space-y-2">
               <button onClick={() => { setActiveTab('overview'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-gray-700'}`}><Home size={18} /> نظرة عامة</button>
-              <button onClick={() => { setActiveTab('appointments'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${activeTab === 'appointments' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-gray-700'}`}><Calendar size={18} /> المواعيد</button>
+              <button onClick={() => { setActiveTab('doctors'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${activeTab === 'doctors' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-gray-700'}`}><Stethoscope size={18} /> الأطباء</button>
+              <button onClick={() => { setActiveTab('appointments'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${activeTab === 'appointments' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-gray-700'}`}><Calendar size={18} /> مواعيدي</button>
               <button onClick={() => { setActiveTab('prescriptions'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${activeTab === 'prescriptions' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-gray-700'}`}><Pill size={18} /> الروشتات</button>
               <button onClick={() => { setActiveTab('reports'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${activeTab === 'reports' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-gray-700'}`}><FileText size={18} /> التقارير</button>
-              <button onClick={() => { setActiveTab('payments'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${activeTab === 'payments' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-gray-700'}`}><DollarSign size={18} /> المدفوعات</button>
               <button onClick={() => { setActiveTab('profile'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${activeTab === 'profile' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-gray-700'}`}><User size={18} /> ملفي الشخصي</button>
             </nav>
           </div>
@@ -272,14 +558,26 @@ export default function PatientDashboard() {
 
       {/* المحتوى الرئيسي */}
       <div className="container mx-auto px-4 py-6">
-        {/* أزرار التبويب (سطح المكتب) */}
-        <div className="hidden lg:flex gap-2 mb-6 overflow-x-auto pb-2">
-          <button onClick={() => setActiveTab('overview')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>نظرة عامة</button>
-          <button onClick={() => setActiveTab('appointments')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'appointments' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>المواعيد</button>
-          <button onClick={() => setActiveTab('prescriptions')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'prescriptions' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>الروشتات</button>
-          <button onClick={() => setActiveTab('reports')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'reports' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>التقارير</button>
-          <button onClick={() => setActiveTab('payments')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'payments' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>المدفوعات</button>
-          <button onClick={() => setActiveTab('profile')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'profile' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>ملفي الشخصي</button>
+        {/* أزرار التبويب */}
+        <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
+          <button onClick={() => setActiveTab('overview')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>
+            📊 نظرة عامة
+          </button>
+          <button onClick={() => setActiveTab('doctors')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'doctors' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>
+            👨‍⚕️ الأطباء
+          </button>
+          <button onClick={() => setActiveTab('appointments')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'appointments' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>
+            📅 مواعيدي
+          </button>
+          <button onClick={() => setActiveTab('prescriptions')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'prescriptions' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>
+            💊 الروشتات
+          </button>
+          <button onClick={() => setActiveTab('reports')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'reports' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>
+            📄 التقارير
+          </button>
+          <button onClick={() => setActiveTab('profile')} className={`px-5 py-2 rounded-xl whitespace-nowrap transition ${activeTab === 'profile' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700'}`}>
+            👤 ملفي الشخصي
+          </button>
         </div>
 
         {/* ========== تبويب نظرة عامة ========== */}
@@ -324,7 +622,7 @@ export default function PatientDashboard() {
             <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50 mb-6">
               <h2 className="text-xl font-bold text-white mb-4">📈 تقدمي العلاجي</h2>
               <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={progressData}>
+                <AreaChart data={patientData.progressHistory}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="date" stroke="#9ca3af" />
                   <YAxis stroke="#9ca3af" domain={[0, 100]} />
@@ -334,24 +632,7 @@ export default function PatientDashboard() {
               </ResponsiveContainer>
             </div>
 
-            {/* مقاييس الصحة */}
-            <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50 mb-6">
-              <h2 className="text-xl font-bold text-white mb-4">📊 مقاييس الصحة</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={patientData.healthMetrics}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="month" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" domain={[0, 10]} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="pain" stroke="#ef4444" name="الألم" strokeWidth={2} />
-                  <Line type="monotone" dataKey="mobility" stroke="#22c55e" name="الحركة" strokeWidth={2} />
-                  <Line type="monotone" dataKey="inflammation" stroke="#eab308" name="الالتهاب" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* معلومات سريعة */}
+            {/* العلامات الحيوية */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Heart className="text-red-400" /> العلامات الحيوية</h2>
@@ -360,8 +641,6 @@ export default function PatientDashboard() {
                   <div className="bg-gray-700/30 rounded-lg p-3 text-center"><p className="text-gray-400 text-sm">معدل ضربات القلب</p><p className="text-2xl font-bold text-white">{patientData.vitals.heartRate} <span className="text-sm">نبضة/د</span></p></div>
                   <div className="bg-gray-700/30 rounded-lg p-3 text-center"><p className="text-gray-400 text-sm">الوزن</p><p className="text-2xl font-bold text-white">{patientData.vitals.weight} <span className="text-sm">كجم</span></p></div>
                   <div className="bg-gray-700/30 rounded-lg p-3 text-center"><p className="text-gray-400 text-sm">مؤشر كتلة الجسم</p><p className="text-2xl font-bold text-white">{patientData.vitals.bmi}</p></div>
-                  <div className="bg-gray-700/30 rounded-lg p-3 text-center"><p className="text-gray-400 text-sm">درجة الحرارة</p><p className="text-2xl font-bold text-white">{patientData.vitals.temperature}°C</p></div>
-                  <div className="bg-gray-700/30 rounded-lg p-3 text-center"><p className="text-gray-400 text-sm">تشبع الأكسجين</p><p className="text-2xl font-bold text-white">{patientData.vitals.oxygenLevel}%</p></div>
                 </div>
               </div>
 
@@ -369,42 +648,160 @@ export default function PatientDashboard() {
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><ClipboardList className="text-blue-400" /> معلومات التشخيص</h2>
                 <div className="space-y-3">
                   <div><p className="text-gray-400 text-sm">التشخيص</p><p className="text-white">{patientData.diagnosis}</p></div>
-                  <div><p className="text-gray-400 text-sm">تاريخ التشخيص</p><p className="text-white">{formatDate(patientData.diagnosisDate)}</p></div>
                   <div><p className="text-gray-400 text-sm">خطة العلاج</p><p className="text-white text-sm">{patientData.treatmentPlan}</p></div>
                   <div><p className="text-gray-400 text-sm">فصيلة الدم</p><p className="text-white">{patientData.bloodType}</p></div>
-                  <div><p className="text-gray-400 text-sm">الأمراض المزمنة</p><p className="text-white">{patientData.chronicDiseases.join(', ')}</p></div>
                 </div>
               </div>
             </div>
           </>
         )}
 
-        {/* ========== تبويب المواعيد ========== */}
+        {/* ========== تبويب الأطباء - متطور ========== */}
+        {activeTab === 'doctors' && (
+          <>
+            {/* بحث وتصفية متقدم */}
+            <div className="bg-gray-800/50 rounded-2xl p-4 border border-gray-700/50 mb-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="ابحث عن طبيب بالاسم أو التخصص..." 
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 transition"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {specialties.map((spec) => (
+                    <button 
+                      key={spec.id} 
+                      onClick={() => setSelectedSpecialty(spec.id)} 
+                      className={`px-4 py-2 rounded-xl whitespace-nowrap transition flex items-center gap-2 ${selectedSpecialty === spec.id ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'}`}
+                    >
+                      <span>{spec.icon}</span>
+                      <span>{isRTL ? spec.name : spec.nameEn}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* إحصائيات سريعة عن الأطباء */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <div className="bg-gray-800/50 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-white">{doctors.length}</p>
+                <p className="text-xs text-gray-400">طبيب متخصص</p>
+              </div>
+              <div className="bg-gray-800/50 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-yellow-400">4.8</p>
+                <p className="text-xs text-gray-400">متوسط التقييم</p>
+              </div>
+              <div className="bg-gray-800/50 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-green-400">95%</p>
+                <p className="text-xs text-gray-400">رضا المرضى</p>
+              </div>
+              <div className="bg-gray-800/50 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-blue-400">25+</p>
+                <p className="text-xs text-gray-400">موعد يومياً</p>
+              </div>
+            </div>
+
+            {/* قائمة الأطباء المتطورة */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {filteredDoctors.map((doctor) => (
+                <div key={doctor.id} className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50 hover:border-blue-500/30 hover:shadow-xl transition-all duration-300">
+                  <div className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-start gap-3">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-500 rounded-2xl flex items-center justify-center text-3xl">
+                          {getSpecialtyIcon(doctor.specialization)}
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-white">{doctor.name}</h3>
+                          <p className="text-blue-400 text-sm">{doctor.specialization}</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            {renderStars(doctor.rating)}
+                            <span className="text-xs text-gray-400 ml-1">({doctor.reviews} تقييم)</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-green-400">{doctor.price} <span className="text-xs">ر.س</span></div>
+                        <p className="text-xs text-gray-400">رسوم الكشف</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2"><Award size={16} className="text-blue-400" /><span className="text-gray-300">خبرة {doctor.experience} سنة</span></div>
+                      <div className="flex items-center gap-2"><Users size={16} className="text-green-400" /><span className="text-gray-300">{doctor.patientsCount} مريض</span></div>
+                      <div className="flex items-center gap-2"><Heart size={16} className="text-red-400" /><span className="text-gray-300">نسبة رضا {doctor.satisfactionRate}%</span></div>
+                      <div className="flex items-center gap-2"><Calendar size={16} className="text-purple-400" /><span className="text-gray-300">متاح: {doctor.nextAvailable}</span></div>
+                    </div>
+                    
+                    <p className="text-gray-400 text-sm mt-3 line-clamp-2">{doctor.bio}</p>
+                    
+                    <div className="mt-4 pt-4 border-t border-gray-700 flex gap-2">
+                      <button 
+                        onClick={() => handleViewDoctorDetails(doctor)}
+                        className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
+                      >
+                        <Eye size={16} /> عرض التفاصيل
+                      </button>
+                      <button 
+                        onClick={() => handleBookAppointment(doctor)}
+                        className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center gap-2"
+                      >
+                        <Calendar size={16} /> حجز موعد
+                      </button>
+                      <button 
+                        onClick={() => handleContactDoctor(doctor)}
+                        className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition"
+                      >
+                        <MessageCircle size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {filteredDoctors.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-400">لا توجد أطباء مطابقين لبحثك</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ========== تبويب مواعيدي ========== */}
         {activeTab === 'appointments' && (
           <div className="space-y-6">
             <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
               <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Calendar className="text-blue-400" /> المواعيد القادمة</h2>
               <div className="space-y-3">
                 {patientData.upcomingAppointments.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">لا توجد مواعيد قادمة</p>
+                  <p className="text-gray-400 text-center py-8">لا توجد مواعيد قادمة. يمكنك حجز موعد جديد من خلال قسم الأطباء</p>
                 ) : (
                   patientData.upcomingAppointments.map(app => (
                     <div key={app.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition">
                       <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
                           <CalendarDays size={24} className="text-blue-400" />
                         </div>
                         <div>
-                          <p className="font-semibold text-white">{formatDate(app.date)} - {app.time}</p>
+                          <p className="font-semibold text-white">{new Date(app.date).toLocaleDateString('ar')} - {app.time}</p>
                           <p className="text-sm text-gray-400">الدكتور: {app.doctor}</p>
-                          <p className="text-xs text-gray-500">النوع: {app.type}</p>
-                          <p className="text-xs text-gray-500">الموقع: {app.location}</p>
+                          <p className="text-xs text-gray-500">النوع: {app.type} | الموقع: {app.location}</p>
                         </div>
                       </div>
                       <div className="flex gap-2 mt-3 md:mt-0">
-                        {getStatusBadge(app.status)}
-                        <button className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm hover:bg-green-500/30 transition flex items-center gap-1">
-                          <MessageCircle size={14} /> تذكير
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">⏰ قادم</span>
+                        <button 
+                          onClick={() => handleCancelAppointment(app.id)}
+                          className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm hover:bg-red-500/30 transition flex items-center gap-1"
+                        >
+                          <XCircle size={14} /> إلغاء
                         </button>
                       </div>
                     </div>
@@ -423,12 +820,11 @@ export default function PatientDashboard() {
                         <CheckCircle size={24} className="text-green-400" />
                       </div>
                       <div>
-                        <p className="font-semibold text-white">{formatDate(app.date)} - {app.time}</p>
+                        <p className="font-semibold text-white">{new Date(app.date).toLocaleDateString('ar')} - {app.time}</p>
                         <p className="text-sm text-gray-400">الدكتور: {app.doctor} - {app.type}</p>
-                        {app.notes && <p className="text-xs text-gray-500">ملاحظات: {app.notes}</p>}
                       </div>
                     </div>
-                    {getStatusBadge(app.status)}
+                    <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ مكتمل</span>
                   </div>
                 ))}
               </div>
@@ -438,33 +834,30 @@ export default function PatientDashboard() {
 
         {/* ========== تبويب الروشتات ========== */}
         {activeTab === 'prescriptions' && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {patientData.prescriptions.map(prescription => (
-              <div key={prescription.id} className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
-                <div className="flex justify-between items-start mb-4">
+              <div key={prescription.id} className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
+                <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><Pill className="text-green-400" /> روشتة طبية</h3>
-                    <p className="text-sm text-gray-400">التاريخ: {formatDate(prescription.date)} | الدكتور: {prescription.doctor}</p>
+                    <h3 className="font-bold text-white flex items-center gap-2"><Pill className="text-green-400" size={18} /> روشتة طبية</h3>
+                    <p className="text-xs text-gray-400">التاريخ: {prescription.date} | الدكتور: {prescription.doctor}</p>
                   </div>
-                  <button className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 transition flex items-center gap-1">
-                    <Printer size={14} /> طباعة
+                  <button className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition">
+                    <Printer size={18} />
                   </button>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {prescription.medications.map((med, idx) => (
-                    <div key={idx} className="bg-gray-700/30 rounded-lg p-3">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                        <div><span className="text-gray-400">الدواء:</span> <span className="text-white">{med.name}</span></div>
-                        <div><span className="text-gray-400">الجرعة:</span> <span className="text-white">{med.dosage}</span></div>
-                        <div><span className="text-gray-400">العدد:</span> <span className="text-white">{med.frequency}</span></div>
-                        {med.duration && <div><span className="text-gray-400">المدة:</span> <span className="text-white">{med.duration}</span></div>}
+                    <div key={idx} className="bg-gray-700/30 rounded-lg p-2">
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-white">{med.name}</span>
+                        <span className="text-gray-300">{med.dosage}</span>
                       </div>
-                      {med.instructions && <p className="text-xs text-gray-400 mt-2">📝 تعليمات: {med.instructions}</p>}
+                      <p className="text-xs text-gray-400">{med.frequency}</p>
                     </div>
                   ))}
                 </div>
-                {prescription.notes && <p className="text-sm text-gray-400 mt-3 border-t border-gray-700 pt-3">📋 ملاحظات: {prescription.notes}</p>}
-                {prescription.refillable && <p className="text-xs text-green-400 mt-2">🔄 يمكن إعادة صرف هذه الروشتة</p>}
+                {prescription.notes && <p className="text-xs text-gray-400 mt-2">📋 ملاحظات: {prescription.notes}</p>}
               </div>
             ))}
           </div>
@@ -476,15 +869,9 @@ export default function PatientDashboard() {
             {patientData.medicalReports.map(report => (
               <div key={report.id} className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50 hover:border-blue-500/30 transition">
                 <div className="flex justify-between items-start">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-gray-700 rounded-xl flex items-center justify-center">
-                      {getReportTypeIcon(report.type)}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white">{report.title}</h3>
-                      <p className="text-xs text-gray-400">{getReportTypeName(report.type)} | {formatDate(report.date)} | الدكتور: {report.doctor}</p>
-                      <p className="text-sm text-gray-300 mt-2">{report.description}</p>
-                    </div>
+                  <div>
+                    <h3 className="font-semibold text-white">{report.title}</h3>
+                    <p className="text-xs text-gray-400">{report.date} | الدكتور: {report.doctor}</p>
                   </div>
                   <button className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition">
                     <Download size={18} />
@@ -492,39 +879,6 @@ export default function PatientDashboard() {
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* ========== تبويب المدفوعات ========== */}
-        {activeTab === 'payments' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-4">
-              <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-2xl p-5 border border-green-500/30">
-                <p className="text-gray-400 text-sm">إجمالي المدفوع</p>
-                <p className="text-3xl font-bold text-white">{totalPaid.toLocaleString()} <span className="text-sm">ر.س</span></p>
-              </div>
-              <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 rounded-2xl p-5 border border-yellow-500/30">
-                <p className="text-gray-400 text-sm">المدفوعات المعلقة</p>
-                <p className="text-3xl font-bold text-white">{totalPending.toLocaleString()} <span className="text-sm">ر.س</span></p>
-              </div>
-            </div>
-            <div className="lg:col-span-2 bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
-              <h2 className="text-xl font-bold text-white mb-4">سجل المدفوعات</h2>
-              <div className="space-y-3">
-                {patientData.payments.map(payment => (
-                  <div key={payment.id} className="flex justify-between items-center p-3 bg-gray-700/30 rounded-lg">
-                    <div>
-                      <p className="font-semibold text-white">{payment.type}</p>
-                      <p className="text-xs text-gray-400">{formatDate(payment.date)}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <p className="font-bold text-green-400">{payment.amount.toLocaleString()} ر.س</p>
-                      {getStatusBadge(payment.status)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
@@ -540,7 +894,6 @@ export default function PatientDashboard() {
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <p className="text-sm text-gray-400 flex items-center justify-center gap-2"><Phone size={14} /> {patientData.phone}</p>
                 <p className="text-sm text-gray-400 flex items-center justify-center gap-2 mt-2"><Mail size={14} /> {patientData.email}</p>
-                <p className="text-sm text-gray-400 flex items-center justify-center gap-2 mt-2"><MapPin size={14} /> {patientData.address}</p>
               </div>
             </div>
             <div className="lg:col-span-2 bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
@@ -548,8 +901,8 @@ export default function PatientDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><p className="text-gray-400 text-sm">العمر</p><p className="text-white">{patientData.age} سنة</p></div>
                 <div><p className="text-gray-400 text-sm">فصيلة الدم</p><p className="text-white">{patientData.bloodType}</p></div>
-                <div><p className="text-gray-400 text-sm">تاريخ التسجيل</p><p className="text-white">{formatDate(patientData.joinDate)}</p></div>
-                <div><p className="text-gray-400 text-sm">آخر زيارة</p><p className="text-white">{formatDate(patientData.lastVisit)}</p></div>
+                <div><p className="text-gray-400 text-sm">تاريخ التسجيل</p><p className="text-white">{patientData.joinDate}</p></div>
+                <div><p className="text-gray-400 text-sm">آخر زيارة</p><p className="text-white">{patientData.lastVisit}</p></div>
                 <div className="md:col-span-2"><p className="text-gray-400 text-sm">الحساسية</p><p className="text-white">{patientData.allergies.join(', ')}</p></div>
                 <div className="md:col-span-2"><p className="text-gray-400 text-sm">الأمراض المزمنة</p><p className="text-white">{patientData.chronicDiseases.join(', ')}</p></div>
               </div>
@@ -557,6 +910,211 @@ export default function PatientDashboard() {
           </div>
         )}
       </div>
+
+      {/* Modal عرض تفاصيل الطبيب */}
+      {showDoctorDetails && viewingDoctor && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-500 rounded-2xl flex items-center justify-center text-3xl">
+                  {getSpecialtyIcon(viewingDoctor.specialization)}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">{viewingDoctor.name}</h2>
+                  <p className="text-blue-400">{viewingDoctor.specialization}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {renderStars(viewingDoctor.rating)}
+                    <span className="text-xs text-gray-400">({viewingDoctor.reviews} تقييم)</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setShowDoctorDetails(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-700/30 rounded-lg p-4">
+                <h3 className="font-bold text-white mb-2">نبذة عن الطبيب</h3>
+                <p className="text-gray-300 text-sm">{viewingDoctor.bio}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <p className="text-gray-400 text-sm">📚 المؤهلات العلمية</p>
+                  <ul className="text-sm text-gray-300 mt-1 list-disc list-inside">
+                    {viewingDoctor.education?.map((edu, i) => (
+                      <li key={i}>{edu}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <p className="text-gray-400 text-sm">🗣️ اللغات</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {viewingDoctor.languages?.map((lang, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-gray-600 rounded-full text-xs text-white">{lang}</span>
+                    ))}
+                  </div>
+                  <p className="text-gray-400 text-sm mt-3">🏆 الجوائز</p>
+                  <ul className="text-sm text-gray-300 mt-1 list-disc list-inside">
+                    {viewingDoctor.awards?.map((award, i) => (
+                      <li key={i}>{award}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-gray-700/30 rounded-lg p-4">
+                <h3 className="font-bold text-white mb-2">ساعات العمل</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-400">السبت:</span><span className="text-white">{viewingDoctor.clinicHours.sat}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">الأحد:</span><span className="text-white">{viewingDoctor.clinicHours.sun}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">الإثنين:</span><span className="text-white">{viewingDoctor.clinicHours.mon}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">الثلاثاء:</span><span className="text-white">{viewingDoctor.clinicHours.tue}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">الأربعاء:</span><span className="text-white">{viewingDoctor.clinicHours.wed}</span></div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-gray-700">
+                <button onClick={() => { handleBookAppointment(viewingDoctor); setShowDoctorDetails(false); }} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center gap-2">
+                  <Calendar size={16} /> حجز موعد
+                </button>
+                <button onClick={() => handleContactDoctor(viewingDoctor)} className="flex-1 bg-purple-500/20 text-purple-400 py-2 rounded-lg hover:bg-purple-500/30 transition flex items-center justify-center gap-2">
+                  <MessageCircle size={16} /> تواصل
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal حجز موعد */}
+      {showBookingModal && selectedDoctor && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">حجز موعد مع {selectedDoctor.name}</h2>
+              <button onClick={() => setShowBookingModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">نوع الموعد</label>
+                <div className="flex gap-3">
+                  <button onClick={() => setBookingType('clinic')} className={`flex-1 py-2 rounded-lg transition ${bookingType === 'clinic' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-700 text-gray-400'}`}>
+                    🏥 كشف في العيادة
+                  </button>
+                  <button onClick={() => setBookingType('online')} className={`flex-1 py-2 rounded-lg transition ${bookingType === 'online' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-700 text-gray-400'}`}>
+                    💻 استشارة أونلاين
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">اختر التاريخ</label>
+                <select 
+                  className="w-full p-2 bg-gray-700 rounded-lg text-white"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                >
+                  <option value="">اختر التاريخ</option>
+                  {getAvailableDates().map(date => (
+                    <option key={date} value={date}>{new Date(date).toLocaleDateString('ar')}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedDate && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">اختر الوقت</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {getAvailableTimesForDate(selectedDate).map(time => (
+                      <button
+                        key={time}
+                        onClick={() => setSelectedTime(time)}
+                        className={`py-2 rounded-lg transition ${selectedTime === time ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-gray-700/30 rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">رسوم الكشف:</span>
+                  <span className="text-green-400 font-bold">{selectedDoctor.price} ر.س</span>
+                </div>
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-gray-400">رسوم الخدمة:</span>
+                  <span className="text-gray-300">0 ر.س</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-600">
+                  <span className="text-white font-bold">الإجمالي:</span>
+                  <span className="text-green-400 font-bold">{selectedDoctor.price} ر.س</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleConfirmBooking} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center gap-2">
+                  <CalendarCheck size={16} /> تأكيد الحجز
+                </button>
+                <button onClick={() => setShowBookingModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal تقييم الطبيب */}
+      {showReviewModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">تقييم الطبيب</h2>
+              <button onClick={() => setShowReviewModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">تقييمك</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button key={star} onClick={() => setReviewData({...reviewData, rating: star})} className="text-2xl">
+                      {star <= reviewData.rating ? <Star className="fill-yellow-500 text-yellow-500" size={28} /> : <Star className="text-gray-500" size={28} />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">تعليقك</label>
+                <textarea 
+                  className="w-full p-2 bg-gray-700 rounded-lg text-white" 
+                  rows="3"
+                  placeholder="شاركنا رأيك في تجربتك..."
+                  value={reviewData.comment}
+                  onChange={(e) => setReviewData({...reviewData, comment: e.target.value})}
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleSubmitReview} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition">
+                  إرسال التقييم
+                </button>
+                <button onClick={() => setShowReviewModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

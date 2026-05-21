@@ -50,6 +50,7 @@ export default function DashboardLayout() {
       return [
         { to: '/admin', label: 'sidebar.dashboard', icon: LayoutDashboard },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
+        { to: '/doctors-manager', label: 'sidebar.doctors_manager', icon: Stethoscope },  // <-- أضف هذا السطر
         { to: '/doctor', label: 'sidebar.doctor', icon: Stethoscope },
         { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
         { to: '/operations', label: 'sidebar.operations', icon: CalendarDays },
