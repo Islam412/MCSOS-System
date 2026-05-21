@@ -6,7 +6,7 @@ import {
   Star, TrendingUp, AlertCircle, Edit, Trash2, Plus,
   RefreshCw, Download, Filter, Search, Eye, EyeOff,
   Zap, Target, Award, Shield, Mail, UserCheck, 
-  Moon, Sun, Monitor, Globe, Key, Lock, Save, X
+  Moon, Sun, Monitor, Globe, Key, Lock, Save, X, Copy
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -21,10 +21,19 @@ export default function WhatsAppManager() {
   const [scheduledMessages, setScheduledMessages] = useState([])
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showEditFlowModal, setShowEditFlowModal] = useState(false)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewMessage, setPreviewMessage] = useState('')
   const [scheduleDateTime, setScheduleDateTime] = useState('')
   const [activeTab, setActiveTab] = useState('compose')
-  const [selectedFlow, setSelectedFlow] = useState(null)
-  
+  const [editingFlow, setEditingFlow] = useState(null)
+  const [editFlowData, setEditFlowData] = useState({
+    name: '',
+    message: '',
+    delay: 0,
+    enabled: true
+  })
+
   // إعدادات الواتساب
   const [whatsappSettings, setWhatsappSettings] = useState({
     apiKey: '',
@@ -43,9 +52,9 @@ export default function WhatsAppManager() {
   })
 
   const [autoFlows, setAutoFlows] = useState([
-    { id: 1, name: 'booking_confirmation', enabled: true, delay: 0, message: 'تم تأكيد حجز موعدك مع الدكتور {doctor} بتاريخ {date} الساعة {time}' },
-    { id: 2, name: 'reminder_before', enabled: true, delay: 24, message: 'تذكير: لديك موعد غداً الساعة {time} مع الدكتور {doctor}' },
-    { id: 3, name: 'missed_followup', enabled: true, delay: 1, message: 'لقد تغيبت عن موعدك مع الدكتور {doctor}. يرجى التواصل معنا لإعادة الحجز' }
+    { id: 1, name: 'booking_confirmation', nameAr: 'تأكيد الحجز', nameEn: 'Booking Confirmation', enabled: true, delay: 0, delayUnit: 'hours', message: 'تم تأكيد حجز موعدك مع الدكتور {doctor} بتاريخ {date} الساعة {time}' },
+    { id: 2, name: 'reminder_before', nameAr: 'تذكير قبل الموعد', nameEn: 'Appointment Reminder', enabled: true, delay: 24, delayUnit: 'hours', message: 'تذكير: لديك موعد غداً الساعة {time} مع الدكتور {doctor}' },
+    { id: 3, name: 'missed_followup', nameAr: 'متابعة الغياب', nameEn: 'Missed Follow-up', enabled: true, delay: 1, delayUnit: 'days', message: 'لقد تغيبت عن موعدك مع الدكتور {doctor}. يرجى التواصل معنا لإعادة الحجز' }
   ])
 
   const templates = [
@@ -134,12 +143,74 @@ export default function WhatsAppManager() {
   }
 
   const getFlowName = (flow) => {
-    const names = {
-      booking_confirmation: isRTL ? 'تأكيد الحجز' : 'Booking Confirmation',
-      reminder_before: isRTL ? 'تذكير قبل الموعد' : 'Appointment Reminder',
-      missed_followup: isRTL ? 'متابعة الغياب' : 'Missed Follow-up'
+    if (currentLang === 'ar') return flow.nameAr
+    return flow.nameEn
+  }
+
+  // دالة عرض معاينة الرسالة
+  const handlePreviewFlow = (flow) => {
+    // بيانات تجريبية للمعاينة
+    const previewData = {
+      doctor: 'د. أحمد علي',
+      date: '2024-05-25',
+      time: '10:00 صباحاً',
+      amount: '500'
     }
-    return names[flow.name] || flow.name
+    
+    let previewMsg = flow.message
+    previewMsg = previewMsg.replace('{doctor}', previewData.doctor)
+    previewMsg = previewMsg.replace('{date}', previewData.date)
+    previewMsg = previewMsg.replace('{time}', previewData.time)
+    previewMsg = previewMsg.replace('{amount}', previewData.amount)
+    
+    setPreviewMessage(previewMsg)
+    setShowPreviewModal(true)
+  }
+
+  // دالة فتح نافذة تعديل التدفق
+  const handleEditFlow = (flow) => {
+    setEditingFlow(flow)
+    setEditFlowData({
+      name: flow.name,
+      nameAr: flow.nameAr,
+      nameEn: flow.nameEn,
+      message: flow.message,
+      delay: flow.delay,
+      delayUnit: flow.delayUnit || 'hours',
+      enabled: flow.enabled
+    })
+    setShowEditFlowModal(true)
+  }
+
+  // دالة حفظ تعديل التدفق
+  const handleSaveFlowEdit = () => {
+    if (!editFlowData.message) {
+      toast.error(isRTL ? 'الرجاء إدخال نص الرسالة' : 'Please enter message content')
+      return
+    }
+    
+    const updatedFlows = autoFlows.map(flow => 
+      flow.id === editingFlow.id ? {
+        ...flow,
+        nameAr: editFlowData.nameAr || flow.nameAr,
+        nameEn: editFlowData.nameEn || flow.nameEn,
+        message: editFlowData.message,
+        delay: editFlowData.delay,
+        delayUnit: editFlowData.delayUnit
+      } : flow
+    )
+    
+    setAutoFlows(updatedFlows)
+    setShowEditFlowModal(false)
+    setEditingFlow(null)
+    toast.success(isRTL ? 'تم تحديث التدفق بنجاح' : 'Flow updated successfully')
+  }
+
+  // دالة معاينة القالب
+  const handlePreviewTemplate = (template) => {
+    const previewMsg = getTemplateMessage(template)
+    setPreviewMessage(previewMsg)
+    setShowPreviewModal(true)
   }
 
   useEffect(() => {
@@ -151,6 +222,10 @@ export default function WhatsAppManager() {
     if (savedSettings) {
       setWhatsappSettings(JSON.parse(savedSettings))
     }
+    const savedFlows = localStorage.getItem('mcsos_whatsapp_flows')
+    if (savedFlows) {
+      setAutoFlows(JSON.parse(savedFlows))
+    }
   }, [])
 
   useEffect(() => {
@@ -160,6 +235,10 @@ export default function WhatsAppManager() {
   useEffect(() => {
     localStorage.setItem('mcsos_whatsapp_settings', JSON.stringify(whatsappSettings))
   }, [whatsappSettings])
+
+  useEffect(() => {
+    localStorage.setItem('mcsos_whatsapp_flows', JSON.stringify(autoFlows))
+  }, [autoFlows])
 
   const handleTemplateChange = (e) => {
     const templateId = e.target.value
@@ -263,6 +342,13 @@ export default function WhatsAppManager() {
     scheduledCount: scheduledMessages.filter(m => m.status === 'scheduled').length,
     activeChats: 89,
     automatedCount: autoFlows.filter(f => f.enabled).length
+  }
+
+  // دالة الحصول على نص المدة
+  const getDelayText = (delay, unit) => {
+    if (delay === 0) return isRTL ? 'فوري' : 'Instant'
+    const unitText = unit === 'hours' ? (isRTL ? 'ساعة' : 'hours') : (isRTL ? 'يوم' : 'days')
+    return `${delay} ${unitText} ${delay === 0 ? '' : (isRTL ? 'قبل الموعد' : 'before')}`
   }
 
   return (
@@ -424,7 +510,7 @@ export default function WhatsAppManager() {
         </div>
       )}
 
-      {/* تبويب التدفقات الآلية */}
+      {/* تبويب التدفقات الآلية - مع أزرار تعديل ومعاينة تعمل */}
       {activeTab === 'flows' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {autoFlows.map((flow) => (
@@ -437,7 +523,7 @@ export default function WhatsAppManager() {
                   <div>
                     <h3 className="text-lg font-bold text-white">{getFlowName(flow)}</h3>
                     <p className="text-xs text-gray-400">
-                      {flow.delay === 0 ? isRTL ? 'فوري' : 'Instant' : `${flow.delay} ${isRTL ? 'ساعة قبل الموعد' : 'hours before'}`}
+                      {getDelayText(flow.delay, flow.delayUnit)}
                     </p>
                   </div>
                 </div>
@@ -447,13 +533,19 @@ export default function WhatsAppManager() {
                 </label>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-3 mt-2">
-                <p className="text-sm text-gray-300">{flow.message}</p>
+                <p className="text-sm text-gray-300 line-clamp-2">{flow.message}</p>
               </div>
               <div className="mt-4 flex gap-2">
-                <button className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg text-sm hover:bg-blue-500/30 transition flex items-center justify-center gap-2">
+                <button 
+                  onClick={() => handleEditFlow(flow)}
+                  className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg text-sm hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
+                >
                   <Edit size={14} /> {isRTL ? 'تعديل' : 'Edit'}
                 </button>
-                <button className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg text-sm hover:bg-gray-500 transition flex items-center justify-center gap-2">
+                <button 
+                  onClick={() => handlePreviewFlow(flow)}
+                  className="flex-1 bg-purple-500/20 text-purple-400 py-2 rounded-lg text-sm hover:bg-purple-500/30 transition flex items-center justify-center gap-2"
+                >
                   <Eye size={14} /> {isRTL ? 'معاينة' : 'Preview'}
                 </button>
               </div>
@@ -504,7 +596,117 @@ export default function WhatsAppManager() {
         </div>
       )}
 
-      {/* Modal إعدادات واتساب - نافذة كاملة */}
+      {/* Modal تعديل التدفق */}
+      {showEditFlowModal && editingFlow && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Edit size={20} className="text-yellow-400" />
+                {isRTL ? 'تعديل التدفق' : 'Edit Flow'} - {getFlowName(editingFlow)}
+              </h2>
+              <button onClick={() => setShowEditFlowModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'نص الرسالة' : 'Message Content'}</label>
+                <textarea 
+                  className="w-full p-3 bg-gray-700 rounded-lg text-white" 
+                  rows="5"
+                  value={editFlowData.message}
+                  onChange={(e) => setEditFlowData({...editFlowData, message: e.target.value})}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {isRTL ? 'يمكنك استخدام المتغيرات: {doctor}, {date}, {time}, {amount}' : 'You can use variables: {doctor}, {date}, {time}, {amount}'}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'المدة' : 'Delay'}</label>
+                  <input 
+                    type="number" 
+                    className="w-full p-2 bg-gray-700 rounded-lg text-white"
+                    value={editFlowData.delay}
+                    onChange={(e) => setEditFlowData({...editFlowData, delay: parseInt(e.target.value) || 0})}
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'الوحدة' : 'Unit'}</label>
+                  <select 
+                    className="w-full p-2 bg-gray-700 rounded-lg text-white"
+                    value={editFlowData.delayUnit}
+                    onChange={(e) => setEditFlowData({...editFlowData, delayUnit: e.target.value})}
+                  >
+                    <option value="hours">{isRTL ? 'ساعات' : 'Hours'}</option>
+                    <option value="days">{isRTL ? 'أيام' : 'Days'}</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleSaveFlowEdit} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center gap-2">
+                  <Save size={16} /> {isRTL ? 'حفظ التغييرات' : 'Save Changes'}
+                </button>
+                <button onClick={() => setShowEditFlowModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal معاينة الرسالة */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Eye size={20} className="text-purple-400" />
+                {isRTL ? 'معاينة الرسالة' : 'Message Preview'}
+              </h2>
+              <button onClick={() => setShowPreviewModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="bg-gradient-to-r from-green-500/10 to-teal-500/10 rounded-xl p-4 border border-green-500/30">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <MessageCircle size={16} className="text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="bg-green-500/20 rounded-2xl rounded-tr-none p-3">
+                    <p className="text-white text-sm whitespace-pre-wrap">{previewMessage}</p>
+                  </div>
+                  <div className="text-right text-xs text-gray-500 mt-1">
+                    {new Date().toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4 mt-4">
+              <button 
+                onClick={() => {
+                  setMessage(previewMessage)
+                  setShowPreviewModal(false)
+                  setActiveTab('compose')
+                  toast.success(isRTL ? 'تم نسخ الرسالة إلى محرر الكتابة' : 'Message copied to composer')
+                }}
+                className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
+              >
+                <Copy size={16} /> {isRTL ? 'استخدام هذه الرسالة' : 'Use This Message'}
+              </button>
+              <button onClick={() => setShowPreviewModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
+                {isRTL ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal إعدادات واتساب */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -528,33 +730,11 @@ export default function WhatsAppManager() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'رقم الهاتف التجاري' : 'Business Phone Number'}</label>
-                    <input 
-                      type="tel" 
-                      className="w-full p-2 bg-gray-700 rounded-lg text-white" 
-                      value={whatsappSettings.businessPhone}
-                      onChange={(e) => setWhatsappSettings({...whatsappSettings, businessPhone: e.target.value})}
-                      placeholder="9665XXXXXXXX"
-                    />
+                    <input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.businessPhone} onChange={(e) => setWhatsappSettings({...whatsappSettings, businessPhone: e.target.value})} placeholder="9665XXXXXXXX" />
                   </div>
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'مفتاح API' : 'API Key'}</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-2 bg-gray-700 rounded-lg text-white" 
-                      value={whatsappSettings.apiKey}
-                      onChange={(e) => setWhatsappSettings({...whatsappSettings, apiKey: e.target.value})}
-                      placeholder="••••••••••••••••"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'Webhook URL' : 'Webhook URL'}</label>
-                    <input 
-                      type="url" 
-                      className="w-full p-2 bg-gray-700 rounded-lg text-white" 
-                      value={whatsappSettings.webhookUrl}
-                      onChange={(e) => setWhatsappSettings({...whatsappSettings, webhookUrl: e.target.value})}
-                      placeholder="https://api.example.com/webhook"
-                    />
+                    <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.apiKey} onChange={(e) => setWhatsappSettings({...whatsappSettings, apiKey: e.target.value})} placeholder="••••••••••••••••" />
                   </div>
                 </div>
               </div>
@@ -579,63 +759,6 @@ export default function WhatsAppManager() {
                       <input type="checkbox" className="sr-only peer" checked={whatsappSettings.autoReplyEnabled} onChange={(e) => setWhatsappSettings({...whatsappSettings, autoReplyEnabled: e.target.checked})} />
                       <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                     </label>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">{isRTL ? 'تأكيد القراءة' : 'Send Read Receipts'}</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" checked={whatsappSettings.sendReadReceipts} onChange={(e) => setWhatsappSettings({...whatsappSettings, sendReadReceipts: e.target.checked})} />
-                      <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* قسم ساعات العمل */}
-              <div className="bg-gray-700/30 rounded-xl p-4">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <Clock size={18} className="text-blue-400" />
-                  {isRTL ? 'ساعات العمل' : 'Working Hours'}
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'بداية الدوام' : 'Start Time'}</label>
-                    <input type="time" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.workingHoursStart} onChange={(e) => setWhatsappSettings({...whatsappSettings, workingHoursStart: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'نهاية الدوام' : 'End Time'}</label>
-                    <input type="time" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.workingHoursEnd} onChange={(e) => setWhatsappSettings({...whatsappSettings, workingHoursEnd: e.target.value})} />
-                  </div>
-                </div>
-              </div>
-
-              {/* قسم رسالة الرد التلقائي */}
-              <div className="bg-gray-700/30 rounded-xl p-4">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <MessageCircle size={18} className="text-green-400" />
-                  {isRTL ? 'رسالة الرد التلقائي' : 'Auto Reply Message'}
-                </h3>
-                <textarea 
-                  className="w-full p-2 bg-gray-700 rounded-lg text-white" 
-                  rows="3"
-                  value={whatsappSettings.autoReplyMessage}
-                  onChange={(e) => setWhatsappSettings({...whatsappSettings, autoReplyMessage: e.target.value})}
-                />
-              </div>
-
-              {/* قسم الحدود */}
-              <div className="bg-gray-700/30 rounded-xl p-4">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <Shield size={18} className="text-red-400" />
-                  {isRTL ? 'الحدود والحماية' : 'Limits & Protection'}
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'الحد الأقصى للرسائل يومياً' : 'Max Messages Per Day'}</label>
-                    <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.maxMessagesPerDay} onChange={(e) => setWhatsappSettings({...whatsappSettings, maxMessagesPerDay: parseInt(e.target.value)})} />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'معدل الرسائل في الدقيقة' : 'Messages Per Minute'}</label>
-                    <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.messageRateLimit} onChange={(e) => setWhatsappSettings({...whatsappSettings, messageRateLimit: parseInt(e.target.value)})} />
                   </div>
                 </div>
               </div>
