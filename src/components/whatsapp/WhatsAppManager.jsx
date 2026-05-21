@@ -5,7 +5,8 @@ import {
   Phone, CheckCircle, XCircle, Calendar, FileText, 
   Star, TrendingUp, AlertCircle, Edit, Trash2, Plus,
   RefreshCw, Download, Filter, Search, Eye, EyeOff,
-  Zap, Target, Award, Shield, Mail, UserCheck
+  Zap, Target, Award, Shield, Mail, UserCheck, 
+  Moon, Sun, Monitor, Globe, Key, Lock, Save, X
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -19,9 +20,28 @@ export default function WhatsAppManager() {
   const [message, setMessage] = useState('')
   const [scheduledMessages, setScheduledMessages] = useState([])
   const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [scheduleDateTime, setScheduleDateTime] = useState('')
   const [activeTab, setActiveTab] = useState('compose')
   const [selectedFlow, setSelectedFlow] = useState(null)
+  
+  // إعدادات الواتساب
+  const [whatsappSettings, setWhatsappSettings] = useState({
+    apiKey: '',
+    businessPhone: '',
+    webhookUrl: '',
+    autoReplyEnabled: true,
+    sendReadReceipts: true,
+    notificationsEnabled: true,
+    workingHoursStart: '09:00',
+    workingHoursEnd: '17:00',
+    workingDays: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
+    autoReplyMessage: 'شكراً لتواصلك معنا. سنقوم بالرد عليك في أقرب وقت ممكن.',
+    defaultTemplate: 'welcome',
+    maxMessagesPerDay: 100,
+    messageRateLimit: 10
+  })
+
   const [autoFlows, setAutoFlows] = useState([
     { id: 1, name: 'booking_confirmation', enabled: true, delay: 0, message: 'تم تأكيد حجز موعدك مع الدكتور {doctor} بتاريخ {date} الساعة {time}' },
     { id: 2, name: 'reminder_before', enabled: true, delay: 24, message: 'تذكير: لديك موعد غداً الساعة {time} مع الدكتور {doctor}' },
@@ -127,11 +147,19 @@ export default function WhatsAppManager() {
     if (saved) {
       setScheduledMessages(JSON.parse(saved))
     }
+    const savedSettings = localStorage.getItem('mcsos_whatsapp_settings')
+    if (savedSettings) {
+      setWhatsappSettings(JSON.parse(savedSettings))
+    }
   }, [])
 
   useEffect(() => {
     localStorage.setItem('mcsos_whatsapp_messages', JSON.stringify(scheduledMessages))
   }, [scheduledMessages])
+
+  useEffect(() => {
+    localStorage.setItem('mcsos_whatsapp_settings', JSON.stringify(whatsappSettings))
+  }, [whatsappSettings])
 
   const handleTemplateChange = (e) => {
     const templateId = e.target.value
@@ -218,6 +246,11 @@ export default function WhatsAppManager() {
     toast.success(isRTL ? 'تم تحديث الإعدادات' : 'Settings updated')
   }
 
+  const handleSaveSettings = () => {
+    toast.success(isRTL ? 'تم حفظ إعدادات واتساب بنجاح' : 'WhatsApp settings saved successfully')
+    setShowSettingsModal(false)
+  }
+
   const getStatusBadge = (status) => {
     if (status === 'sent') {
       return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30"><CheckCircle size={12} className="inline ml-1" /> مرسلة</span>
@@ -244,14 +277,17 @@ export default function WhatsAppManager() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30 transition">
+          <button 
+            onClick={() => setShowSettingsModal(true)}
+            className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30 transition"
+          >
             <Settings size={18} /> {isRTL ? 'إعدادات' : 'Settings'}
           </button>
         </div>
       </div>
 
       {/* أزرار التبويب */}
-      <div className="flex gap-2 border-b border-gray-700 pb-2">
+      <div className="flex gap-2 border-b border-gray-700 pb-2 flex-wrap">
         <button onClick={() => setActiveTab('compose')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'compose' ? 'bg-green-500/20 text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-gray-300'}`}>
           <MessageCircle size={18} className="inline ml-2" /> {isRTL ? 'كتابة رسالة' : 'Compose Message'}
         </button>
@@ -468,6 +504,156 @@ export default function WhatsAppManager() {
         </div>
       )}
 
+      {/* Modal إعدادات واتساب - نافذة كاملة */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Settings size={22} className="text-purple-400" />
+                {isRTL ? 'إعدادات واتساب' : 'WhatsApp Settings'}
+              </h2>
+              <button onClick={() => setShowSettingsModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* قسم إعدادات الحساب */}
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <Phone size={18} className="text-green-400" />
+                  {isRTL ? 'إعدادات الحساب' : 'Account Settings'}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'رقم الهاتف التجاري' : 'Business Phone Number'}</label>
+                    <input 
+                      type="tel" 
+                      className="w-full p-2 bg-gray-700 rounded-lg text-white" 
+                      value={whatsappSettings.businessPhone}
+                      onChange={(e) => setWhatsappSettings({...whatsappSettings, businessPhone: e.target.value})}
+                      placeholder="9665XXXXXXXX"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'مفتاح API' : 'API Key'}</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-2 bg-gray-700 rounded-lg text-white" 
+                      value={whatsappSettings.apiKey}
+                      onChange={(e) => setWhatsappSettings({...whatsappSettings, apiKey: e.target.value})}
+                      placeholder="••••••••••••••••"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'Webhook URL' : 'Webhook URL'}</label>
+                    <input 
+                      type="url" 
+                      className="w-full p-2 bg-gray-700 rounded-lg text-white" 
+                      value={whatsappSettings.webhookUrl}
+                      onChange={(e) => setWhatsappSettings({...whatsappSettings, webhookUrl: e.target.value})}
+                      placeholder="https://api.example.com/webhook"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* قسم إعدادات الإشعارات */}
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <Bell size={18} className="text-yellow-400" />
+                  {isRTL ? 'إعدادات الإشعارات' : 'Notification Settings'}
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300">{isRTL ? 'تفعيل الإشعارات' : 'Enable Notifications'}</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={whatsappSettings.notificationsEnabled} onChange={(e) => setWhatsappSettings({...whatsappSettings, notificationsEnabled: e.target.checked})} />
+                      <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                    </label>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300">{isRTL ? 'تفعيل الرد التلقائي' : 'Enable Auto Reply'}</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={whatsappSettings.autoReplyEnabled} onChange={(e) => setWhatsappSettings({...whatsappSettings, autoReplyEnabled: e.target.checked})} />
+                      <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                    </label>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300">{isRTL ? 'تأكيد القراءة' : 'Send Read Receipts'}</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={whatsappSettings.sendReadReceipts} onChange={(e) => setWhatsappSettings({...whatsappSettings, sendReadReceipts: e.target.checked})} />
+                      <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* قسم ساعات العمل */}
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <Clock size={18} className="text-blue-400" />
+                  {isRTL ? 'ساعات العمل' : 'Working Hours'}
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'بداية الدوام' : 'Start Time'}</label>
+                    <input type="time" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.workingHoursStart} onChange={(e) => setWhatsappSettings({...whatsappSettings, workingHoursStart: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'نهاية الدوام' : 'End Time'}</label>
+                    <input type="time" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.workingHoursEnd} onChange={(e) => setWhatsappSettings({...whatsappSettings, workingHoursEnd: e.target.value})} />
+                  </div>
+                </div>
+              </div>
+
+              {/* قسم رسالة الرد التلقائي */}
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <MessageCircle size={18} className="text-green-400" />
+                  {isRTL ? 'رسالة الرد التلقائي' : 'Auto Reply Message'}
+                </h3>
+                <textarea 
+                  className="w-full p-2 bg-gray-700 rounded-lg text-white" 
+                  rows="3"
+                  value={whatsappSettings.autoReplyMessage}
+                  onChange={(e) => setWhatsappSettings({...whatsappSettings, autoReplyMessage: e.target.value})}
+                />
+              </div>
+
+              {/* قسم الحدود */}
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <Shield size={18} className="text-red-400" />
+                  {isRTL ? 'الحدود والحماية' : 'Limits & Protection'}
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'الحد الأقصى للرسائل يومياً' : 'Max Messages Per Day'}</label>
+                    <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.maxMessagesPerDay} onChange={(e) => setWhatsappSettings({...whatsappSettings, maxMessagesPerDay: parseInt(e.target.value)})} />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'معدل الرسائل في الدقيقة' : 'Messages Per Minute'}</label>
+                    <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={whatsappSettings.messageRateLimit} onChange={(e) => setWhatsappSettings({...whatsappSettings, messageRateLimit: parseInt(e.target.value)})} />
+                  </div>
+                </div>
+              </div>
+
+              {/* أزرار الحفظ والإلغاء */}
+              <div className="flex gap-3 pt-4 border-t border-gray-700">
+                <button onClick={handleSaveSettings} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center gap-2">
+                  <Save size={18} /> {isRTL ? 'حفظ الإعدادات' : 'Save Settings'}
+                </button>
+                <button onClick={() => setShowSettingsModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition flex items-center justify-center gap-2">
+                  <X size={18} /> {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal جدولة الرسالة */}
       {showScheduleModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -475,7 +661,7 @@ export default function WhatsAppManager() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-white">{isRTL ? 'جدولة رسالة' : 'Schedule Message'}</h2>
               <button onClick={() => setShowScheduleModal(false)} className="p-1 hover:bg-gray-700 rounded">
-                <XCircle size={20} className="text-gray-400" />
+                <X size={20} className="text-gray-400" />
               </button>
             </div>
             <div className="space-y-4">
