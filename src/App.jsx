@@ -21,7 +21,9 @@ import InvoiceManager from './components/invoice/InvoiceManager'
 import PrescriptionManager from './components/prescription/PrescriptionManager'
 import PatientProfile from './pages/patient/PatientProfile'
 import Profile from './pages/profile/Profile'
-import DoctorsManager from './components/admin/DoctorsManager'  // <-- أضف هذا السطر
+import DoctorsManager from './components/admin/DoctorsManager'
+import UsersManager from './components/admin/UsersManager'
+import Appointments from './pages/patient/Appointments' 
 
 function App() {
   return (
@@ -39,7 +41,8 @@ function App() {
             {/* مسارات الأدمن */}
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="dashboard" element={<HospitalDashboard />} />
-            <Route path="doctors-manager" element={<DoctorsManager />} />  {/* <-- أضف هذا السطر */}
+            <Route path="doctors-manager" element={<DoctorsManager />} />
+            <Route path="users-manager" element={<UsersManager />} />
             
             {/* مسارات الدكتور */}
             <Route path="doctor-dashboard" element={<DoctorDashboard />} />
@@ -51,6 +54,7 @@ function App() {
             
             {/* مسار المريض */}
             <Route path="patient-dashboard" element={<PatientDashboard />} />
+            <Route path="appointments" element={<Appointments />} />
             
             {/* المسارات المشتركة */}
             <Route path="finance" element={<FinanceManager />} />
