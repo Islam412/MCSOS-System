@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { 
   Users, Calendar, Clock, Activity, CheckCircle, TrendingUp, 
   User, Stethoscope, Pill, FileText, Printer, RefreshCw, 
-  LogIn, Eye, Download, Star, Plus, Edit, Trash2, Save, X, Zap
+  LogIn, Eye, Download, Star, Plus, Edit, Trash2, Save, X, Zap,
+  Search, Filter, Phone, Mail, MapPin
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -15,6 +16,8 @@ export default function DoctorDashboard() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false)
+  const [showCheckInModal, setShowCheckInModal] = useState(false)
+  const [selectedPatientForCheckIn, setSelectedPatientForCheckIn] = useState(null)
   
   // إحصائيات الطبيب
   const [stats, setStats] = useState({
@@ -26,20 +29,23 @@ export default function DoctorDashboard() {
     averageRating: 4.8
   })
   
-  // جدول المواعيد اليوم
+  // جدول المواعيد اليوم (المرضى الذين لديهم مواعيد)
   const [todaySchedule, setTodaySchedule] = useState([
-    { id: 1, time: '09:00', patient: 'أحمد محمد', type: 'كشف', status: 'completed' },
-    { id: 2, time: '10:00', patient: 'سارة حسن', type: 'متابعة', status: 'completed' },
-    { id: 3, time: '11:00', patient: 'محمود علي', type: 'جلسة علاج', status: 'in-progress' },
-    { id: 4, time: '12:00', patient: 'نورة عبدالله', type: 'كشف', status: 'upcoming' },
-    { id: 5, time: '13:00', patient: 'عمر خالد', type: 'فحص', status: 'upcoming' },
+    { id: 1, time: '09:00', patient: 'أحمد محمد', patientId: 1, age: 35, phone: '0501234567', type: 'كشف', status: 'completed' },
+    { id: 2, time: '10:00', patient: 'سارة حسن', patientId: 2, age: 28, phone: '0507654321', type: 'متابعة', status: 'completed' },
+    { id: 3, time: '11:00', patient: 'محمود علي', patientId: 3, age: 42, phone: '0505566778', type: 'جلسة علاج', status: 'in-progress' },
+    { id: 4, time: '12:00', patient: 'نورة عبدالله', patientId: 4, age: 12, phone: '0509988776', type: 'كشف', status: 'scheduled' },
+    { id: 5, time: '13:00', patient: 'عمر خالد', patientId: 5, age: 13, phone: '0501122334', type: 'فحص', status: 'scheduled' },
+    { id: 6, time: '14:00', patient: 'فاطمة إبراهيم', patientId: 6, age: 32, phone: '0503344556', type: 'متابعة', status: 'scheduled' },
   ])
   
   // قائمة المرضى
   const [recentPatients, setRecentPatients] = useState([
-    { id: 1, name: 'أحمد محمد', age: 35, lastVisit: '2024-05-18', diagnosis: 'تمزق في الرباط الصليبي', progress: 75 },
-    { id: 2, name: 'سارة حسن', age: 28, lastVisit: '2024-05-17', diagnosis: 'انزلاق غضروفي', progress: 60 },
-    { id: 3, name: 'محمود علي', age: 42, lastVisit: '2024-05-19', diagnosis: 'التهاب المفاصل', progress: 90 },
+    { id: 1, name: 'أحمد محمد', age: 35, lastVisit: '2024-05-18', diagnosis: 'تمزق في الرباط الصليبي', progress: 75, phone: '0501234567' },
+    { id: 2, name: 'سارة حسن', age: 28, lastVisit: '2024-05-17', diagnosis: 'انزلاق غضروفي', progress: 60, phone: '0507654321' },
+    { id: 3, name: 'محمود علي', age: 42, lastVisit: '2024-05-19', diagnosis: 'التهاب المفاصل', progress: 90, phone: '0505566778' },
+    { id: 4, name: 'نورة عبدالله', age: 12, lastVisit: '2024-05-18', diagnosis: 'التهاب الحلق', progress: 30, phone: '0509988776' },
+    { id: 5, name: 'عمر خالد', age: 13, lastVisit: '2024-05-18', diagnosis: 'كسر في الذراع', progress: 50, phone: '0501122334' },
   ])
   
   // بيانات الروشتة الجديدة
@@ -61,8 +67,41 @@ export default function DoctorDashboard() {
     switch(status) {
       case 'completed': return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ مكتمل</span>
       case 'in-progress': return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⏳ جاري</span>
-      default: return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">📅 قادم</span>
+      case 'scheduled': return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">📅 مجدول</span>
+      default: return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status}</span>
     }
+  }
+
+  // ========== دالة فتح نافذة تسجيل الحضور ==========
+  const handleOpenCheckIn = () => {
+    // جلب المرضى الذين لديهم مواعيد اليوم ولم يتم تسجيل حضورهم بعد
+    const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled')
+    if (scheduledPatients.length === 0) {
+      toast.info('لا توجد مواعيد قادمة لتسجيل الحضور')
+      return
+    }
+    setShowCheckInModal(true)
+  }
+
+  // ========== دالة تأكيد تسجيل الحضور ==========
+  const handleConfirmCheckIn = () => {
+    if (!selectedPatientForCheckIn) {
+      toast.error('الرجاء اختيار المريض')
+      return
+    }
+    
+    setTodaySchedule(todaySchedule.map(app => 
+      app.id === selectedPatientForCheckIn.id ? { ...app, status: 'completed' } : app
+    ))
+    
+    setStats(prev => ({
+      ...prev,
+      completedSessions: prev.completedSessions + 1
+    }))
+    
+    toast.success(`تم تسجيل حضور المريض ${selectedPatientForCheckIn.patient}`)
+    setShowCheckInModal(false)
+    setSelectedPatientForCheckIn(null)
   }
 
   // ========== دالة تحديث التقرير ==========
@@ -73,23 +112,6 @@ export default function DoctorDashboard() {
       totalPatients: prev.totalPatients + Math.floor(Math.random() * 2)
     }))
     toast.success('تم تحديث التقرير بنجاح')
-  }
-
-  // ========== دالة تسجيل حضور ==========
-  const handleCheckIn = () => {
-    const upcomingApp = todaySchedule.find(app => app.status === 'upcoming')
-    if (upcomingApp) {
-      setTodaySchedule(todaySchedule.map(app => 
-        app.id === upcomingApp.id ? { ...app, status: 'completed' } : app
-      ))
-      setStats(prev => ({
-        ...prev,
-        completedSessions: prev.completedSessions + 1
-      }))
-      toast.success(`تم تسجيل حضور المريض ${upcomingApp.patient}`)
-    } else {
-      toast.info('لا توجد مواعيد قادمة لتسجيل الحضور')
-    }
   }
 
   // ========== دالة عرض المرضى ==========
@@ -179,9 +201,6 @@ export default function DoctorDashboard() {
             .stat-card { background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center; }
             .stat-value { font-size: 24px; font-weight: bold; color: #1e3a5f; }
             .stat-label { font-size: 12px; color: #6b7280; }
-            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-            th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: right; }
-            th { background: #f1f5f9; }
             .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
           </style>
         </head>
@@ -208,6 +227,9 @@ export default function DoctorDashboard() {
     }
     toast.success('جاري طباعة التقرير...')
   }
+
+  // المرضى الذين لديهم مواعيد اليوم ولم يتم تسجيل حضورهم
+  const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled')
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="text-white">جاري التحميل...</div></div>
@@ -279,11 +301,10 @@ export default function DoctorDashboard() {
         </div>
       </div>
       
-      {/* إجراءات سريعة - جميع الأزرار تعمل */}
+      {/* إجراءات سريعة */}
       <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Zap size={20} className="text-yellow-400" /> إجراءات سريعة</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* زر عرض المرضى */}
           <button 
             onClick={handleViewPatients}
             className="p-3 bg-blue-500/20 rounded-xl text-blue-400 hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
@@ -291,15 +312,14 @@ export default function DoctorDashboard() {
             <Eye size={18} /> عرض المرضى
           </button>
           
-          {/* زر تسجيل حضور */}
+          {/* زر تسجيل حضور - يفتح نافذة اختيار المريض */}
           <button 
-            onClick={handleCheckIn}
+            onClick={handleOpenCheckIn}
             className="p-3 bg-green-500/20 rounded-xl text-green-400 hover:bg-green-500/30 transition flex items-center justify-center gap-2"
           >
             <LogIn size={18} /> تسجيل حضور
           </button>
           
-          {/* زر كتابة روشتة */}
           <button 
             onClick={handleOpenPrescription}
             className="p-3 bg-purple-500/20 rounded-xl text-purple-400 hover:bg-purple-500/30 transition flex items-center justify-center gap-2"
@@ -307,7 +327,6 @@ export default function DoctorDashboard() {
             <Pill size={18} /> كتابة روشتة
           </button>
           
-          {/* زر تحديث التقرير */}
           <button 
             onClick={handleRefreshReport}
             className="p-3 bg-orange-500/20 rounded-xl text-orange-400 hover:bg-orange-500/30 transition flex items-center justify-center gap-2"
@@ -316,6 +335,55 @@ export default function DoctorDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Modal تسجيل حضور - اختيار المريض */}
+      {showCheckInModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">تسجيل حضور المريض</h2>
+              <button onClick={() => { setShowCheckInModal(false); setSelectedPatientForCheckIn(null); }} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-gray-400 text-sm mb-3">اختر المريض من قائمة المواعيد القادمة:</p>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {scheduledPatients.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">لا توجد مواعيد قادمة</div>
+                ) : (
+                  scheduledPatients.map((patient) => (
+                    <div 
+                      key={patient.id}
+                      onClick={() => setSelectedPatientForCheckIn(patient)}
+                      className={`p-3 rounded-lg cursor-pointer transition border-2 ${selectedPatientForCheckIn?.id === patient.id ? 'bg-blue-500/20 border-blue-500' : 'bg-gray-700/30 border-transparent hover:bg-gray-700/50'}`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-white">{patient.patient}</p>
+                          <p className="text-xs text-gray-400">الوقت: {patient.time} - النوع: {patient.type}</p>
+                          <p className="text-xs text-gray-500">العمر: {patient.age} سنة - الجوال: {patient.phone}</p>
+                        </div>
+                        {selectedPatientForCheckIn?.id === patient.id && (
+                          <CheckCircle size={20} className="text-green-400" />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-4 border-t border-gray-700">
+              <button onClick={handleConfirmCheckIn} disabled={!selectedPatientForCheckIn} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                <CheckCircle size={16} className="inline ml-1" /> تأكيد الحضور
+              </button>
+              <button onClick={() => { setShowCheckInModal(false); setSelectedPatientForCheckIn(null); }} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal إنشاء روشتة جديدة */}
       {showPrescriptionModal && (
