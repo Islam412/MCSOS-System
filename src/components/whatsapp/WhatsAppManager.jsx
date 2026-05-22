@@ -7,7 +7,9 @@ import {
   RefreshCw, Download, Filter, Search, Eye, EyeOff,
   Zap, Target, Award, Shield, Mail, UserCheck, 
   Moon, Sun, Monitor, Globe, Key, Lock, Save, X, Copy,
-  User, Stethoscope, UserPlus, DollarSign, Building
+  User, Stethoscope, UserPlus, DollarSign, Building,
+  CalendarDays, Pill, FileBadge, CreditCard, Smartphone,
+  Headphones, Gift, Sparkles, Heart, Activity
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -36,6 +38,43 @@ export default function WhatsAppManager() {
     delay: 0,
     enabled: true
   })
+  const [selectedContact, setSelectedContact] = useState(null)
+  const [showContactModal, setShowContactModal] = useState(false)
+
+  // جهات الاتصال حسب الدور
+  const getContactsByRole = () => {
+    const roleContacts = {
+      admin: [
+        { id: 1, name: 'دعم فني', phone: '966500000001', department: 'تقنية المعلومات', icon: '💻' },
+        { id: 2, name: 'مدير المستشفى', phone: '966500000002', department: 'الإدارة', icon: '👔' },
+        { id: 3, name: 'خدمة العملاء', phone: '966500000003', department: 'خدمة العملاء', icon: '📞' }
+      ],
+      doctor: [
+        { id: 1, name: 'د. أحمد علي', phone: '966501112222', department: 'جراحة عظام', icon: '🦴' },
+        { id: 2, name: 'د. منى حسن', phone: '966502223333', department: 'علاج طبيعي', icon: '💪' },
+        { id: 3, name: 'د. خالد محمود', phone: '966503334444', department: 'أعصاب', icon: '🧠' }
+      ],
+      reception: [
+        { id: 1, name: 'نورة عبدالله', phone: '966504445555', department: 'الاستقبال', icon: '📞' },
+        { id: 2, name: 'سارة أحمد', phone: '966505556666', department: 'الاستقبال', icon: '📞' }
+      ],
+      finance: [
+        { id: 1, name: 'خالد محمد', phone: '966506667777', department: 'المالية', icon: '💰' },
+        { id: 2, name: 'ريما سعد', phone: '966507778888', department: 'المحاسبة', icon: '📊' }
+      ],
+      patient: [
+        { id: 1, name: 'أحمد محمد', phone: '966508889999', department: 'مرضى', icon: '👤' },
+        { id: 2, name: 'سارة حسن', phone: '966509990000', department: 'مرضى', icon: '👤' }
+      ],
+      user: [
+        { id: 1, name: 'عمر خالد', phone: '966501112233', department: 'مستخدمين', icon: '🧑' },
+        { id: 2, name: 'ليلى عبدالله', phone: '966502223344', department: 'مستخدمين', icon: '👩' }
+      ]
+    }
+    return roleContacts[userRole] || roleContacts.patient
+  }
+
+  const [contacts, setContacts] = useState([])
 
   // إعدادات الواتساب حسب الدور
   const [whatsappSettings, setWhatsappSettings] = useState({
@@ -76,6 +115,10 @@ export default function WhatsAppManager() {
       patient: [
         { id: 1, name: 'appointment_confirmation', nameAr: 'تأكيد موعد', nameEn: 'Appointment Confirmation', enabled: true, delay: 0, delayUnit: 'hours', message: 'تم تأكيد موعدك مع الدكتور {doctor} يوم {date} الساعة {time}' },
         { id: 2, name: 'health_reminder', nameAr: 'تذكير صحي', nameEn: 'Health Reminder', enabled: true, delay: 0, delayUnit: 'hours', message: 'تذكير بموعد جلسة العلاج القادمة' }
+      ],
+      user: [
+        { id: 1, name: 'appointment_confirmation', nameAr: 'تأكيد موعد', nameEn: 'Appointment Confirmation', enabled: true, delay: 0, delayUnit: 'hours', message: 'تم تأكيد موعدك مع الدكتور {doctor} يوم {date} الساعة {time}' },
+        { id: 2, name: 'health_reminder', nameAr: 'تذكير صحي', nameEn: 'Health Reminder', enabled: true, delay: 0, delayUnit: 'hours', message: 'تذكير بموعد جلسة العلاج القادمة' }
       ]
     }
     return roleFlows[userRole] || roleFlows.patient
@@ -111,9 +154,12 @@ export default function WhatsAppManager() {
       patient: [
         { id: 'contact_doctor', nameAr: 'تواصل مع طبيبك', nameEn: 'Contact Your Doctor', messageAr: 'يمكنك التواصل مع طبيبك {doctor} عبر الرابط: {link}', messageEn: 'You can contact your doctor {doctor} via this link: {link}', icon: '👨‍⚕️' },
         { id: 'health_tips', nameAr: 'نصائح صحية', nameEn: 'Health Tips', messageAr: 'نصائح صحية: {tip}', messageEn: 'Health tips: {tip}', icon: '💚' }
+      ],
+      user: [
+        { id: 'contact_support', nameAr: 'تواصل مع الدعم', nameEn: 'Contact Support', messageAr: 'يمكنك التواصل مع فريق الدعم الفني', messageEn: 'You can contact technical support team', icon: '🆘' },
+        { id: 'general_inquiry', nameAr: 'استفسار عام', nameEn: 'General Inquiry', messageAr: 'مرحباً، لدي استفسار بخصوص {topic}', messageEn: 'Hello, I have an inquiry about {topic}', icon: '❓' }
       ]
     }
-
     return [...commonTemplates, ...(roleTemplates[userRole] || [])]
   }
 
@@ -125,6 +171,7 @@ export default function WhatsAppManager() {
       const parsed = JSON.parse(userData)
       setUser(parsed)
       setUserRole(parsed.role)
+      setContacts(getContactsByRole())
     }
     loadData()
   }, [])
@@ -133,6 +180,7 @@ export default function WhatsAppManager() {
     if (userRole) {
       setTemplates(getTemplatesByRole())
       setAutoFlows(getAutoFlowsByRole())
+      setContacts(getContactsByRole())
     }
   }, [userRole])
 
@@ -190,7 +238,8 @@ export default function WhatsAppManager() {
       doctor: 'نظام واتساب - الطبيب',
       reception: 'نظام واتساب - الاستقبال',
       finance: 'نظام واتساب - المالية',
-      patient: 'نظام واتساب - المريض'
+      patient: 'نظام واتساب - المريض',
+      user: 'نظام واتساب - المستخدم'
     }
     return titles[userRole] || 'نظام واتساب'
   }
@@ -201,7 +250,8 @@ export default function WhatsAppManager() {
       doctor: 'التواصل مع المرضى وإرسال الروشتات',
       reception: 'تأكيد الحجوزات والتواصل مع المرضى',
       finance: 'إشعارات الدفع والفواتير',
-      patient: 'التواصل مع المركز واستقبال الإشعارات'
+      patient: 'التواصل مع المركز واستقبال الإشعارات',
+      user: 'التواصل مع الدعم الفني والاستفسارات'
     }
     return subtitles[userRole] || 'إرسال رسائل وتذكيرات أوتوماتيكية'
   }
@@ -212,7 +262,8 @@ export default function WhatsAppManager() {
       doctor: <Stethoscope size={24} className="text-blue-400" />,
       reception: <UserPlus size={24} className="text-green-400" />,
       finance: <DollarSign size={24} className="text-yellow-400" />,
-      patient: <User size={24} className="text-pink-400" />
+      patient: <User size={24} className="text-pink-400" />,
+      user: <User size={24} className="text-gray-400" />
     }
     return icons[userRole] || <MessageCircle size={24} className="text-green-500" />
   }
@@ -220,7 +271,15 @@ export default function WhatsAppManager() {
   const getPlaceholderPhone = () => {
     if (userRole === 'doctor') return 'أدخل رقم جوال المريض...'
     if (userRole === 'patient') return 'أدخل رقم جوال المركز...'
+    if (userRole === 'user') return 'أدخل رقم جوال الدعم الفني...'
     return 'أدخل رقم الجوال...'
+  }
+
+  const getSuggestedContacts = () => {
+    if (userRole === 'patient') return 'يمكنك التواصل مع: د. أحمد علي, د. منى حسن'
+    if (userRole === 'user') return 'يمكنك التواصل مع: الدعم الفني, خدمة العملاء'
+    if (userRole === 'doctor') return 'يمكنك التواصل مع: مرضاك المسجلين'
+    return ''
   }
 
   const handlePreviewFlow = (flow) => {
@@ -234,7 +293,8 @@ export default function WhatsAppManager() {
       summary: 'تحسن ملحوظ في الحالة',
       tip: 'اشرب ماء كثيراً',
       announcement: 'سيتم تحديث النظام غداً',
-      link: 'https://wa.me/966500000000'
+      link: 'https://wa.me/966500000000',
+      topic: 'خدمات المركز الطبي'
     }
     
     let previewMsg = flow.message
@@ -290,6 +350,13 @@ export default function WhatsAppManager() {
     if (template) {
       setMessage(getTemplateMessage(template))
     }
+  }
+
+  const handleSelectContact = (contact) => {
+    setSelectedContact(contact)
+    setPhoneNumber(contact.phone)
+    setShowContactModal(false)
+    toast.success(`تم تحديد ${contact.name}`)
   }
 
   const handleSendMessage = () => {
@@ -387,7 +454,7 @@ export default function WhatsAppManager() {
   const stats = {
     messagesSent: scheduledMessages.filter(m => m.status === 'sent').length,
     scheduledCount: scheduledMessages.filter(m => m.status === 'scheduled').length,
-    activeChats: userRole === 'admin' ? 156 : userRole === 'doctor' ? 45 : userRole === 'reception' ? 89 : userRole === 'finance' ? 34 : 12,
+    activeChats: userRole === 'admin' ? 156 : userRole === 'doctor' ? 45 : userRole === 'reception' ? 89 : userRole === 'finance' ? 34 : userRole === 'patient' ? 12 : 8,
     automatedCount: autoFlows.filter(f => f.enabled).length
   }
 
@@ -427,11 +494,14 @@ export default function WhatsAppManager() {
         <button onClick={() => setActiveTab('compose')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'compose' ? 'bg-green-500/20 text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-gray-300'}`}>
           <MessageCircle size={18} className="inline ml-2" /> {isRTL ? 'كتابة رسالة' : 'Compose Message'}
         </button>
+        <button onClick={() => setActiveTab('contacts')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'contacts' ? 'bg-green-500/20 text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-gray-300'}`}>
+          <Users size={18} className="inline ml-2" /> {isRTL ? 'جهات الاتصال' : 'Contacts'}
+        </button>
         <button onClick={() => setActiveTab('flows')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'flows' ? 'bg-green-500/20 text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-gray-300'}`}>
-          <Zap size={18} className="inline ml-2" /> {isRTL ? 'التدفقات الآلية' : 'Automated Flows'}
+          <Zap size={18} className="inline ml-2" /> {isRTL ? 'تدفقات آلية' : 'Auto Flows'}
         </button>
         <button onClick={() => setActiveTab('history')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'history' ? 'bg-green-500/20 text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-gray-300'}`}>
-          <Clock size={18} className="inline ml-2" /> {isRTL ? 'سجل الرسائل' : 'Message History'}
+          <Clock size={18} className="inline ml-2" /> {isRTL ? 'سجل الرسائل' : 'History'}
         </button>
       </div>
 
@@ -446,22 +516,34 @@ export default function WhatsAppManager() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  {isRTL ? 'جهة الاتصال' : 'Contact'}
+                </label>
+                <div className="flex gap-2">
+                  <input 
+                    type="tel" 
+                    placeholder={getPlaceholderPhone()} 
+                    className="flex-1 p-3 border border-gray-600 rounded-xl bg-gray-700 text-white focus:ring-2 focus:ring-green-500 transition" 
+                    value={phoneNumber} 
+                    onChange={(e) => setPhoneNumber(e.target.value)} 
+                  />
+                  <button 
+                    onClick={() => setShowContactModal(true)}
+                    className="px-4 py-3 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/30 transition"
+                  >
+                    <Users size={18} />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{getSuggestedContacts()}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
                   {isRTL ? 'القالب' : 'Template'}
                 </label>
                 <select className="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 text-white focus:ring-2 focus:ring-green-500 transition" value={selectedTemplate} onChange={handleTemplateChange}>
                   <option value="">{isRTL ? 'اختر قالباً' : 'Select Template'}</option>
                   {templates.map(template => (<option key={template.id} value={template.id}>{template.icon} {getTemplateName(template)}</option>))}
                 </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-300">
-                  {isRTL ? 'رقم الجوال' : 'Phone Number'}
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                  <input type="tel" placeholder={getPlaceholderPhone()} className="w-full pl-10 pr-4 p-3 border border-gray-600 rounded-xl bg-gray-700 text-white focus:ring-2 focus:ring-green-500 transition" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
-                </div>
               </div>
               
               <div>
@@ -495,9 +577,30 @@ export default function WhatsAppManager() {
               <ul className="space-y-2 text-sm text-gray-300">
                 <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> {isRTL ? 'استخدم القوالب الجاهزة لتوفير الوقت' : 'Use templates to save time'}</li>
                 <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> {isRTL ? 'يمكنك جدولة الرسائل لوقت لاحق' : 'Schedule messages for later'}</li>
-                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> {isRTL ? 'تفعيل التدفقات الآلية للإشعارات التلقائية' : 'Enable automatic flows for notifications'}</li>
+                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> {isRTL ? 'استخدم جهات الاتصال للوصول السريع' : 'Use contacts for quick access'}</li>
               </ul>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* تبويب جهات الاتصال */}
+      {activeTab === 'contacts' && (
+        <div className="bg-gray-800/50 rounded-2xl shadow-xl p-6 border border-gray-700/50">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white"><Users className="text-blue-500" size={22} /> {isRTL ? 'جهات الاتصال' : 'Contacts'}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {contacts.map(contact => (
+              <div key={contact.id} className="bg-gray-700/30 rounded-xl p-4 hover:bg-gray-700/50 transition cursor-pointer" onClick={() => handleSelectContact(contact)}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">{contact.icon}</div>
+                  <div>
+                    <p className="font-semibold text-white">{contact.name}</p>
+                    <p className="text-xs text-gray-400">{contact.department}</p>
+                    <p className="text-xs text-gray-500 dir-ltr">{contact.phone}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -532,6 +635,32 @@ export default function WhatsAppManager() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal اختيار جهة اتصال */}
+      {showContactModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2"><Users size={20} className="text-blue-400" /> {isRTL ? 'جهات الاتصال' : 'Contacts'}</h2>
+              <button onClick={() => setShowContactModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
+            </div>
+            <div className="space-y-2">
+              {contacts.map(contact => (
+                <div key={contact.id} className="bg-gray-700/30 rounded-xl p-3 hover:bg-gray-700/50 transition cursor-pointer" onClick={() => handleSelectContact(contact)}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">{contact.icon}</div>
+                    <div>
+                      <p className="font-semibold text-white">{contact.name}</p>
+                      <p className="text-xs text-gray-400">{contact.department}</p>
+                      <p className="text-xs text-gray-500 dir-ltr">{contact.phone}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
