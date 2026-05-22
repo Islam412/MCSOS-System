@@ -4,7 +4,10 @@
     "name": "MCSOS"
   },
   "sidebar": {
+    "admin_dashboard": "Admin Dashboard",
+    "hospital_dashboard": "Hospital Dashboard",
     "dashboard": "Dashboard",
+    "doctors_manager": "Doctors Manager",
     "profile": "Profile",
     "patients": "Patients",
     "reception": "Reception",
@@ -17,6 +20,7 @@
     "prescription": "Prescriptions",
     "invoice": "Invoice",
     "appointments": "Appointments",
+    "book_appointment": "Book Appointment",
     "logout": "Logout"
   },
   "reception": {

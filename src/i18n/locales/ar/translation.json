@@ -4,7 +4,10 @@
     "name": "MCSOS"
   },
   "sidebar": {
+    "admin_dashboard": "لوحة المدير",
+    "hospital_dashboard": "لوحة المستشفى",
     "dashboard": "لوحة التحكم",
+    "doctors_manager": "إدارة الأطباء",
     "profile": "الملف الشخصي",
     "patients": "المرضى",
     "reception": "الاستقبال",
@@ -17,6 +20,7 @@
     "prescription": "الروشتات",
     "invoice": "الفواتير",
     "appointments": "المواعيد",
+    "book_appointment": "حجز موعد",
     "logout": "تسجيل الخروج"
   },
   "reception": {
