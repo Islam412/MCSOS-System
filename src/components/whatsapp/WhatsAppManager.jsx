@@ -1,3 +1,5 @@
+// src/pages/WhatsAppManager.jsx
+
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { 
@@ -13,7 +15,7 @@ import {
   Home, BarChart3, MessageSquare, FolderKanban, Users2,
   UserCog, Hospital, Ambulance, Syringe, Bone, Brain,
   Microscope, ClipboardList, CalendarCheck, Wallet,
-  Check, X as XIcon, AlertTriangle, Info, MessageSquareMore
+  Check, XIcon, AlertTriangle, Info, MessageSquareMore
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -22,12 +24,10 @@ export default function WhatsAppManager() {
   const isRTL = i18n.language === 'ar'
   const currentLang = i18n.language
   
+  // جلب بيانات المستخدم من localStorage (بدلاً من showRoleSelector)
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState('')
-  const [isNewUser, setIsNewUser] = useState(false)
-  const [showRoleSelector, setShowRoleSelector] = useState(false)
-  const [activePatient, setActivePatient] = useState(null) // المريض النشط للطبيب
-
+  
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [message, setMessage] = useState('')
@@ -48,32 +48,35 @@ export default function WhatsAppManager() {
   })
   const [selectedContact, setSelectedContact] = useState(null)
   const [showContactModal, setShowContactModal] = useState(false)
-  const [showAppointmentModal, setShowAppointmentModal] = useState(false)
-  const [appointmentData, setAppointmentData] = useState({
-    patientName: '',
-    patientPhone: '',
-    doctorName: '',
-    date: '',
-    time: '',
-    type: 'new' // new, cancel, confirm
-  })
+  const [showPatientSelector, setShowPatientSelector] = useState(false)
+  const [selectedPatient, setSelectedPatient] = useState(null)
+
+  // بيانات المستخدم من localStorage (بدلاً من شاشة اختيار الدور)
+  useEffect(() => {
+    const userData = localStorage.getItem('mcsos_user')
+    if (userData) {
+      const parsed = JSON.parse(userData)
+      setUser(parsed)
+      setUserRole(parsed.role)
+    }
+    loadData()
+  }, [])
 
   // ==================== بيانات خاصة بكل دور ====================
 
-  // بيانات المريض المسجل (للدكتور والاستقبال)
-  const registeredPatients = [
-    { id: 1, name: 'أحمد محمد', phone: '966508889999', doctor: 'د. أحمد علي', lastVisit: '2024-05-20', nextAppointment: '2024-05-25', balance: 500, status: 'نشط' },
-    { id: 2, name: 'سارة حسن', phone: '966509990000', doctor: 'د. منى حسن', lastVisit: '2024-05-19', nextAppointment: '2024-05-26', balance: 0, status: 'نشط' },
-    { id: 3, name: 'محمد علي', phone: '966501112233', doctor: 'د. خالد محمود', lastVisit: '2024-05-18', nextAppointment: '2024-05-27', balance: 200, status: 'قيد العلاج' },
-    { id: 4, name: 'فاطمة خالد', phone: '966502223344', doctor: 'د. أحمد علي', lastVisit: '2024-05-17', nextAppointment: '2024-05-28', balance: 0, status: 'جديد' },
-    { id: 5, name: 'عمر خالد', phone: '966503334455', doctor: 'د. منى حسن', lastVisit: '2024-05-16', nextAppointment: '2024-05-29', balance: 750, status: 'نشط' }
+  // قائمة المرضى للطبيب
+  const doctorPatients = [
+    { id: 1, name: 'أحمد محمد', phone: '966508889999', lastVisit: '2024-05-20', nextAppointment: '2024-05-25', diagnosis: 'علاج طبيعي', status: 'نشط' },
+    { id: 2, name: 'سارة حسن', phone: '966509990000', lastVisit: '2024-05-19', nextAppointment: '2024-05-26', diagnosis: 'جراحة عظام', status: 'نشط' },
+    { id: 3, name: 'محمد علي', phone: '966501112233', lastVisit: '2024-05-18', nextAppointment: '2024-05-27', diagnosis: 'أعصاب', status: 'قيد العلاج' },
+    { id: 4, name: 'فاطمة خالد', phone: '966502223344', lastVisit: '2024-05-17', nextAppointment: '2024-05-28', diagnosis: 'علاج طبيعي', status: 'جديد' }
   ]
 
   // بيانات الأطباء
   const doctorsList = [
-    { id: 1, name: 'د. أحمد علي', specialty: 'جراحة عظام', phone: '966501112222', department: 'العظام', patients: registeredPatients.filter(p => p.doctor === 'د. أحمد علي') },
-    { id: 2, name: 'د. منى حسن', specialty: 'علاج طبيعي', phone: '966502223333', department: 'العلاج الطبيعي', patients: registeredPatients.filter(p => p.doctor === 'د. منى حسن') },
-    { id: 3, name: 'د. خالد محمود', specialty: 'أعصاب', phone: '966503334444', department: 'الأعصاب', patients: registeredPatients.filter(p => p.doctor === 'د. خالد محمود') }
+    { id: 1, name: 'د. أحمد علي', specialty: 'جراحة عظام', phone: '966501112222', department: 'العظام' },
+    { id: 2, name: 'د. منى حسن', specialty: 'علاج طبيعي', phone: '966502223333', department: 'العلاج الطبيعي' },
+    { id: 3, name: 'د. خالد محمود', specialty: 'أعصاب', phone: '966503334444', department: 'الأعصاب' }
   ]
 
   // بيانات موظفي الاستقبال
@@ -88,290 +91,181 @@ export default function WhatsAppManager() {
     { id: 2, name: 'ريما سعد', phone: '966507778888', role: 'محاسبة' }
   ]
 
-  // بيانات مدير النظام
-  const systemAdmins = [
-    { id: 1, name: 'مدير النظام', phone: '966500000001', role: 'مدير تقنية' },
-    { id: 2, name: 'مدير المستشفى', phone: '966500000002', role: 'مدير عام' }
-  ]
-
   // ==================== جهات الاتصال حسب الدور ====================
   
   const getContactsByRole = () => {
-    const roleContacts = {
+    if (userRole === 'patient') {
       // المريض: يتواصل مع طبيبه المعالج وموظف الاستقبال
-      patient: () => {
-        // نفترض أن المريض الحالي هو "أحمد محمد" (id=1) وطبيبه المعالج هو "د. أحمد علي"
-        const currentPatient = registeredPatients[0]
-        const myDoctor = doctorsList.find(d => d.name === currentPatient.doctor)
-        
-        return [
-          { id: 'my_doctor', name: myDoctor?.name || 'د. أحمد علي', phone: myDoctor?.phone || '966501112222', department: 'طبيبي المعالج', icon: '👨‍⚕️', role: 'doctor', specialty: myDoctor?.specialty },
-          { id: 'reception', name: 'موظف الاستقبال', phone: receptionStaff[0].phone, department: 'خدمة العملاء', icon: '📞', role: 'reception', name2: receptionStaff[0].name },
-          { id: 'support', name: 'خدمة العملاء', phone: '966500000003', department: 'الدعم الفني', icon: '🆘', role: 'support' }
-        ]
-      },
-      
-      // المستخدم العادي: يتواصل مع الاستقبال والدعم الفني فقط
-      user: () => [
+      const currentPatient = doctorPatients[0]
+      const myDoctor = doctorsList.find(d => d.name.includes('أحمد علي'))
+      return [
+        { id: 'my_doctor', name: myDoctor?.name || 'د. أحمد علي', phone: myDoctor?.phone || '966501112222', department: 'طبيبي المعالج', icon: '👨‍⚕️', role: 'doctor' },
+        { id: 'reception', name: 'موظف الاستقبال', phone: receptionStaff[0].phone, department: 'خدمة العملاء', icon: '📞', role: 'reception' },
+        { id: 'support', name: 'خدمة العملاء', phone: '966500000003', department: 'الدعم الفني', icon: '🆘', role: 'support' }
+      ]
+    }
+    else if (userRole === 'user') {
+      return [
         { id: 'reception', name: 'موظف الاستقبال', phone: receptionStaff[0].phone, department: 'خدمة العملاء', icon: '📞', role: 'reception' },
         { id: 'support', name: 'الدعم الفني', phone: '966500000003', department: 'تقنية المعلومات', icon: '💻', role: 'support' }
-      ],
-      
-      // الطبيب: يتواصل مع مرضاه فقط
-      doctor: () => {
-        // نفترض أن الدكتور الحالي هو "د. أحمد علي"
-        const currentDoctor = doctorsList[0]
-        return currentDoctor.patients.map(p => ({
-          id: p.id,
-          name: p.name,
-          phone: p.phone,
-          department: `مريض - آخر زيارة: ${p.lastVisit}`,
-          icon: '👤',
-          role: 'patient',
-          nextAppointment: p.nextAppointment,
-          balance: p.balance
-        }))
-      },
-      
-      // موظف الاستقبال: يتواصل مع جميع المرضى والأطباء
-      reception: () => {
-        const allPatients = registeredPatients.map(p => ({
-          id: `patient_${p.id}`,
-          name: p.name,
-          phone: p.phone,
-          department: `مريض - الدكتور: ${p.doctor}`,
-          icon: '👤',
-          role: 'patient',
-          nextAppointment: p.nextAppointment,
-          doctor: p.doctor
-        }))
-        
-        const allDoctors = doctorsList.map(d => ({
-          id: `doctor_${d.id}`,
-          name: d.name,
-          phone: d.phone,
-          department: `طبيب - ${d.specialty}`,
-          icon: '👨‍⚕️',
-          role: 'doctor',
-          specialty: d.specialty
-        }))
-        
-        return [...allPatients, ...allDoctors]
-      },
-      
-      // القسم المالي: يتواصل مع جميع العاملين (أطباء، استقبال، مدير)
-      finance: () => {
-        const allDoctors = doctorsList.map(d => ({
-          id: `doctor_${d.id}`,
-          name: d.name,
-          phone: d.phone,
-          department: `طبيب - ${d.specialty}`,
-          icon: '👨‍⚕️',
-          role: 'doctor'
-        }))
-        
-        const allReception = receptionStaff.map(r => ({
-          id: `reception_${r.id}`,
-          name: r.name,
-          phone: r.phone,
-          department: `استقبال - ${r.shift}`,
-          icon: '📞',
-          role: 'reception'
-        }))
-        
-        const admins = systemAdmins.map(a => ({
-          id: `admin_${a.id}`,
-          name: a.name,
-          phone: a.phone,
-          department: a.role,
-          icon: '👔',
-          role: 'admin'
-        }))
-        
-        return [...allDoctors, ...allReception, ...admins]
-      },
-      
-      // مدير النظام: يتواصل مع الجميع
-      admin: () => {
-        const allDoctors = doctorsList.map(d => ({
-          id: `doctor_${d.id}`,
-          name: d.name,
-          phone: d.phone,
-          department: `طبيب - ${d.specialty}`,
-          icon: '👨‍⚕️',
-          role: 'doctor'
-        }))
-        
-        const allReception = receptionStaff.map(r => ({
-          id: `reception_${r.id}`,
-          name: r.name,
-          phone: r.phone,
-          department: `استقبال - ${r.shift}`,
-          icon: '📞',
-          role: 'reception'
-        }))
-        
-        const allFinance = financeStaff.map(f => ({
-          id: `finance_${f.id}`,
-          name: f.name,
-          phone: f.phone,
-          department: `مالية - ${f.role}`,
-          icon: '💰',
-          role: 'finance'
-        }))
-        
-        const allPatients = registeredPatients.map(p => ({
-          id: `patient_${p.id}`,
-          name: p.name,
-          phone: p.phone,
-          department: `مريض - الدكتور: ${p.doctor}`,
-          icon: '👤',
-          role: 'patient'
-        }))
-        
-        return [...allDoctors, ...allReception, ...allFinance, ...allPatients, ...systemAdmins]
-      }
+      ]
     }
-    
-    const contactsGetter = roleContacts[userRole]
-    return contactsGetter ? contactsGetter() : []
+    else if (userRole === 'doctor') {
+      // الطبيب: يتواصل مع مرضاه
+      return doctorPatients.map(p => ({
+        id: p.id,
+        name: p.name,
+        phone: p.phone,
+        department: `مريض - آخر زيارة: ${p.lastVisit}`,
+        icon: '👤',
+        role: 'patient',
+        nextAppointment: p.nextAppointment
+      }))
+    }
+    else if (userRole === 'reception') {
+      // موظف الاستقبال: يتواصل مع جميع المرضى والأطباء
+      const allPatients = doctorPatients.map(p => ({
+        id: `patient_${p.id}`,
+        name: p.name,
+        phone: p.phone,
+        department: `مريض - الدكتور: ${p.doctor}`,
+        icon: '👤',
+        role: 'patient',
+        nextAppointment: p.nextAppointment
+      }))
+      const allDoctors = doctorsList.map(d => ({
+        id: `doctor_${d.id}`,
+        name: d.name,
+        phone: d.phone,
+        department: `طبيب - ${d.specialty}`,
+        icon: '👨‍⚕️',
+        role: 'doctor'
+      }))
+      return [...allPatients, ...allDoctors]
+    }
+    else if (userRole === 'finance') {
+      // القسم المالي: يتواصل مع جميع العاملين
+      const allDoctors = doctorsList.map(d => ({
+        id: `doctor_${d.id}`,
+        name: d.name,
+        phone: d.phone,
+        department: `طبيب - ${d.specialty}`,
+        icon: '👨‍⚕️',
+        role: 'doctor'
+      }))
+      const allReception = receptionStaff.map(r => ({
+        id: `reception_${r.id}`,
+        name: r.name,
+        phone: r.phone,
+        department: `استقبال - ${r.shift}`,
+        icon: '📞',
+        role: 'reception'
+      }))
+      return [...allDoctors, ...allReception]
+    }
+    else if (userRole === 'admin') {
+      // مدير النظام: يتواصل مع الجميع
+      const allDoctors = doctorsList.map(d => ({
+        id: `doctor_${d.id}`,
+        name: d.name,
+        phone: d.phone,
+        department: `طبيب - ${d.specialty}`,
+        icon: '👨‍⚕️',
+        role: 'doctor'
+      }))
+      const allReception = receptionStaff.map(r => ({
+        id: `reception_${r.id}`,
+        name: r.name,
+        phone: r.phone,
+        department: `استقبال - ${r.shift}`,
+        icon: '📞',
+        role: 'reception'
+      }))
+      const allFinance = financeStaff.map(f => ({
+        id: `finance_${f.id}`,
+        name: f.name,
+        phone: f.phone,
+        department: `مالية - ${f.role}`,
+        icon: '💰',
+        role: 'finance'
+      }))
+      const allPatients = doctorPatients.map(p => ({
+        id: `patient_${p.id}`,
+        name: p.name,
+        phone: p.phone,
+        department: `مريض - الدكتور: ${p.doctor}`,
+        icon: '👤',
+        role: 'patient'
+      }))
+      return [...allDoctors, ...allReception, ...allFinance, ...allPatients]
+    }
+    return []
   }
 
-  const [contacts, setContacts] = useState([])
+  const [contactsList, setContactsList] = useState([])
 
   // ==================== القوالب حسب الدور ====================
   
   const getTemplatesByRole = () => {
-    const roleTemplates = {
-      // المريض
+    const templates = {
       patient: [
-        { id: 'ask_doctor', nameAr: 'استفسار للطبيب', nameEn: 'Ask Doctor', messageAr: '👨‍⚕️ دكتور {doctor}، لدي استفسار بخصوص حالتي الصحية...', messageEn: 'Dr. {doctor}, I have a question about my health condition...', icon: '❓' },
-        { id: 'book_appointment', nameAr: 'طلب حجز موعد', nameEn: 'Book Appointment', messageAr: '📅 أرغب في حجز موعد مع الدكتور {doctor} في أقرب وقت ممكن', messageEn: 'I would like to book an appointment with Dr. {doctor} as soon as possible', icon: '📅' },
-        { id: 'cancel_appointment', nameAr: 'إلغاء موعد', nameEn: 'Cancel Appointment', messageAr: '❌ أرغب في إلغاء موعدي يوم {date} الساعة {time} مع الدكتور {doctor}', messageEn: 'I would like to cancel my appointment on {date} at {time} with Dr. {doctor}', icon: '❌' },
-        { id: 'ask_reception', nameAr: 'استفسار للإستقبال', nameEn: 'Ask Reception', messageAr: '📞 مساء الخير، لدي استفسار بخصوص {topic}، أرجو المساعدة', messageEn: 'Good evening, I have an inquiry about {topic}, please help', icon: '📞' }
+        { id: 'ask_doctor', nameAr: 'استفسار للطبيب', nameEn: 'Ask Doctor', messageAr: '👨‍⚕️ دكتور {doctor}، لدي استفسار بخصوص حالتي الصحية...', messageEn: 'Dr. {doctor}, I have a question about my health...', icon: '❓' },
+        { id: 'book_appointment', nameAr: 'طلب حجز موعد', nameEn: 'Book Appointment', messageAr: '📅 أرغب في حجز موعد مع الدكتور {doctor}', messageEn: 'I want to book an appointment with Dr. {doctor}', icon: '📅' }
       ],
-      
-      // المستخدم العادي
-      user: [
-        { id: 'general_inquiry', nameAr: 'استفسار عام', nameEn: 'General Inquiry', messageAr: '❓ مرحباً، لدي استفسار بخصوص {topic}، يرجى المساعدة', messageEn: 'Hello, I have an inquiry about {topic}, please help', icon: '❓' },
-        { id: 'technical_support', nameAr: 'دعم فني', nameEn: 'Technical Support', messageAr: '💻 يواجهني مشكلة تقنية: {issue}، يرجى المساعدة', messageEn: 'I am facing a technical issue: {issue}, please help', icon: '💻' },
-        { id: 'complaint', nameAr: 'شكوى', nameEn: 'Complaint', messageAr: '⚠️ أرغب في تقديم شكوى بخصوص {complaint}', messageEn: 'I would like to file a complaint regarding {complaint}', icon: '⚠️' }
-      ],
-      
-      // الطبيب
       doctor: [
-        { id: 'appointment_reminder', nameAr: 'تذكير موعد', nameEn: 'Appointment Reminder', messageAr: '⏰ تذكير: لديك موعد مع الدكتور {doctor} يوم {date} الساعة {time}', messageEn: 'Reminder: You have an appointment with Dr. {doctor} on {date} at {time}', icon: '⏰' },
-        { id: 'prescription', nameAr: 'روشتة طبية', nameEn: 'Prescription', messageAr: '💊 روشتتك الطبية: {medicines}\nالجرعة: {dosage}\nملاحظات: {notes}', messageEn: 'Your prescription: {medicines}\nDosage: {dosage}\nNotes: {notes}', icon: '💊' },
-        { id: 'follow_up', nameAr: 'متابعة', nameEn: 'Follow-up', messageAr: '📞 متابعة: كيف حالك بعد الجلسة؟ نتمنى لك الشفاء العاجل', messageEn: 'Follow-up: How are you feeling after the session? Wishing you a speedy recovery', icon: '📞' },
-        { id: 'lab_result', nameAr: 'نتيجة تحليل', nameEn: 'Lab Result', messageAr: '🔬 نتائج التحاليل جاهزة. يرجى مراجعة العيادة لاستلامها', messageEn: 'Lab results are ready. Please visit the clinic to receive them', icon: '🔬' }
+        { id: 'appointment_reminder', nameAr: 'تذكير موعد', nameEn: 'Reminder', messageAr: '⏰ تذكير: لديك موعد مع الدكتور {doctor} يوم {date}', messageEn: 'Reminder: You have an appointment with Dr. {doctor} on {date}', icon: '⏰' },
+        { id: 'prescription', nameAr: 'روشتة طبية', nameEn: 'Prescription', messageAr: '💊 روشتتك الطبية: {medicines}', messageEn: 'Your prescription: {medicines}', icon: '💊' }
       ],
-      
-      // موظف الاستقبال
       reception: [
-        { id: 'confirm_appointment', nameAr: 'تأكيد موعد', nameEn: 'Confirm Appointment', messageAr: '✅ تم تأكيد موعدك مع الدكتور {doctor} يوم {date} الساعة {time}', messageEn: 'Your appointment with Dr. {doctor} has been confirmed on {date} at {time}', icon: '✅' },
-        { id: 'cancel_appointment', nameAr: 'إلغاء موعد', nameEn: 'Cancel Appointment', messageAr: '❌ تم إلغاء موعدك مع الدكتور {doctor} يوم {date}', messageEn: 'Your appointment with Dr. {doctor} on {date} has been cancelled', icon: '❌' },
-        { id: 'reschedule_appointment', nameAr: 'إعادة جدولة', nameEn: 'Reschedule', messageAr: '📅 تم إعادة جدولة موعدك ليوم {newDate} الساعة {newTime}', messageEn: 'Your appointment has been rescheduled to {newDate} at {newTime}', icon: '📅' },
-        { id: 'payment_reminder', nameAr: 'تذكير بدفع', nameEn: 'Payment Reminder', messageAr: '💰 تذكير: لديك مبلغ مستحق قيمته {amount} ريال', messageEn: 'Reminder: You have an outstanding payment of {amount} SAR', icon: '💰' },
-        { id: 'registration_complete', nameAr: 'اكتمال التسجيل', nameEn: 'Registration Complete', messageAr: '📝 تم تسجيلك بنجاح في المركز الطبي. رقم ملفك: {fileNumber}', messageEn: 'Successfully registered at the medical center. Your file number: {fileNumber}', icon: '📝' }
+        { id: 'confirm_appointment', nameAr: 'تأكيد موعد', nameEn: 'Confirm', messageAr: '✅ تم تأكيد موعدك مع الدكتور {doctor} يوم {date}', messageEn: 'Your appointment with Dr. {doctor} is confirmed on {date}', icon: '✅' },
+        { id: 'payment_reminder', nameAr: 'تذكير بدفع', nameEn: 'Payment', messageAr: '💰 تذكير: لديك مبلغ مستحق قيمته {amount} ريال', messageEn: 'Reminder: You have {amount} SAR due', icon: '💰' }
       ],
-      
-      // القسم المالي
       finance: [
-        { id: 'payment_due_doctor', nameAr: 'مستحقات طبيب', nameEn: 'Doctor Payment', messageAr: '💰 دكتور {doctor}، مستحقاتك لهذا الشهر: {amount} ريال', messageEn: 'Dr. {doctor}, your monthly dues: {amount} SAR', icon: '💰' },
-        { id: 'payment_due_staff', nameAr: 'مستحقات موظف', nameEn: 'Staff Payment', messageAr: '💰 الأستاذ {name}، مستحقاتك لهذا الشهر: {amount} ريال', messageEn: 'Mr./Ms. {name}, your monthly dues: {amount} SAR', icon: '💰' },
-        { id: 'invoice_reminder', nameAr: 'تذكير فاتورة', nameEn: 'Invoice Reminder', messageAr: '📄 فاتورة رقم {invoice} مستحقة الدفع بقيمة {amount} ريال', messageEn: 'Invoice #{invoice} is due for payment of {amount} SAR', icon: '📄' },
-        { id: 'financial_report', nameAr: 'تقرير مالي', nameEn: 'Financial Report', messageAr: '📊 التقرير المالي للشهر: الإيرادات {revenue} ريال، المصروفات {expenses} ريال', messageEn: 'Monthly financial report: Revenue {revenue} SAR, Expenses {expenses} SAR', icon: '📊' },
-        { id: 'complaint_finance', nameAr: 'شكوى مالية', nameEn: 'Financial Complaint', messageAr: '⚠️ يوجد شكوى مالية من المريض {patient} بخصوص {issue}', messageEn: 'There is a financial complaint from patient {patient} regarding {issue}', icon: '⚠️' }
+        { id: 'payment_due', nameAr: 'مستحقات', nameEn: 'Dues', messageAr: '💰 مستحقاتك لهذا الشهر: {amount} ريال', messageEn: 'Your monthly dues: {amount} SAR', icon: '💰' },
+        { id: 'invoice', nameAr: 'فاتورة', nameEn: 'Invoice', messageAr: '📄 فاتورة رقم {invoice} بقيمة {amount} ريال', messageEn: 'Invoice #{invoice} for {amount} SAR', icon: '📄' }
       ],
-      
-      // مدير النظام
       admin: [
-        { id: 'system_update', nameAr: 'تحديث النظام', nameEn: 'System Update', messageAr: '🔄 سيتم تحديث النظام يوم {date} من الساعة {startTime} إلى {endTime}', messageEn: 'The system will be updated on {date} from {startTime} to {endTime}', icon: '🔄' },
-        { id: 'staff_meeting', nameAr: 'اجتماع الموظفين', nameEn: 'Staff Meeting', messageAr: '👥 اجتماع للموظفين يوم {date} الساعة {time} في {location}', messageEn: 'Staff meeting on {date} at {time} at {location}', icon: '👥' },
-        { id: 'announcement', nameAr: 'إعلان عام', nameEn: 'Announcement', messageAr: '📢 إعلان: {announcement}', messageEn: 'Announcement: {announcement}', icon: '📢' },
-        { id: 'emergency', nameAr: 'حالة طارئة', nameEn: 'Emergency', messageAr: '🚨 حالة طارئة: {emergency}. يرجى اتخاذ الإجراءات اللازمة', messageEn: 'Emergency: {emergency}. Please take necessary actions', icon: '🚨' },
-        { id: 'performance_report', nameAr: 'تقرير الأداء', nameEn: 'Performance Report', messageAr: '📊 تقرير أداء الموظفين: {report}', messageEn: 'Staff performance report: {report}', icon: '📊' }
+        { id: 'announcement', nameAr: 'إعلان', nameEn: 'Announcement', messageAr: '📢 إعلان: {announcement}', messageEn: 'Announcement: {announcement}', icon: '📢' },
+        { id: 'meeting', nameAr: 'اجتماع', nameEn: 'Meeting', messageAr: '👥 اجتماع يوم {date} الساعة {time}', messageEn: 'Meeting on {date} at {time}', icon: '👥' }
+      ],
+      user: [
+        { id: 'inquiry', nameAr: 'استفسار', nameEn: 'Inquiry', messageAr: '❓ لدي استفسار بخصوص {topic}', messageEn: 'I have an inquiry about {topic}', icon: '❓' }
       ]
     }
-    
-    return roleTemplates[userRole] || roleTemplates.user
+    return templates[userRole] || templates.user
   }
 
   const [templates, setTemplates] = useState([])
 
-  // ==================== التدفقات الآلية حسب الدور ====================
+  // ==================== التدفقات الآلية ====================
   
   const getAutoFlowsByRole = () => {
-    const roleFlows = {
+    const flows = {
       patient: [
-        { id: 1, nameAr: 'تذكير موعد', nameEn: 'Appointment Reminder', enabled: true, delay: 24, delayUnit: 'hours', message: '⏰ تذكير: لديك موعد مع الدكتور {doctor} غداً الساعة {time}' },
-        { id: 2, nameAr: 'تأكيد حجز', nameEn: 'Booking Confirmation', enabled: true, delay: 0, delayUnit: 'hours', message: '✅ تم تأكيد حجز موعدك مع الدكتور {doctor} يوم {date} الساعة {time}' }
+        { id: 1, nameAr: 'تذكير موعد', nameEn: 'Reminder', enabled: true, delay: 24, delayUnit: 'hours', message: '⏰ تذكير: لديك موعد غداً الساعة {time}' }
       ],
       doctor: [
-        { id: 1, nameAr: 'تذكير موعد مريض', nameEn: 'Patient Reminder', enabled: true, delay: 24, delayUnit: 'hours', message: '⏰ تذكير: لديك موعد مع المريض {patient} غداً الساعة {time}' },
-        { id: 2, nameAr: 'روشتة إلكترونية', nameEn: 'E-Prescription', enabled: true, delay: 0, delayUnit: 'hours', message: '💊 تم إرسال روشتة للمريض {patient}' }
+        { id: 1, nameAr: 'تذكير مريض', nameEn: 'Patient Reminder', enabled: true, delay: 24, delayUnit: 'hours', message: '⏰ تذكير: لديك موعد مع المريض {patient} غداً' }
       ],
       reception: [
-        { id: 1, nameAr: 'تأكيد موعد', nameEn: 'Confirm Appointment', enabled: true, delay: 48, delayUnit: 'hours', message: '✅ تم تأكيد موعدك مع الدكتور {doctor} يوم {date} الساعة {time}' },
-        { id: 2, nameAr: 'تذكير بدفع', nameEn: 'Payment Reminder', enabled: true, delay: 0, delayUnit: 'hours', message: '💰 تذكير: لديك مبلغ مستحق قيمته {amount} ريال' }
+        { id: 1, nameAr: 'تأكيد موعد', nameEn: 'Confirm', enabled: true, delay: 48, delayUnit: 'hours', message: '✅ تم تأكيد موعدك' }
       ],
       finance: [
-        { id: 1, nameAr: 'مستحقات شهرية', nameEn: 'Monthly Dues', enabled: true, delay: 0, delayUnit: 'hours', message: '💰 مستحقاتك لهذا الشهر: {amount} ريال' },
-        { id: 2, nameAr: 'تقرير مالي', nameEn: 'Financial Report', enabled: true, delay: 0, delayUnit: 'hours', message: '📊 التقرير المالي الشهري جاهز للاطلاع' }
+        { id: 1, nameAr: 'تذكير دفع', nameEn: 'Payment', enabled: true, delay: 0, delayUnit: 'hours', message: '💰 تذكير بدفع المستحقات' }
       ],
       admin: [
-        { id: 1, nameAr: 'تحديث نظام', nameEn: 'System Update', enabled: true, delay: 0, delayUnit: 'hours', message: '🔄 سيتم تحديث النظام يوم {date}' },
-        { id: 2, nameAr: 'تقرير أداء', nameEn: 'Performance Report', enabled: true, delay: 0, delayUnit: 'hours', message: '📊 تقرير أداء النظام لهذا الأسبوع جاهز' }
+        { id: 1, nameAr: 'تحديث نظام', nameEn: 'Update', enabled: true, delay: 0, delayUnit: 'hours', message: '🔄 تحديث النظام يوم {date}' }
       ],
       user: [
-        { id: 1, nameAr: 'رسالة ترحيب', nameEn: 'Welcome', enabled: true, delay: 0, delayUnit: 'hours', message: '👋 مرحباً بك في نظام المركز الطبي' }
+        { id: 1, nameAr: 'رسالة ترحيب', nameEn: 'Welcome', enabled: true, delay: 0, delayUnit: 'hours', message: '👋 مرحباً بك' }
       ]
     }
-    return roleFlows[userRole] || roleFlows.user
+    return flows[userRole] || flows.user
   }
 
   const [autoFlows, setAutoFlows] = useState([])
 
-  // ==================== إحصائيات حسب الدور ====================
-  
-  const getStatsByRole = () => {
-    const baseStats = {
-      messagesSent: scheduledMessages.filter(m => m.status === 'sent').length,
-      scheduledCount: scheduledMessages.filter(m => m.status === 'scheduled').length,
-      automatedCount: autoFlows.filter(f => f.enabled).length
-    }
-    
-    const roleStats = {
-      patient: { ...baseStats, activeChats: 2, myDoctor: 'د. أحمد علي', nextAppointment: '2024-05-25' },
-      user: { ...baseStats, activeChats: 1 },
-      doctor: { ...baseStats, activeChats: doctorsList[0]?.patients.length || 0, myPatients: doctorsList[0]?.patients.length || 0 },
-      reception: { ...baseStats, activeChats: registeredPatients.length + doctorsList.length, pendingAppointments: registeredPatients.filter(p => p.nextAppointment).length },
-      finance: { ...baseStats, activeChats: doctorsList.length + receptionStaff.length, pendingPayments: registeredPatients.filter(p => p.balance > 0).length },
-      admin: { ...baseStats, activeChats: registeredPatients.length + doctorsList.length + receptionStaff.length + financeStaff.length }
-    }
-    
-    return roleStats[userRole] || baseStats
-  }
-
-  const stats = getStatsByRole()
-
-  // ==================== دوال المساعدة ====================
-  
-  const [contactsList, setContactsList] = useState([])
-
-  useEffect(() => {
-    const userData = localStorage.getItem('mcsos_user')
-    if (userData) {
-      const parsed = JSON.parse(userData)
-      setUser(parsed)
-      setUserRole(parsed.role)
-      setIsNewUser(parsed.isNew || false)
-    } else {
-      setShowRoleSelector(true)
-    }
-    loadData()
-  }, [])
-
+  // تحديث البيانات عند تغيير الدور
   useEffect(() => {
     if (userRole) {
       setTemplates(getTemplatesByRole())
@@ -382,13 +276,9 @@ export default function WhatsAppManager() {
 
   const loadData = () => {
     const savedMessages = localStorage.getItem(`mcsos_whatsapp_messages_${userRole}`)
-    if (savedMessages) {
-      setScheduledMessages(JSON.parse(savedMessages))
-    }
+    if (savedMessages) setScheduledMessages(JSON.parse(savedMessages))
     const savedFlows = localStorage.getItem(`mcsos_whatsapp_flows_${userRole}`)
-    if (savedFlows) {
-      setAutoFlows(JSON.parse(savedFlows))
-    }
+    if (savedFlows) setAutoFlows(JSON.parse(savedFlows))
   }
 
   useEffect(() => {
@@ -403,20 +293,9 @@ export default function WhatsAppManager() {
     }
   }, [autoFlows, userRole])
 
-  const getTemplateName = (template) => {
-    if (currentLang === 'ar') return template.nameAr
-    return template.nameEn
-  }
-
-  const getTemplateMessage = (template) => {
-    if (currentLang === 'ar') return template.messageAr
-    return template.messageEn
-  }
-
-  const getFlowName = (flow) => {
-    if (currentLang === 'ar') return flow.nameAr
-    return flow.nameEn
-  }
+  const getTemplateName = (template) => currentLang === 'ar' ? template.nameAr : template.nameEn
+  const getTemplateMessage = (template) => currentLang === 'ar' ? template.messageAr : template.messageEn
+  const getFlowName = (flow) => currentLang === 'ar' ? flow.nameAr : flow.nameEn
 
   const getRoleTitle = () => {
     const titles = {
@@ -454,64 +333,20 @@ export default function WhatsAppManager() {
     return icons[userRole] || <MessageCircle size={24} className="text-green-500" />
   }
 
-  const getPlaceholderPhone = () => {
-    const placeholders = {
-      admin: 'ابحث عن موظف أو مريض...',
-      doctor: 'ابحث عن مريض...',
-      reception: 'ابحث عن مريض أو طبيب...',
-      finance: 'ابحث عن طبيب أو موظف...',
-      patient: 'اختر طبيبك المعالج أو الاستقبال...',
-      user: 'اختر جهة الاتصال...'
-    }
-    return placeholders[userRole] || 'أدخل رقم الجوال...'
-  }
-
-  const handleRoleSelect = (role) => {
-    let userName = ''
-    switch(role) {
-      case 'patient': userName = 'أحمد محمد'; break
-      case 'doctor': userName = 'د. أحمد علي'; break
-      case 'reception': userName = 'نورة عبدالله'; break
-      case 'finance': userName = 'خالد محمد'; break
-      case 'admin': userName = 'مدير النظام'; break
-      default: userName = 'مستخدم النظام'
-    }
-    
-    const newUser = {
-      id: Date.now(),
-      name: userName,
-      role: role,
-      isNew: true,
-      joinedAt: new Date().toISOString()
-    }
-    localStorage.setItem('mcsos_user', JSON.stringify(newUser))
-    setUser(newUser)
-    setUserRole(role)
-    setIsNewUser(true)
-    setShowRoleSelector(false)
-    toast.success(`مرحباً بك في نظام واتساب - ${getRoleTitle()}`)
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('mcsos_user')
-    setUser(null)
-    setUserRole('')
-    setShowRoleSelector(true)
-    toast.success('تم تسجيل الخروج بنجاح')
-  }
-
   const handleTemplateChange = (e) => {
     const templateId = e.target.value
     setSelectedTemplate(templateId)
     const template = templates.find(t => t.id === templateId)
     if (template) {
       let msg = getTemplateMessage(template)
-      // استبدال المتغيرات
       msg = msg.replace('{doctor}', selectedContact?.name || 'الطبيب')
       msg = msg.replace('{patient}', selectedContact?.name || 'المريض')
       msg = msg.replace('{date}', new Date().toLocaleDateString('ar-EG'))
       msg = msg.replace('{time}', new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }))
       msg = msg.replace('{amount}', '500')
+      msg = msg.replace('{invoice}', 'INV-001')
+      msg = msg.replace('{announcement}', 'إعلان جديد')
+      msg = msg.replace('{topic}', 'خدمات المركز')
       setMessage(msg)
     }
   }
@@ -655,56 +490,17 @@ export default function WhatsAppManager() {
     return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"><Clock size={12} className="inline ml-1" /> مجدولة</span>
   }
 
+  const stats = {
+    messagesSent: scheduledMessages.filter(m => m.status === 'sent').length,
+    scheduledCount: scheduledMessages.filter(m => m.status === 'scheduled').length,
+    activeChats: contactsList.length,
+    automatedCount: autoFlows.filter(f => f.enabled).length
+  }
+
   const getDelayText = (delay, unit) => {
     if (delay === 0) return 'فوري'
     const unitText = unit === 'hours' ? 'ساعة' : 'يوم'
     return `${delay} ${unitText} قبل الموعد`
-  }
-
-  // قائمة الأدوار لشاشة الاختيار
-  const availableRoles = [
-    { id: 'admin', name: 'المدير العام', icon: <UserCog size={28} />, color: 'purple', description: 'إدارة عامة، تواصل مع جميع الموظفين والمرضى' },
-    { id: 'doctor', name: 'طبيب', icon: <Stethoscope size={28} />, color: 'blue', description: 'متابعة مرضاك، إرسال التذكيرات والروشتات' },
-    { id: 'reception', name: 'موظف استقبال', icon: <UserPlus size={28} />, color: 'green', description: 'إدارة المواعيد، التواصل مع المرضى والأطباء' },
-    { id: 'finance', name: 'القسم المالي', icon: <DollarSign size={28} />, color: 'yellow', description: 'إدارة المستحقات، التواصل مع جميع العاملين' },
-    { id: 'patient', name: 'مريض', icon: <User size={28} />, color: 'pink', description: 'التواصل مع طبيبك وموظفي الاستقبال' },
-    { id: 'user', name: 'مستخدم عام', icon: <UserCheck size={28} />, color: 'gray', description: 'استفسارات عامة وتواصل مع الدعم' }
-  ]
-
-  // شاشة اختيار الدور
-  if (showRoleSelector) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <div className="max-w-5xl w-full">
-          <div className="text-center mb-10">
-            <div className="inline-flex p-4 bg-gradient-to-r from-green-500 to-teal-500 rounded-2xl mb-4">
-              <MessageCircle size={48} className="text-white" />
-            </div>
-            <h1 className="text-4xl font-bold text-white mb-2">نظام الترسل الطبي</h1>
-            <p className="text-gray-400">اختر دورك للدخول إلى نظام التواصل عبر واتساب</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {availableRoles.map((role) => (
-              <button
-                key={role.id}
-                onClick={() => handleRoleSelect(role.id)}
-                className="bg-gray-800/80 hover:bg-gray-700/80 rounded-2xl p-6 text-right transition-all duration-300 border border-gray-700 hover:border-green-500/50 group"
-              >
-                <div className={`inline-flex p-3 bg-${role.color}-500/20 rounded-xl mb-4 text-${role.color}-400 group-hover:scale-110 transition`}>
-                  {role.icon}
-                </div>
-                <h3 className="text-xl font-bold text-white mb-1">{role.name}</h3>
-                <p className="text-gray-400 text-sm">{role.description}</p>
-                <div className="mt-4 text-green-400 text-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                  اختيار <span className="text-lg">←</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
   }
 
   if (!userRole) {
@@ -722,29 +518,9 @@ export default function WhatsAppManager() {
               {getRoleTitle()}
             </h1>
             <p className="text-gray-400 mt-1">{getRoleSubtitle()}</p>
-            {isNewUser && (
-              <span className="inline-flex items-center gap-1 text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full mt-1">
-                <Sparkles size={10} /> مستخدم جديد
-              </span>
-            )}
           </div>
         </div>
         <div className="flex gap-2">
-          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2 border border-gray-700">
-            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center">
-              <User size={16} className="text-white" />
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-white">{user?.name}</p>
-              <p className="text-xs text-gray-400">{availableRoles.find(r => r.id === userRole)?.name}</p>
-            </div>
-          </div>
-          <button 
-            onClick={handleLogout}
-            className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-red-500/30 transition"
-          >
-            <LogOut size={18} /> تسجيل الخروج
-          </button>
           <button 
             onClick={() => setShowSettingsModal(true)}
             className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30 transition"
@@ -762,11 +538,6 @@ export default function WhatsAppManager() {
         <button onClick={() => setActiveTab('contacts')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'contacts' ? 'bg-green-500/20 text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-gray-300'}`}>
           <Users size={18} className="inline ml-2" /> جهات الاتصال
         </button>
-        {userRole === 'reception' && (
-          <button onClick={() => setActiveTab('appointments')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'appointments' ? 'bg-green-500/20 text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-gray-300'}`}>
-            <Calendar size={18} className="inline ml-2" /> إدارة المواعيد
-          </button>
-        )}
         <button onClick={() => setActiveTab('flows')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'flows' ? 'bg-green-500/20 text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-gray-300'}`}>
           <Zap size={18} className="inline ml-2" /> تدفقات آلية
         </button>
@@ -792,7 +563,7 @@ export default function WhatsAppManager() {
                 <div className="flex gap-2">
                   <input 
                     type="tel" 
-                    placeholder={getPlaceholderPhone()} 
+                    placeholder="أدخل رقم الجوال..." 
                     className="flex-1 p-3 border border-gray-600 rounded-xl bg-gray-700 text-white focus:ring-2 focus:ring-green-500 transition" 
                     value={phoneNumber} 
                     onChange={(e) => setPhoneNumber(e.target.value)} 
@@ -807,14 +578,6 @@ export default function WhatsAppManager() {
                 {selectedContact && (
                   <p className="text-xs text-green-400 mt-1">✓ تم اختيار: {selectedContact.name}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
-                  {userRole === 'patient' && 'يمكنك التواصل مع طبيبك المعالج أو موظف الاستقبال'}
-                  {userRole === 'doctor' && 'يمكنك التواصل مع مرضاك المسجلين'}
-                  {userRole === 'reception' && 'يمكنك التواصل مع المرضى والأطباء'}
-                  {userRole === 'finance' && 'يمكنك التواصل مع جميع العاملين في النظام'}
-                  {userRole === 'admin' && 'يمكنك التواصل مع جميع الموظفين والمرضى'}
-                  {userRole === 'user' && 'يمكنك التواصل مع خدمة العملاء والدعم الفني'}
-                </p>
               </div>
 
               <div>
@@ -883,29 +646,6 @@ export default function WhatsAppManager() {
                   <div className="text-sm text-gray-400">تدفقات آلية</div>
                 </div>
               </div>
-              
-              {/* معلومات إضافية حسب الدور */}
-              {userRole === 'patient' && stats.myDoctor && (
-                <div className="mt-4 p-3 bg-pink-500/10 rounded-xl border border-pink-500/30">
-                  <p className="text-sm text-pink-300">👨‍⚕️ طبيبك المعالج: {stats.myDoctor}</p>
-                  <p className="text-sm text-pink-300">📅 موعدك القادم: {stats.nextAppointment}</p>
-                </div>
-              )}
-              {userRole === 'doctor' && stats.myPatients && (
-                <div className="mt-4 p-3 bg-blue-500/10 rounded-xl border border-blue-500/30">
-                  <p className="text-sm text-blue-300">👥 عدد مرضاك: {stats.myPatients} مريض</p>
-                </div>
-              )}
-              {userRole === 'reception' && stats.pendingAppointments && (
-                <div className="mt-4 p-3 bg-orange-500/10 rounded-xl border border-orange-500/30">
-                  <p className="text-sm text-orange-300">⏳ مواعيد قادمة: {stats.pendingAppointments}</p>
-                </div>
-              )}
-              {userRole === 'finance' && stats.pendingPayments && (
-                <div className="mt-4 p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/30">
-                  <p className="text-sm text-yellow-300">💰 مدفوعات مستحقة: {stats.pendingPayments}</p>
-                </div>
-              )}
             </div>
 
             <div className="bg-gradient-to-r from-green-500/10 to-teal-500/10 rounded-2xl p-6 border border-green-500/30">
@@ -914,60 +654,21 @@ export default function WhatsAppManager() {
                 نصائح سريعة
               </h3>
               <ul className="space-y-2 text-sm text-gray-300">
-                {userRole === 'patient' && (
-                  <>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> يمكنك التواصل مع طبيبك المعالج مباشرة</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> استخدم قالب "طلب حجز موعد" لحجز موعد جديد</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> يمكنك إلغاء أو إعادة جدولة مواعيدك</li>
-                  </>
-                )}
-                {userRole === 'doctor' && (
-                  <>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> تواصل مع مرضاك عبر جهات الاتصال</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> استخدم قالب "روشتة طبية" لإرسال الوصفات</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> جدولة تذكيرات للمواعيد القادمة</li>
-                  </>
-                )}
-                {userRole === 'reception' && (
-                  <>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> تأكيد وإلغاء مواعيد المرضى</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> إرسال تذكيرات للمواعيد</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> التواصل مع الأطباء بخصوص جداولهم</li>
-                  </>
-                )}
-                {userRole === 'finance' && (
-                  <>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> التواصل مع الأطباء بخصوص مستحقاتهم</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> إرسال تذكيرات دفع للمرضى</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> متابعة الشكاوى المالية</li>
-                  </>
-                )}
-                {userRole === 'admin' && (
-                  <>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> التواصل مع جميع الموظفين والمرضى</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> إرسال إعلانات عامة وتحديثات النظام</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> متابعة أداء النظام والتقارير</li>
-                  </>
-                )}
-                {userRole === 'user' && (
-                  <>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> التواصل مع خدمة العملاء للاستفسارات</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> الإبلاغ عن المشكلات التقنية</li>
-                    <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> تقديم الشكاوى والاقتراحات</li>
-                  </>
-                )}
+                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> استخدم القوالب الجاهزة لتوفير الوقت</li>
+                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> يمكنك جدولة الرسائل لوقت لاحق</li>
+                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-green-400" /> استخدم جهات الاتصال للوصول السريع</li>
               </ul>
             </div>
           </div>
         </div>
       )}
 
-      {/* تبويب جهات الاتصال - حسب الدور */}
+      {/* تبويب جهات الاتصال */}
       {activeTab === 'contacts' && (
         <div className="bg-gray-800/50 rounded-2xl shadow-xl p-6 border border-gray-700/50">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
             <Users className="text-blue-500" size={22} /> 
-            جهات الاتصال - {availableRoles.find(r => r.id === userRole)?.name}
+            جهات الاتصال
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {contactsList.map(contact => (
@@ -979,7 +680,6 @@ export default function WhatsAppManager() {
                     <p className="text-xs text-gray-400">{contact.department}</p>
                     <p className="text-xs text-gray-500 dir-ltr">{contact.phone}</p>
                     {contact.nextAppointment && <p className="text-xs text-green-400">الموعد القادم: {contact.nextAppointment}</p>}
-                    {contact.balance > 0 && <p className="text-xs text-yellow-400">المستحق: {contact.balance} ريال</p>}
                   </div>
                 </div>
               </div>
@@ -991,64 +691,6 @@ export default function WhatsAppManager() {
               لا توجد جهات اتصال متاحة لدورك
             </div>
           )}
-        </div>
-      )}
-
-      {/* تبويب إدارة المواعيد - لموظف الاستقبال فقط */}
-      {activeTab === 'appointments' && userRole === 'reception' && (
-        <div className="bg-gray-800/50 rounded-2xl shadow-xl p-6 border border-gray-700/50">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
-            <Calendar className="text-green-500" size={22} /> 
-            إدارة المواعيد
-          </h2>
-          <div className="space-y-3">
-            {registeredPatients.map(patient => (
-              <div key={patient.id} className="bg-gray-700/30 rounded-xl p-4">
-                <div className="flex justify-between items-start flex-wrap gap-2">
-                  <div>
-                    <p className="font-semibold text-white">{patient.name}</p>
-                    <p className="text-xs text-gray-400">الدكتور: {patient.doctor}</p>
-                    <p className="text-xs text-gray-500">الموعد القادم: {patient.nextAppointment}</p>
-                    {patient.balance > 0 && <p className="text-xs text-yellow-400">المستحق: {patient.balance} ريال</p>}
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        setPhoneNumber(patient.phone)
-                        setMessage(`✅ تم تأكيد موعدك مع الدكتور ${patient.doctor} يوم ${patient.nextAppointment}`)
-                        setActiveTab('compose')
-                        toast.success('تم تجهيز رسالة التأكيد')
-                      }}
-                      className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm hover:bg-green-500/30 transition flex items-center gap-1"
-                    >
-                      <Check size={14} /> تأكيد
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setPhoneNumber(patient.phone)
-                        setMessage(`❌ تم إلغاء موعدك مع الدكتور ${patient.doctor} يوم ${patient.nextAppointment}`)
-                        setActiveTab('compose')
-                        toast.success('تم تجهيز رسالة الإلغاء')
-                      }}
-                      className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm hover:bg-red-500/30 transition flex items-center gap-1"
-                    >
-                      <XIcon size={14} /> إلغاء
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setSelectedContact({ name: patient.name, phone: patient.phone })
-                        setPhoneNumber(patient.phone)
-                        setActiveTab('compose')
-                      }}
-                      className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 transition flex items-center gap-1"
-                    >
-                      <MessageCircle size={14} /> مراسلة
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
@@ -1294,7 +936,7 @@ export default function WhatsAppManager() {
                   {getRoleIcon()}
                   <div>
                     <p className="font-semibold text-white">{user?.name}</p>
-                    <p className="text-sm text-gray-400">{availableRoles.find(r => r.id === userRole)?.name}</p>
+                    <p className="text-sm text-gray-400">{getRoleTitle()}</p>
                   </div>
                 </div>
               </div>
