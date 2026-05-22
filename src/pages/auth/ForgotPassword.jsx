@@ -337,7 +337,7 @@ export default function ForgotPassword() {
         </div>
         
         <p className="text-center text-gray-500 text-xs mt-8">
-          © 2024 MCSOS - {isRTL ? 'نظام إدارة المركز الطبي' : 'Medical Center Management System'}
+          2026 © MCSOS - {isRTL ? 'نظام إدارة المركز الطبي' : 'Medical Center Management System'}
         </p>
       </div>
     </div>
