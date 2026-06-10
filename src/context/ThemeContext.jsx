@@ -1,64 +1,56 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react'
 
-const ThemeContext = createContext();
+const ThemeContext = createContext()
 
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
-  }
-  return context;
-};
+export function ThemeProvider({ children }) {
+  const [theme, setThemeState] = useState(() => {
+    return localStorage.getItem('mcsos_theme') || 'system'
+  })
 
-export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    return savedTheme || 'system';
-  });
 
-  const [resolvedTheme, setResolvedTheme] = useState('light');
+  const [resolvedTheme, setResolvedTheme] = useState('dark')
 
   useEffect(() => {
-    const updateTheme = () => {
-      let currentTheme = theme;
-      if (theme === 'system') {
-        currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const applyTheme = (t) => {
+      let resolved = t
+      if (t === 'system') {
+        resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
       }
-      
-      setResolvedTheme(currentTheme);
-      
-      if (currentTheme === 'dark') {
-        document.documentElement.classList.add('dark');
+      setResolvedTheme(resolved)
+      if (resolved === 'dark') {
+        document.documentElement.classList.add('dark')
       } else {
-        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.remove('dark')
       }
-    };
-
-    updateTheme();
-
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      if (theme === 'system') {
-        updateTheme();
-      }
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
-
-  useEffect(() => {
-    if (theme !== 'system') {
-      localStorage.setItem('theme', theme);
-    } else {
-      localStorage.removeItem('theme');
     }
-  }, [theme]);
+
+    applyTheme(theme)
+
+
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      const handler = () => applyTheme('system')
+      mediaQuery.addEventListener('change', handler)
+      return () => mediaQuery.removeEventListener('change', handler)
+    }
+  }, [theme])
+
+  const setTheme = (newTheme) => {
+    localStorage.setItem('mcsos_theme', newTheme)
+    setThemeState(newTheme)
+  }
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
       {children}
     </ThemeContext.Provider>
-  );
-};
+  )
+}
+
+export function useTheme() {
+  const context = useContext(ThemeContext)
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider')
+  }
+  return context
+}
