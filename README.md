@@ -1,16 +1,82 @@
-# React + Vite
+# MCSOS-System — Medical Center Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**MCSOS-System** is a Medical Center Management System designed to help organize and manage key information and workflows in a medical center in a clean, modern, and user-friendly way.
 
-Currently, two official plugins are available:
+This project is built as a front-end application and currently includes an authentication flow (Login) that leads users to the system interface.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Live Demo
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+You can try the live app here:
 
-## Expanding the ESLint configuration
+**Live Server:**  
+`https://mcsos-system.vercel.app/login`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## Features
+
+- Login page to access the system dashboard.
+- Modern UI built with a component-friendly structure.
+- Easy to extend for additional modules (e.g., patients, appointments, services, staff).
+
+*(If you add more modules later, you can update this section to reflect them.)*
+
+---
+
+## Tech Stack
+
+- **React** (Front-end UI)
+- **Vite** (Development & build tooling)
+- **Tailwind CSS** (Styling)
+- **JavaScript** (Project language)
+- **ESLint** (Code quality & linting)
+- **PostCSS** (CSS tooling)
+
+---
+
+## Project Structure
+
+- `src/` — React application source code
+- `index.html` — Main HTML entry
+- `vite.config.js` — Vite configuration
+- `eslint.config.js` — ESLint configuration
+
+---
+
+## Installation & Setup
+
+```bash
+# 1) Clone the repository
+git clone https://github.com/Islam412/MCSOS-System.git
+
+# 2) Go into the project folder
+cd MCSOS-System
+
+# 3) Install dependencies
+npm install
+
+# 4) Run the dev server
+npm run dev
+
+- Then open the local URL shown in your terminal (typically http://localhost:5173).
+
+```
+
+
+## Screenshots
+
+### Login Page
+- ![Login Page](./public/screenshots/login.png)
+- ![Register Page](./public/screenshots/register.png)
+
+### Dashboard / Main UI
+- Admin Dashboard Hospital
+- ![Dashboard](./public/screenshots/admin-dashboard-hospital.png)
+
+- Admin Dashboard
+- ![Dashboard](./public/screenshots/admin-dashboard.png)
+
+- Admin Dashboard
+- ![Dashboard](./public/screenshots/patient-dashboard.png)
