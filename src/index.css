@@ -261,3 +261,78 @@ html:not(.dark) select option {
   color: #0f172a;
   background-color: #ffffff;
 }
+
+/* =========================================================
+   إصلاح شامل للوضع الفاتح: تغطية كل نسب الشفافية
+   (bg-gray-800/10 ... /95) باستخدام attribute selectors
+   بدل تحديد كل قيمة على حدة. هذا يغطي صفحات كاملة
+   مكتوبة أصلاً بألوان غامقة ثابتة (Appointments, BookAppointment,
+   PatientDashboard ... إلخ) بدون الحاجة لتعديل كل ملف
+   ========================================================= */
+
+/* أي خلفية بتبدأ بـ bg-gray-800 أو bg-gray-900 (بأي نسبة شفافية)
+   لكن فقط لو هي أول كلاس أو بعد مسافة (يعني مش dark:bg-gray-800) */
+html:not(.dark) [class^="bg-gray-800"],
+html:not(.dark) [class*=" bg-gray-800"],
+html:not(.dark) [class^="bg-gray-900"],
+html:not(.dark) [class*=" bg-gray-900"] {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* خلفيات gray-700 (بأي شفافية) → فاتحة */
+html:not(.dark) [class^="bg-gray-700"],
+html:not(.dark) [class*=" bg-gray-700"] {
+  background-color: #f1f5f9 !important;
+}
+
+/* أي حدود gray-700/600/800 (بأي شفافية) → فاتحة */
+html:not(.dark) [class^="border-gray-700"],
+html:not(.dark) [class*=" border-gray-700"],
+html:not(.dark) [class^="border-gray-600"],
+html:not(.dark) [class*=" border-gray-600"],
+html:not(.dark) [class^="border-gray-800"],
+html:not(.dark) [class*=" border-gray-800"] {
+  border-color: #e2e8f0 !important;
+}
+html:not(.dark) [class^="divide-gray-700"],
+html:not(.dark) [class*=" divide-gray-700"] > * + * {
+  border-color: #e2e8f0 !important;
+}
+
+/* نص أبيض جوه/على كروت gray-700/800/900 → غامق واضح */
+html:not(.dark) [class*="bg-gray-700"] [class*="text-white"],
+html:not(.dark) [class*="bg-gray-800"] [class*="text-white"],
+html:not(.dark) [class*="bg-gray-900"] [class*="text-white"],
+html:not(.dark) [class*="bg-gray-700"][class*="text-white"],
+html:not(.dark) [class*="bg-gray-800"][class*="text-white"],
+html:not(.dark) [class*="bg-gray-900"][class*="text-white"] {
+  color: #0f172a !important;
+}
+
+/* hover بخلفية غامقة → فاتحة، وhover:text-white جوه كروت غامقة → غامق */
+html:not(.dark) [class*="hover\:bg-gray-700"],
+html:not(.dark) [class*="hover\:bg-gray-800"] {
+  background-color: rgba(226, 232, 240, 0.6) !important;
+}
+html:not(.dark) [class*="bg-gray-700"] [class*="hover\:text-white"]:hover,
+html:not(.dark) [class*="bg-gray-800"] [class*="hover\:text-white"]:hover,
+html:not(.dark) [class*="bg-gray-900"] [class*="hover\:text-white"]:hover {
+  color: #0f172a !important;
+}
+
+/* إصلاح خلفية autofill الصفراء من المتصفح */
+html:not(.dark) input:-webkit-autofill,
+html:not(.dark) input:-webkit-autofill:hover,
+html:not(.dark) input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+}
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #374151 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+}
