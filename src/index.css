@@ -202,3 +202,62 @@ html:not(.dark) .text-gray-400 {
 html:not(.dark) .text-gray-500 {
   color: #64748b;
 }
+
+/* =========================================================
+   إصلاح حقول الإدخال الغامقة (Input / Select / Textarea)
+   كانت بتستخدم bg-gray-700/600 مع text-white بشكل ثابت
+   فبتظهر كحلية مع نص غامق = غير مقروء في الوضع الفاتح
+   ========================================================= */
+
+/* خلفيات gray-700/600 الكاملة والجزئية → فاتحة */
+html:not(.dark) .bg-gray-700,
+html:not(.dark) .bg-gray-600 {
+  background-color: #f1f5f9 !important;
+}
+html:not(.dark) .bg-gray-700\/30,
+html:not(.dark) .bg-gray-700\/50,
+html:not(.dark) .bg-gray-700\/80 {
+  background-color: rgba(241, 245, 249, 0.8) !important;
+}
+
+/* أي نص أبيض داخل أو على هذه الخلفيات → غامق */
+html:not(.dark) .bg-gray-700,
+html:not(.dark) .bg-gray-600,
+html:not(.dark) .bg-gray-700\/30,
+html:not(.dark) .bg-gray-700\/50,
+html:not(.dark) .bg-gray-700\/80,
+html:not(.dark) .bg-gray-700 .text-white,
+html:not(.dark) .bg-gray-600 .text-white,
+html:not(.dark) .bg-gray-700\/30 .text-white,
+html:not(.dark) .bg-gray-700\/50 .text-white,
+html:not(.dark) .bg-gray-700\/80 .text-white {
+  color: #0f172a;
+}
+
+/* حقول الإدخال نفسها بشكل عام: لو فيها bg-gray-700/900/800 خليها فاتحة بحدود واضحة */
+html:not(.dark) input.bg-gray-700,
+html:not(.dark) select.bg-gray-700,
+html:not(.dark) textarea.bg-gray-700,
+html:not(.dark) input.bg-gray-900,
+html:not(.dark) select.bg-gray-900,
+html:not(.dark) textarea.bg-gray-900,
+html:not(.dark) input.bg-gray-800,
+html:not(.dark) select.bg-gray-800,
+html:not(.dark) textarea.bg-gray-800 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* placeholder بألوان واضحة في الفاتح */
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+
+/* خيارات select تكون مقروءة */
+html:not(.dark) select option {
+  color: #0f172a;
+  background-color: #ffffff;
+}
