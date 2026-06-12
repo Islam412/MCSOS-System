@@ -587,7 +587,7 @@ ${report.description || 'لا يوجد وصف تفصيلي'}
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
       {/* Header */}
       <header className="bg-gray-800/80 backdrop-blur-md border-b border-gray-700 sticky top-0 z-30">
         <div className="container mx-auto px-4 py-4">
