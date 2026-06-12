@@ -141,20 +141,20 @@ export default function ForgotPassword() {
   const passwordStrength = getPasswordStrength(newPassword)
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4 transition-colors duration-300">
       <div className="absolute top-4 left-4 flex gap-2 z-10">
-        <button onClick={() => i18n.changeLanguage('ar')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'ar' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-700/50 text-gray-400'}`}>🇸🇦 العربية</button>
-        <button onClick={() => i18n.changeLanguage('en')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'en' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-700/50 text-gray-400'}`}>🇬🇧 English</button>
-        <button onClick={() => i18n.changeLanguage('fr')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'fr' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-700/50 text-gray-400'}`}>🇫🇷 Français</button>
+        <button onClick={() => i18n.changeLanguage('ar')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'ar' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-400'}`}>🇸🇦 العربية</button>
+        <button onClick={() => i18n.changeLanguage('en')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'en' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-400'}`}>🇬🇧 English</button>
+        <button onClick={() => i18n.changeLanguage('fr')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'fr' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-400'}`}>🇫🇷 Français</button>
       </div>
       
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-teal-500 rounded-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-teal-500 rounded-2xl mb-4 shadow-lg shadow-blue-500/20">
             <Building size={40} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold gradient-text">MCSOS</h1>
-          <p className="text-gray-400 mt-2">{isRTL ? 'استعادة كلمة المرور' : 'Reset Password'}</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 dark:from-blue-400 dark:to-teal-300 bg-clip-text text-transparent">MCSOS</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">{isRTL ? 'استعادة كلمة المرور' : 'Reset Password'}</p>
         </div>
         
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700/50 shadow-2xl">
@@ -336,7 +336,7 @@ export default function ForgotPassword() {
           )}
         </div>
         
-        <p className="text-center text-gray-500 text-xs mt-8">
+        <p className="text-center text-gray-400 dark:text-gray-500 text-xs mt-8">
           2026 © MCSOS - {isRTL ? 'نظام إدارة المركز الطبي' : 'Medical Center Management System'}
         </p>
       </div>
