@@ -123,3 +123,82 @@ th, td {
     transform: translateX(-100%) !important;
   }
 }
+
+/* =========================================================
+   تحسين التباين في الوضع الفاتح (Light Mode)
+   الألوان دي كانت معمولة أصلاً للوضع الداكن بدون dark:
+   فبتظهر باهتة وغير واضحة في الوضع الفاتح
+   ========================================================= */
+
+/* خلفيات الكروت الغامقة (gray-800/gray-900) → فاتحة مع shadow */
+html:not(.dark) .bg-gray-800 {
+  background-color: #ffffff;
+}
+html:not(.dark) .bg-gray-800\/50,
+html:not(.dark) .bg-gray-800\/80,
+html:not(.dark) .bg-gray-800\/95 {
+  background-color: rgba(255, 255, 255, 0.92);
+}
+html:not(.dark) .bg-gray-900 {
+  background-color: #f1f5f9;
+}
+html:not(.dark) .bg-gray-900\/50 {
+  background-color: rgba(241, 245, 249, 0.8);
+}
+html:not(.dark) .bg-gray-700\/50,
+html:not(.dark) .bg-gray-700\/80 {
+  background-color: rgba(226, 232, 240, 0.7);
+}
+
+/* shadow خفيف للكروت اللي بقت بيضا عشان تبان عن الخلفية */
+html:not(.dark) .bg-gray-800,
+html:not(.dark) .bg-gray-800\/50,
+html:not(.dark) .bg-gray-800\/80,
+html:not(.dark) .bg-gray-800\/95 {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* الحدود والفواصل الغامقة → فاتحة */
+html:not(.dark) .border-gray-700,
+html:not(.dark) .border-gray-700\/50,
+html:not(.dark) .border-gray-600 {
+  border-color: #e2e8f0;
+}
+html:not(.dark) .divide-gray-700\/50 > * + * {
+  border-color: #e2e8f0;
+}
+
+/* تأثيرات hover الغامقة على عناصر فاتحة */
+html:not(.dark) .hover\:bg-gray-700\/50:hover,
+html:not(.dark) .hover\:bg-gray-700:hover {
+  background-color: rgba(226, 232, 240, 0.6);
+}
+html:not(.dark) .hover\:text-white:hover {
+  color: #0f172a;
+}
+
+/* نص أبيض/فاتح جدًا داخل كروت غامقة (gray-800/900/700) → غامق */
+html:not(.dark) .bg-gray-800 .text-white,
+html:not(.dark) .bg-gray-800\/50 .text-white,
+html:not(.dark) .bg-gray-800\/80 .text-white,
+html:not(.dark) .bg-gray-800\/95 .text-white,
+html:not(.dark) .bg-gray-900 .text-white,
+html:not(.dark) .bg-gray-900\/50 .text-white,
+html:not(.dark) .bg-gray-700\/50 .text-white {
+  color: #0f172a;
+}
+
+/* نصوص رمادية باهتة → نخليها أوضح في الفاتح */
+html:not(.dark) .text-gray-100,
+html:not(.dark) .text-gray-200 {
+  color: #1e293b;
+}
+html:not(.dark) .text-gray-300 {
+  color: #475569;
+}
+html:not(.dark) .text-gray-400 {
+  color: #64748b;
+}
+html:not(.dark) .text-gray-500 {
+  color: #64748b;
+}
