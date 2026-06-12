@@ -69,6 +69,7 @@ npm run dev
 
 ### Login Page
 - ![Login Page](./public/screenshots/login.png)
+
 - ![Register Page](./public/screenshots/register.png)
 
 ### Dashboard / Main UI
