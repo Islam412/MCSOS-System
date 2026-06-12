@@ -70,14 +70,15 @@ npm run dev
 ### Login Page
 - ![Login Page](./public/screenshots/login.png)
 
+### Register Page
 - ![Register Page](./public/screenshots/register.png)
 
 ### Dashboard / Main UI
-- Admin Dashboard Hospital
+### Admin Dashboard Hospital
 - ![Dashboard](./public/screenshots/admin-dashboard-hospital.png)
 
-- Admin Dashboard
+### Admin Dashboard
 - ![Dashboard](./public/screenshots/admin-dashboard.png)
 
-- Admin Dashboard
+### Admin Dashboard
 - ![Dashboard](./public/screenshots/patient-dashboard.png)
