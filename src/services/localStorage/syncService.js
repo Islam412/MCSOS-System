@@ -1,7 +1,10 @@
+// src/services/localStorage/syncService.js
+
 // خدمة مزامنة البيانات بين API والتخزين المحلي
 // تستخدم كطبقة احتياطية عند فشل الاتصال بالخادم
 
 import { get, post, put, del } from '../api/client'
+import { API_CONFIG } from '../api/config'  // ✅ أضف هذا الاستيراد
 
 // مفتاح التخزين المحلي
 const STORAGE_KEYS = {
@@ -100,8 +103,10 @@ export const syncPendingItems = async () => {
     
     for (const item of pending) {
       try {
-        // محاولة دفع العنصر إلى الخادم
-        const response = await post(`/api/${resource}`, item)
+        // ✅ اصلح: استخدم المسار الكامل مع BASE_URL
+        const endpoint = `/api/${resource.toLowerCase()}`
+        const response = await post(endpoint, item)
+        
         // إزالة علامة المعلقة
         const updated = data.map(d => 
           d.id === item.id ? { ...d, _syncPending: false, _syncedAt: new Date().toISOString() } : d
