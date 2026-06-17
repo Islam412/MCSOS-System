@@ -4,6 +4,7 @@ export { doctorsService } from './services/doctorsService'
 export { patientsService } from './services/patientsService'
 export { appointmentsService } from './services/appointmentsService'
 export { invoicesService } from './services/invoicesService'
+export { packagesService } from './services/packagesService'
 
 
 export { API_CONFIG, ENDPOINTS, ERROR_MESSAGES } from './config'
