@@ -32,8 +32,6 @@ export default function LanguageSwitcher() {
     document.documentElement.dir = dir
     document.documentElement.lang = langCode
     setIsOpen(false)
-    // لا نعيد تحميل الصفحة لتجنب إعادة ضبط الحالة
-    // setTimeout(() => window.location.reload(), 100)
   }
 
   return (
