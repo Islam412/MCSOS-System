@@ -3,10 +3,36 @@ import { useTranslation } from 'react-i18next'
 import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, DollarSign, FileText, Calendar, Stamp, Building, UserPlus, Upload, Hospital, Settings, Minus, Maximize, ClipboardList, Syringe } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// ========== استيراد الخدمات ==========
+import { invoicesService, patientsService, doctorsService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
+
+// ========== مفاتيح التخزين في localStorage ==========
+const STORAGE_KEYS = {
+  INVOICES: 'mcsos_invoices_v2',
+  PATIENTS: 'mcsos_patients_v2',
+  DOCTORS: 'mcsos_doctors_v2',
+  HOSPITAL_INFO: 'mcsos_hospital_info_v2'
+}
+
+// ========== دالة مساعدة للوصول إلى localStorage ==========
+const getLocalData = (key) => {
+  try {
+    const data = localStorage.getItem(key)
+    return data ? JSON.parse(data) : null
+  } catch (error) {
+    console.error(`Error reading ${key}:`, error)
+    return null
+  }
+}
+
 export default function InvoiceManager() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   const currentLang = i18n.language
+
+  // ========== استخدام خدمات API ==========
+  const { isOnline, executeWithOfflineSupport } = useServices()
 
   const [invoices, setInvoices] = useState([])
   const [selectedInvoice, setSelectedInvoice] = useState(null)
@@ -20,6 +46,7 @@ export default function InvoiceManager() {
   const [newDoctor, setNewDoctor] = useState({ nameAr: '', nameEn: '', specializationAr: '', specializationEn: '' })
   const [printCopies, setPrintCopies] = useState(1)
   const [invoiceType, setInvoiceType] = useState('examination')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [hospitalInfo, setHospitalInfo] = useState({
     nameAr: 'مستشفى السلام الدولي',
@@ -61,51 +88,157 @@ export default function InvoiceManager() {
     notes: ''
   })
 
+  // ========== تحميل البيانات من API ==========
   useEffect(() => {
-    loadPatients()
-    loadInvoices()
-    loadDoctors()
-    loadHospitalInfo()
+    loadAllData()
   }, [])
 
-  const loadPatients = () => {
-    const saved = localStorage.getItem('mcsos_patients_v2')
-    if (saved) setPatients(JSON.parse(saved))
-    else setPatients([])
+  const loadAllData = async () => {
+    setLoading(true)
+    await Promise.all([
+      loadPatients(),
+      loadInvoices(),
+      loadDoctors(),
+      loadHospitalInfo()
+    ])
     setLoading(false)
   }
 
-  const loadDoctors = () => {
-    const saved = localStorage.getItem('mcsos_doctors')
-    if (saved) setDoctors(JSON.parse(saved))
-    else setDoctors([])
+  // ========== تحميل المرضى من API ==========
+  const loadPatients = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => patientsService.getPatients(),
+          'patients',
+          getLocalData(STORAGE_KEYS.PATIENTS)
+        )
+        const data = response?.patients || response || []
+        setPatients(data)
+        localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(data))
+      } else {
+        const saved = getLocalData(STORAGE_KEYS.PATIENTS)
+        setPatients(saved || [])
+      }
+    } catch (error) {
+      console.error('Error loading patients:', error)
+      toast.error('حدث خطأ في تحميل المرضى')
+      const saved = getLocalData(STORAGE_KEYS.PATIENTS)
+      setPatients(saved || [])
+    }
   }
 
-  const loadInvoices = () => {
-    const saved = localStorage.getItem('mcsos_invoices')
-    if (saved) setInvoices(JSON.parse(saved))
+  // ========== تحميل الأطباء من API ==========
+  const loadDoctors = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => doctorsService.getDoctors(),
+          'doctors',
+          getLocalData(STORAGE_KEYS.DOCTORS)
+        )
+        const data = response?.doctors || response || []
+        setDoctors(data)
+        localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(data))
+      } else {
+        const saved = getLocalData(STORAGE_KEYS.DOCTORS)
+        setDoctors(saved || [])
+      }
+    } catch (error) {
+      console.error('Error loading doctors:', error)
+      toast.error('حدث خطأ في تحميل الأطباء')
+      const saved = getLocalData(STORAGE_KEYS.DOCTORS)
+      setDoctors(saved || [])
+    }
   }
 
+  // ========== تحميل الفواتير من API ==========
+  const loadInvoices = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => invoicesService.getInvoices(),
+          'invoices',
+          getLocalData(STORAGE_KEYS.INVOICES)
+        )
+        const data = response?.invoices || response || []
+        setInvoices(data)
+        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(data))
+      } else {
+        const saved = getLocalData(STORAGE_KEYS.INVOICES)
+        setInvoices(saved || [])
+      }
+    } catch (error) {
+      console.error('Error loading invoices:', error)
+      toast.error('حدث خطأ في تحميل الفواتير')
+      const saved = getLocalData(STORAGE_KEYS.INVOICES)
+      setInvoices(saved || [])
+    }
+  }
+
+  // ========== تحميل معلومات المستشفى ==========
   const loadHospitalInfo = () => {
-    const saved = localStorage.getItem('mcsos_hospital_info')
-    if (saved) setHospitalInfo(JSON.parse(saved))
+    const saved = getLocalData(STORAGE_KEYS.HOSPITAL_INFO)
+    if (saved) {
+      setHospitalInfo(saved)
+    } else {
+      localStorage.setItem(STORAGE_KEYS.HOSPITAL_INFO, JSON.stringify(hospitalInfo))
+    }
   }
 
+  // ========== حفظ الفواتير (محلي + API) ==========
   const saveInvoices = (data) => {
-    localStorage.setItem('mcsos_invoices', JSON.stringify(data))
+    localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(data))
     setInvoices(data)
+
+    // مزامنة العناصر المعلقة مع الخادم
+    if (isOnline) {
+      const pending = data.filter(item => item._syncPending)
+      pending.forEach(async (item) => {
+        try {
+          await invoicesService.createInvoice(item)
+          const synced = data.map(i =>
+            i.id === item.id ? { ...i, _syncPending: false } : i
+          )
+          localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(synced))
+          setInvoices(synced)
+        } catch (error) {
+          console.warn('Failed to sync invoice:', error)
+        }
+      })
+    }
   }
 
+  // ========== حفظ الأطباء (محلي + API) ==========
   const saveDoctors = (data) => {
-    localStorage.setItem('mcsos_doctors', JSON.stringify(data))
+    localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(data))
     setDoctors(data)
+
+    if (isOnline) {
+      data.forEach(async (doctor) => {
+        if (doctor._syncPending) {
+          try {
+            await doctorsService.createDoctor(doctor)
+            const synced = data.map(d =>
+              d.id === doctor.id ? { ...d, _syncPending: false } : d
+            )
+            localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(synced))
+            setDoctors(synced)
+          } catch (error) {
+            console.warn('Failed to sync doctor:', error)
+          }
+        }
+      })
+    }
   }
 
+  // ========== حفظ معلومات المستشفى ==========
   const saveHospitalInfo = (data) => {
-    localStorage.setItem('mcsos_hospital_info', JSON.stringify(data))
+    localStorage.setItem(STORAGE_KEYS.HOSPITAL_INFO, JSON.stringify(data))
     setHospitalInfo(data)
   }
 
+  // ========== رفع شعار المستشفى ==========
   const handleLogoUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -127,24 +260,44 @@ export default function InvoiceManager() {
     toast.success('تم تحديث بيانات المستشفى')
   }
 
-  const handleAddDoctor = () => {
+  // ========== إضافة طبيب جديد ==========
+  const handleAddDoctor = async () => {
     if (!newDoctor.nameAr || !newDoctor.specializationAr) {
       toast.error('الرجاء إدخال اسم الطبيب والتخصص')
       return
     }
-    const doctor = {
-      id: Date.now(),
-      nameAr: newDoctor.nameAr,
-      nameEn: newDoctor.nameEn || newDoctor.nameAr,
-      specializationAr: newDoctor.specializationAr,
-      specializationEn: newDoctor.specializationEn || newDoctor.specializationAr
+
+    try {
+      const doctorData = {
+        nameAr: newDoctor.nameAr,
+        nameEn: newDoctor.nameEn || newDoctor.nameAr,
+        specializationAr: newDoctor.specializationAr,
+        specializationEn: newDoctor.specializationEn || newDoctor.specializationAr
+      }
+
+      let newDoctorData
+      if (isOnline) {
+        try {
+          const response = await doctorsService.createDoctor(doctorData)
+          newDoctorData = response?.doctor || response
+        } catch (apiError) {
+          console.warn('API create failed, saving locally:', apiError)
+          newDoctorData = { ...doctorData, id: Date.now(), _syncPending: true }
+        }
+      } else {
+        newDoctorData = { ...doctorData, id: Date.now(), _syncPending: true }
+      }
+
+      saveDoctors([...doctors, newDoctorData])
+      setShowAddDoctorModal(false)
+      setNewDoctor({ nameAr: '', nameEn: '', specializationAr: '', specializationEn: '' })
+      toast.success('تم إضافة الطبيب بنجاح')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في إضافة الطبيب')
     }
-    saveDoctors([...doctors, doctor])
-    setShowAddDoctorModal(false)
-    setNewDoctor({ nameAr: '', nameEn: '', specializationAr: '', specializationEn: '' })
-    toast.success('تم إضافة الطبيب بنجاح')
   }
 
+  // ========== اختيار مريض ==========
   const handleSelectPatient = (patientId) => {
     const patient = patients.find(p => p.id == patientId)
     if (patient) {
@@ -158,6 +311,7 @@ export default function InvoiceManager() {
     }
   }
 
+  // ========== اختيار طبيب ==========
   const handleSelectDoctor = (doctorId) => {
     const doctor = doctors.find(d => d.id == doctorId)
     if (doctor) {
@@ -170,6 +324,7 @@ export default function InvoiceManager() {
     }
   }
 
+  // ========== إدارة العناصر (الخدمات) ==========
   const handleAddItem = () => {
     const newId = Math.max(...formData.items.map(i => i.id), 0) + 1
     setFormData(prev => ({
@@ -207,8 +362,8 @@ export default function InvoiceManager() {
     setFormData(updatedForm)
   }
 
+  // ========== حساب الإجماليات ==========
   const calculateTotals = (data) => {
-    // حساب المجموع الفرعي من الخدمات
     let subtotal = 0
     for (const item of data.items) {
       const qty = parseFloat(item.quantity) || 0
@@ -216,7 +371,6 @@ export default function InvoiceManager() {
       subtotal += qty * price
     }
     
-    // حساب الخصم
     let discountAmount = 0
     const discount = parseFloat(data.discount) || 0
     if (data.discountType === 'percentage') {
@@ -225,29 +379,21 @@ export default function InvoiceManager() {
       discountAmount = discount
     }
     
-    // الإجمالي بعد الخصم
     const total = subtotal - discountAmount
-    
-    // حساب المبلغ المقدم
     const downPayment = parseFloat(data.downPayment) || 0
-    
-    // المبلغ المتبقي بعد المقدم
     let remainingAfterDown = total - downPayment
     if (remainingAfterDown < 0) remainingAfterDown = 0
     
-    // حساب الفائدة
     const interestRate = parseFloat(data.interestRate) || 0
     const interestAmount = (remainingAfterDown * interestRate) / 100
     const totalWithInterest = remainingAfterDown + interestAmount
     
-    // حساب القسط الشهري
     let monthlyInstallment = 0
     const installmentMonths = parseInt(data.installmentMonths) || 1
     if (data.paymentStatus === 'installment' && installmentMonths > 0 && totalWithInterest > 0) {
       monthlyInstallment = totalWithInterest / installmentMonths
     }
     
-    // حساب المبلغ المدفوع والمتبقي
     const paidAmount = parseFloat(data.paidAmount) || 0
     let remainingAmount = totalWithInterest - paidAmount
     if (remainingAmount < 0) remainingAmount = 0
@@ -265,6 +411,7 @@ export default function InvoiceManager() {
     }))
   }
 
+  // ========== دوال تغيير القيم ==========
   const handleDiscountChange = (value) => {
     const updatedForm = { ...formData, discount: parseFloat(value) || 0 }
     calculateTotals(updatedForm)
@@ -308,35 +455,87 @@ export default function InvoiceManager() {
     setFormData(updatedForm)
   }
 
-  const handleSaveInvoice = () => {
+  // ========== حفظ الفاتورة ==========
+  const handleSaveInvoice = async () => {
     if (!formData.patientName || !formData.doctorName || formData.items.length === 0) {
       toast.error('الرجاء إدخال بيانات المريض والطبيب وإضافة خدمة')
       return
     }
-    
-    // التأكد من حساب الخدمات قبل الحفظ
-    calculateTotals(formData)
-    
-    const newInvoice = {
-      id: selectedInvoice?.id || Date.now(),
-      ...formData,
-      invoiceType: invoiceType,
-      hospitalName: hospitalInfo.nameAr,
-      hospitalAddress: hospitalInfo.addressAr,
-      hospitalPhone: hospitalInfo.phone,
-      hospitalLogo: hospitalInfo.logoPreview,
-      createdAt: selectedInvoice?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+
+    setIsSubmitting(true)
+    try {
+      calculateTotals(formData)
+      
+      const invoiceData = {
+        patientId: formData.patientId,
+        patientName: formData.patientName,
+        patientAge: parseInt(formData.patientAge) || 0,
+        patientPhone: formData.patientPhone || '',
+        doctorId: formData.doctorId,
+        doctorName: formData.doctorName,
+        doctorSpecialization: formData.doctorSpecialization || '',
+        invoiceNumber: formData.invoiceNumber,
+        invoiceDate: formData.invoiceDate,
+        invoiceType: invoiceType,
+        procedureName: formData.procedureName || '',
+        surgeryDate: formData.surgeryDate || '',
+        diagnosis: formData.diagnosis || '',
+        items: formData.items.filter(item => item.description),
+        subtotal: formData.subtotal,
+        discount: formData.discount || 0,
+        discountType: formData.discountType || 'percentage',
+        total: formData.total,
+        downPayment: formData.downPayment || 0,
+        interestRate: formData.interestRate || 0,
+        installmentMonths: formData.installmentMonths || 1,
+        paidAmount: formData.paidAmount || 0,
+        remainingAmount: formData.remainingAmount || 0,
+        paymentMethod: formData.paymentMethod || 'cash',
+        paymentStatus: formData.paymentStatus || 'unpaid',
+        notes: formData.notes || ''
+      }
+
+      let response
+      if (isOnline) {
+        try {
+          if (selectedInvoice) {
+            response = await invoicesService.updateInvoice(selectedInvoice.id, invoiceData)
+          } else {
+            response = await invoicesService.createInvoice(invoiceData)
+          }
+        } catch (apiError) {
+          console.warn('API save failed, saving locally:', apiError)
+        }
+      }
+
+      const newInvoice = {
+        id: selectedInvoice?.id || Date.now(),
+        ...invoiceData,
+        hospitalName: hospitalInfo.nameAr,
+        hospitalAddress: hospitalInfo.addressAr,
+        hospitalPhone: hospitalInfo.phone,
+        hospitalLogo: hospitalInfo.logoPreview,
+        createdAt: selectedInvoice?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        _syncPending: !isOnline
+      }
+
+      const updatedInvoices = selectedInvoice
+        ? invoices.map(i => i.id === selectedInvoice.id ? newInvoice : i)
+        : [newInvoice, ...invoices]
+      
+      saveInvoices(updatedInvoices)
+      setShowInvoiceModal(false)
+      resetForm()
+      toast.success(selectedInvoice ? 'تم تحديث الفاتورة' : 'تم إضافة الفاتورة')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في حفظ الفاتورة')
+    } finally {
+      setIsSubmitting(false)
     }
-    const updatedInvoices = selectedInvoice
-      ? invoices.map(i => i.id === selectedInvoice.id ? newInvoice : i)
-      : [newInvoice, ...invoices]
-    saveInvoices(updatedInvoices)
-    setShowInvoiceModal(false)
-    resetForm()
-    toast.success(selectedInvoice ? 'تم تحديث الفاتورة' : 'تم إضافة الفاتورة')
   }
 
+  // ========== تعديل فاتورة ==========
   const handleEditInvoice = (invoice) => {
     setSelectedInvoice(invoice)
     setInvoiceType(invoice.invoiceType || 'examination')
@@ -344,21 +543,47 @@ export default function InvoiceManager() {
     setShowInvoiceModal(true)
   }
 
-  const handleDeleteInvoice = (id) => {
-    if (confirm('هل أنت متأكد من الحذف؟')) {
-      saveInvoices(invoices.filter(i => i.id !== id))
+  // ========== حذف فاتورة ==========
+  const handleDeleteInvoice = async (id) => {
+    if (!confirm('هل أنت متأكد من الحذف؟')) return
+    
+    try {
+      if (isOnline) {
+        try {
+          await invoicesService.deleteInvoice(id)
+        } catch (apiError) {
+          console.warn('API delete failed, removing locally:', apiError)
+        }
+      }
+      const updated = invoices.filter(i => i.id !== id)
+      saveInvoices(updated)
       toast.success('تم حذف الفاتورة')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في حذف الفاتورة')
     }
   }
 
-  const handleMarkAsPaid = (id) => {
-    const invoice = invoices.find(i => i.id === id)
-    if (invoice) {
-      saveInvoices(invoices.map(i => i.id === id ? { ...i, paymentStatus: 'paid', paidAmount: i.totalWithInterest, remainingAmount: 0 } : i))
+  // ========== تحديث حالة الدفع ==========
+  const handleMarkAsPaid = async (id) => {
+    try {
+      if (isOnline) {
+        try {
+          await invoicesService.markAsPaid(id)
+        } catch (apiError) {
+          console.warn('API mark as paid failed, updating locally:', apiError)
+        }
+      }
+      const updated = invoices.map(i => 
+        i.id === id ? { ...i, paymentStatus: 'paid', paidAmount: i.totalWithInterest || i.total, remainingAmount: 0, _syncPending: !isOnline } : i
+      )
+      saveInvoices(updated)
       toast.success('تم تحديث حالة الدفع إلى مدفوع')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في تحديث حالة الدفع')
     }
   }
 
+  // ========== إعادة تعيين النموذج ==========
   const resetForm = () => {
     setSelectedInvoice(null)
     setInvoiceType('examination')
@@ -380,6 +605,7 @@ export default function InvoiceManager() {
     })
   }
 
+  // ========== خيارات الطباعة ==========
   const openPrintOptions = (invoice) => {
     setSelectedInvoice(invoice)
     setPrintCopies(1)
@@ -401,12 +627,12 @@ export default function InvoiceManager() {
     toast.success(`جاري طباعة ${printCopies} نسخة`)
   }
 
+  // ========== HTML الطباعة ==========
   const getPrintHTML = (invoice, copyNumber, totalCopies) => {
     const isRTLPrint = isRTL ? 'rtl' : 'ltr'
     const invoiceTypeText = invoice.invoiceType === 'surgery' ? 'عملية جراحية' : 'كشف طبي'
     const invoiceTypeIcon = invoice.invoiceType === 'surgery' ? '🔪' : '🩺'
     
-    // حسابات دقيقة من بيانات الفاتورة
     let subtotal = 0
     for (const item of invoice.items) {
       const qty = parseFloat(item.quantity) || 0
@@ -546,6 +772,7 @@ export default function InvoiceManager() {
     `
   }
 
+  // ========== حالة الدفع ==========
   const getPaymentStatusBadge = (status) => {
     switch(status) {
       case 'paid': return <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">مدفوع</span>
@@ -554,126 +781,438 @@ export default function InvoiceManager() {
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="text-white">جاري التحميل...</div></div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-white">جاري التحميل...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
-        <div><h1 className="text-3xl font-bold gradient-text">الفواتير الطبية</h1><p className="text-gray-400 mt-1">إدارة الفواتير وكشوف العمليات</p></div>
+        <div>
+          <h1 className="text-3xl font-bold gradient-text">الفواتير الطبية</h1>
+          <p className="text-gray-400 mt-1">
+            إدارة الفواتير وكشوف العمليات
+            {!isOnline && (
+              <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+                ⚡ غير متصل
+              </span>
+            )}
+          </p>
+        </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowHospitalSettings(true)} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30"><Hospital size={18} /> بيانات المستشفى</button>
-          <button onClick={() => { resetForm(); setShowInvoiceModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30"><Plus size={18} /> فاتورة جديدة</button>
+          <button onClick={() => setShowHospitalSettings(true)} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30">
+            <Hospital size={18} /> بيانات المستشفى
+          </button>
+          <button onClick={() => { resetForm(); setShowInvoiceModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30">
+            <Plus size={18} /> فاتورة جديدة
+          </button>
+          <button onClick={loadAllData} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30">
+            تحديث
+          </button>
         </div>
       </div>
 
+      {/* قائمة الفواتير */}
       <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
-        <div className="px-6 py-4 border-b border-gray-700/50"><h2 className="text-xl font-bold text-white">قائمة الفواتير</h2></div>
+        <div className="px-6 py-4 border-b border-gray-700/50 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white">قائمة الفواتير</h2>
+          <span className="text-sm text-gray-400">
+            {invoices.filter(i => i._syncPending).length > 0 && (
+              <span className="text-yellow-400">⏳ {invoices.filter(i => i._syncPending).length} في انتظار المزامنة</span>
+            )}
+          </span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/80"><tr><th className="px-3 py-2 text-xs text-gray-300">الرقم</th><th className="px-3 py-2 text-xs text-gray-300">النوع</th><th className="px-3 py-2 text-xs text-gray-300">المريض</th><th className="px-3 py-2 text-xs text-gray-300">الطبيب</th><th className="px-3 py-2 text-xs text-gray-300">التاريخ</th><th className="px-3 py-2 text-xs text-gray-300">الإجمالي</th><th className="px-3 py-2 text-xs text-gray-300">الحالة</th><th className="px-3 py-2 text-xs text-gray-300">إجراءات</th></tr></thead>
+            <thead className="bg-gray-800/80">
+              <tr>
+                <th className="px-3 py-2 text-xs text-gray-300">الرقم</th>
+                <th className="px-3 py-2 text-xs text-gray-300">النوع</th>
+                <th className="px-3 py-2 text-xs text-gray-300">المريض</th>
+                <th className="px-3 py-2 text-xs text-gray-300">الطبيب</th>
+                <th className="px-3 py-2 text-xs text-gray-300">التاريخ</th>
+                <th className="px-3 py-2 text-xs text-gray-300">الإجمالي</th>
+                <th className="px-3 py-2 text-xs text-gray-300">الحالة</th>
+                <th className="px-3 py-2 text-xs text-gray-300">إجراءات</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-gray-700/50">
-              {invoices.length === 0 ? <tr><td colSpan="8" className="px-4 py-8 text-center text-gray-400">لا توجد فواتير</td></tr> : invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-700/30">
-                  <td className="px-3 py-2 text-blue-400 text-xs">{inv.invoiceNumber}</td>
-                  <td className="px-3 py-2"><span className="px-2 py-0.5 bg-gray-600 rounded-full text-xs">{inv.invoiceType === 'surgery' ? 'عملية' : 'كشف'}</span></td>
-                  <td className="px-3 py-2"><div className="font-semibold text-white text-sm">{inv.patientName}</div><div className="text-xs text-gray-400">{inv.patientAge} سنة</div></td>
-                  <td className="px-3 py-2 text-gray-300 text-xs">{inv.doctorName}</td>
-                  <td className="px-3 py-2 text-gray-400 text-xs">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
-                  <td className="px-3 py-2 font-semibold text-green-400 text-xs">{inv.total.toFixed(2)}</td>
-                  <td className="px-3 py-2">{getPaymentStatusBadge(inv.paymentStatus)}</td>
-                  <td className="px-3 py-2"><div className="flex gap-1"><button onClick={() => handleEditInvoice(inv)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={14} /></button><button onClick={() => openPrintOptions(inv)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={14} /></button><button onClick={() => handleMarkAsPaid(inv.id)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded"><CheckCircle size={14} /></button><button onClick={() => handleDeleteInvoice(inv.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={14} /></button></div></td>
+              {invoices.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="px-4 py-8 text-center text-gray-400">لا توجد فواتير</td>
                 </tr>
-              ))}
+              ) : (
+                invoices.map((inv) => {
+                  const isPending = inv._syncPending === true
+                  return (
+                    <tr key={inv.id} className="hover:bg-gray-700/30">
+                      <td className="px-3 py-2 text-blue-400 text-xs">
+                        {inv.invoiceNumber}
+                        {isPending && (
+                          <span className="block text-[8px] text-yellow-400">⏳ مزامنة</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="px-2 py-0.5 bg-gray-600 rounded-full text-xs">
+                          {inv.invoiceType === 'surgery' ? 'عملية' : 'كشف'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-semibold text-white text-sm">{inv.patientName}</div>
+                        <div className="text-xs text-gray-400">{inv.patientAge} سنة</div>
+                      </td>
+                      <td className="px-3 py-2 text-gray-300 text-xs">{inv.doctorName}</td>
+                      <td className="px-3 py-2 text-gray-400 text-xs">
+                        {new Date(inv.invoiceDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-3 py-2 font-semibold text-green-400 text-xs">
+                        {inv.total?.toFixed(2) || 0}
+                      </td>
+                      <td className="px-3 py-2">{getPaymentStatusBadge(inv.paymentStatus)}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1">
+                          <button onClick={() => handleEditInvoice(inv)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded">
+                            <Edit size={14} />
+                          </button>
+                          <button onClick={() => openPrintOptions(inv)} className="p-1 text-green-400 hover:bg-green-500/20 rounded">
+                            <Printer size={14} />
+                          </button>
+                          <button onClick={() => handleMarkAsPaid(inv.id)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded">
+                            <CheckCircle size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteInvoice(inv.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* ========== باقي المودالات (نفس الكود الأصلي) ========== */}
+      {/* Print Options Modal */}
       {showPrintOptions && selectedInvoice && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">إعدادات الطباعة</h2><button onClick={() => setShowPrintOptions(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">إعدادات الطباعة</h2>
+              <button onClick={() => setShowPrintOptions(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
             <div className="space-y-6">
-              <div className="bg-gray-700/30 rounded-lg p-4 text-center"><p className="text-gray-400 text-sm mb-2">رقم الفاتورة</p><p className="text-2xl font-bold text-blue-400">{selectedInvoice.invoiceNumber}</p><p className="text-gray-400 text-sm mt-2">المريض: {selectedInvoice.patientName}</p><p className="text-gray-400 text-sm">الإجمالي: {selectedInvoice.total.toFixed(2)}</p></div>
-              <div className="text-center"><label className="block text-sm text-gray-400 mb-3">عدد النسخ</label><div className="flex items-center justify-center gap-4"><button onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="p-2 bg-gray-700 rounded-lg"><Minus size={20} className="text-white" /></button><div className="w-20 text-center"><span className="text-3xl font-bold text-white">{printCopies}</span><p className="text-xs text-gray-400">نسخة</p></div><button onClick={() => setPrintCopies(Math.min(10, printCopies + 1))} className="p-2 bg-gray-700 rounded-lg"><Maximize size={20} className="text-white" /></button></div><p className="text-xs text-gray-500 mt-3">الحد الأقصى 10 نسخ</p></div>
-              <div className="border-t border-gray-700 pt-4"><div className="flex gap-3"><button onClick={handlePrintWithCopies} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg flex items-center justify-center gap-2"><Printer size={18} /> طباعة {printCopies} نسخة</button><button onClick={() => setShowPrintOptions(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div>
+              <div className="bg-gray-700/30 rounded-lg p-4 text-center">
+                <p className="text-gray-400 text-sm mb-2">رقم الفاتورة</p>
+                <p className="text-2xl font-bold text-blue-400">{selectedInvoice.invoiceNumber}</p>
+                <p className="text-gray-400 text-sm mt-2">المريض: {selectedInvoice.patientName}</p>
+                <p className="text-gray-400 text-sm">الإجمالي: {selectedInvoice.total?.toFixed(2) || 0}</p>
+              </div>
+              <div className="text-center">
+                <label className="block text-sm text-gray-400 mb-3">عدد النسخ</label>
+                <div className="flex items-center justify-center gap-4">
+                  <button onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="p-2 bg-gray-700 rounded-lg">
+                    <Minus size={20} className="text-white" />
+                  </button>
+                  <div className="w-20 text-center">
+                    <span className="text-3xl font-bold text-white">{printCopies}</span>
+                    <p className="text-xs text-gray-400">نسخة</p>
+                  </div>
+                  <button onClick={() => setPrintCopies(Math.min(10, printCopies + 1))} className="p-2 bg-gray-700 rounded-lg">
+                    <Maximize size={20} className="text-white" />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-3">الحد الأقصى 10 نسخ</p>
+              </div>
+              <div className="border-t border-gray-700 pt-4">
+                <div className="flex gap-3">
+                  <button onClick={handlePrintWithCopies} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg flex items-center justify-center gap-2">
+                    <Printer size={18} /> طباعة {printCopies} نسخة
+                  </button>
+                  <button onClick={() => setShowPrintOptions(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">
+                    إلغاء
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Hospital Settings Modal */}
       {showHospitalSettings && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">بيانات المستشفى</h2><button onClick={() => setShowHospitalSettings(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">بيانات المستشفى</h2>
+              <button onClick={() => setShowHospitalSettings(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
             <div className="space-y-4">
-              <div className="bg-gray-700/30 rounded-lg p-3"><label className="block text-sm text-gray-400 mb-2">شعار المستشفى</label><div className="flex items-center gap-4">{hospitalInfo.logoPreview && <img src={hospitalInfo.logoPreview} alt="الشعار" className="w-20 h-20 object-contain border rounded p-1 bg-white" />}<label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2"><Upload size={18} /> رفع شعار</label><input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" /></div></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm text-gray-400 mb-1">اسم المستشفى</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.nameAr} onChange={(e) => handleHospitalInfoChange('nameAr', e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.addressAr} onChange={(e) => handleHospitalInfoChange('addressAr', e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">رقم الهاتف</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.phone} onChange={(e) => handleHospitalInfoChange('phone', e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">البريد الإلكتروني</label><input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.email} onChange={(e) => handleHospitalInfoChange('email', e.target.value)} /></div></div>
-              <div className="flex gap-3 pt-4"><button onClick={() => setShowHospitalSettings(false)} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg">حفظ وإغلاق</button></div>
+              <div className="bg-gray-700/30 rounded-lg p-3">
+                <label className="block text-sm text-gray-400 mb-2">شعار المستشفى</label>
+                <div className="flex items-center gap-4">
+                  {hospitalInfo.logoPreview && (
+                    <img src={hospitalInfo.logoPreview} alt="الشعار" className="w-20 h-20 object-contain border rounded p-1 bg-white" />
+                  )}
+                  <label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2">
+                    <Upload size={18} /> رفع شعار
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">اسم المستشفى</label>
+                  <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.nameAr} onChange={(e) => handleHospitalInfoChange('nameAr', e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">العنوان</label>
+                  <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.addressAr} onChange={(e) => handleHospitalInfoChange('addressAr', e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">رقم الهاتف</label>
+                  <input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.phone} onChange={(e) => handleHospitalInfoChange('phone', e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">البريد الإلكتروني</label>
+                  <input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.email} onChange={(e) => handleHospitalInfoChange('email', e.target.value)} />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={() => setShowHospitalSettings(false)} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg">حفظ وإغلاق</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Invoice Modal */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">فاتورة جديدة</h2><button onClick={() => setShowInvoiceModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">{selectedInvoice ? 'تعديل فاتورة' : 'فاتورة جديدة'}</h2>
+              <button onClick={() => setShowInvoiceModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
             
-            <div className="bg-gray-700/30 rounded-lg p-3 mb-4"><label className="block text-sm text-gray-400 mb-2">نوع الفاتورة</label><div className="flex gap-4"><label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="invoiceType" value="examination" checked={invoiceType === 'examination'} onChange={(e) => setInvoiceType(e.target.value)} className="w-4 h-4" /><span className="text-white flex items-center gap-1"><ClipboardList size={16} /> كشف طبي</span></label><label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="invoiceType" value="surgery" checked={invoiceType === 'surgery'} onChange={(e) => setInvoiceType(e.target.value)} className="w-4 h-4" /><span className="text-white flex items-center gap-1"><Syringe size={16} /> عملية جراحية</span></label></div></div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div><label className="block text-sm text-gray-400 mb-1">المريض *</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientId} onChange={(e) => handleSelectPatient(e.target.value)}><option value="">اختر المريض</option>{patients.map(p => (<option key={p.id} value={p.id}>{currentLang === 'ar' ? p.nameAr : p.nameEn}</option>))}</select></div>
-              <div className="flex gap-2"><div className="flex-1"><label className="block text-sm text-gray-400 mb-1">الطبيب *</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.doctorId} onChange={(e) => handleSelectDoctor(e.target.value)}><option value="">اختر الطبيب</option>{doctors.map(d => (<option key={d.id} value={d.id}>{currentLang === 'ar' ? d.nameAr : d.nameEn}</option>))}</select></div><button onClick={() => setShowAddDoctorModal(true)} className="mt-7 p-2 bg-green-500/20 text-green-400 rounded-lg"><UserPlus size={18} /></button></div>
-              <div><label className="block text-sm text-gray-400 mb-1">العمر</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientAge} onChange={(e) => setFormData({...formData, patientAge: e.target.value})} /></div>
-              <div><label className="block text-sm text-gray-400 mb-1">{invoiceType === 'surgery' ? 'تاريخ العملية' : 'تاريخ الكشف'}</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.surgeryDate} onChange={(e) => setFormData({...formData, surgeryDate: e.target.value})} /></div>
-              {invoiceType === 'surgery' && (<div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">اسم العملية</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: عملية تنظير الركبة" value={formData.procedureName} onChange={(e) => setFormData({...formData, procedureName: e.target.value})} /></div>)}
-              <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">التشخيص</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} /></div>
+            <div className="bg-gray-700/30 rounded-lg p-3 mb-4">
+              <label className="block text-sm text-gray-400 mb-2">نوع الفاتورة</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="invoiceType" value="examination" checked={invoiceType === 'examination'} onChange={(e) => setInvoiceType(e.target.value)} className="w-4 h-4" />
+                  <span className="text-white flex items-center gap-1"><ClipboardList size={16} /> كشف طبي</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="invoiceType" value="surgery" checked={invoiceType === 'surgery'} onChange={(e) => setInvoiceType(e.target.value)} className="w-4 h-4" />
+                  <span className="text-white flex items-center gap-1"><Syringe size={16} /> عملية جراحية</span>
+                </label>
+              </div>
             </div>
 
-            <div className="mb-4"><div className="flex justify-between items-center mb-2"><h3 className="text-white font-bold">الخدمات</h3><button onClick={handleAddItem} className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm"><Plus size={14} /> إضافة خدمة</button></div>
-            {formData.items.map((item) => (
-              <div key={item.id} className="grid grid-cols-12 gap-2 mb-2">
-                <input type="text" className="col-span-5 p-2 bg-gray-700 rounded-lg text-white" placeholder="الخدمة" value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} />
-                <input type="number" className="col-span-2 p-2 bg-gray-700 rounded-lg text-white" placeholder="الكمية" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} />
-                <input type="number" className="col-span-3 p-2 bg-gray-700 rounded-lg text-white" placeholder="السعر" value={item.unitPrice} onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} />
-                <div className="col-span-1 text-white text-center">{(parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0)}</div>
-                <button onClick={() => handleRemoveItem(item.id)} className="col-span-1 text-red-400"><Trash2 size={16} /></button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">المريض *</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientId} onChange={(e) => handleSelectPatient(e.target.value)}>
+                  <option value="">اختر المريض</option>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>{currentLang === 'ar' ? p.nameAr : p.nameEn}</option>
+                  ))}
+                </select>
               </div>
-            ))}</div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm text-gray-400 mb-1">الطبيب *</label>
+                  <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.doctorId} onChange={(e) => handleSelectDoctor(e.target.value)}>
+                    <option value="">اختر الطبيب</option>
+                    {doctors.map(d => (
+                      <option key={d.id} value={d.id}>{currentLang === 'ar' ? d.nameAr : d.nameEn}</option>
+                    ))}
+                  </select>
+                </div>
+                <button onClick={() => setShowAddDoctorModal(true)} className="mt-7 p-2 bg-green-500/20 text-green-400 rounded-lg">
+                  <UserPlus size={18} />
+                </button>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">العمر</label>
+                <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientAge} onChange={(e) => setFormData({...formData, patientAge: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">{invoiceType === 'surgery' ? 'تاريخ العملية' : 'تاريخ الكشف'}</label>
+                <input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.surgeryDate} onChange={(e) => setFormData({...formData, surgeryDate: e.target.value})} />
+              </div>
+              {invoiceType === 'surgery' && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-gray-400 mb-1">اسم العملية</label>
+                  <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: عملية تنظير الركبة" value={formData.procedureName} onChange={(e) => setFormData({...formData, procedureName: e.target.value})} />
+                </div>
+              )}
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">التشخيص</label>
+                <textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} />
+              </div>
+            </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">الخصم</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discount} onChange={(e) => handleDiscountChange(e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">نوع الخصم</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discountType} onChange={(e) => { setFormData({...formData, discountType: e.target.value}); calculateTotals({...formData, discountType: e.target.value}); }}><option value="percentage">نسبة مئوية %</option><option value="fixed">قيمة ثابتة</option></select></div></div>
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-white font-bold">الخدمات</h3>
+                <button onClick={handleAddItem} className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm">
+                  <Plus size={14} /> إضافة خدمة
+                </button>
+              </div>
+              {formData.items.map((item) => (
+                <div key={item.id} className="grid grid-cols-12 gap-2 mb-2">
+                  <input type="text" className="col-span-5 p-2 bg-gray-700 rounded-lg text-white" placeholder="الخدمة" value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} />
+                  <input type="number" className="col-span-2 p-2 bg-gray-700 rounded-lg text-white" placeholder="الكمية" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} />
+                  <input type="number" className="col-span-3 p-2 bg-gray-700 rounded-lg text-white" placeholder="السعر" value={item.unitPrice} onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} />
+                  <div className="col-span-1 text-white text-center">{(parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0)}</div>
+                  <button onClick={() => handleRemoveItem(item.id)} className="col-span-1 text-red-400"><Trash2 size={16} /></button>
+                </div>
+              ))}
+            </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">حالة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentStatus} onChange={(e) => handlePaymentStatusChange(e.target.value)}><option value="unpaid">غير مدفوع</option><option value="paid">مدفوع بالكامل</option><option value="installment">دفع بالتقسيط</option></select></div><div><label className="block text-sm text-gray-400 mb-1">طريقة الدفع</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}><option value="cash">كاش</option><option value="card">بطاقة</option><option value="bank">تحويل</option></select></div></div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">الخصم</label>
+                <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discount} onChange={(e) => handleDiscountChange(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">نوع الخصم</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.discountType} onChange={(e) => { setFormData({...formData, discountType: e.target.value}); calculateTotals({...formData, discountType: e.target.value}); }}>
+                  <option value="percentage">نسبة مئوية %</option>
+                  <option value="fixed">قيمة ثابتة</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">حالة الدفع</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentStatus} onChange={(e) => handlePaymentStatusChange(e.target.value)}>
+                  <option value="unpaid">غير مدفوع</option>
+                  <option value="paid">مدفوع بالكامل</option>
+                  <option value="installment">دفع بالتقسيط</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">طريقة الدفع</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}>
+                  <option value="cash">كاش</option>
+                  <option value="card">بطاقة</option>
+                  <option value="bank">تحويل</option>
+                </select>
+              </div>
+            </div>
 
             {formData.paymentStatus === 'installment' && (
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
                 <h4 className="text-blue-400 font-bold text-sm mb-2">📅 تفاصيل التقسيط</h4>
-                <div className="grid grid-cols-3 gap-3"><div><label className="block text-sm text-gray-400 mb-1">المبلغ المقدم</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.downPayment} onChange={(e) => handleDownPaymentChange(e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">عدد الأشهر</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.installmentMonths} onChange={(e) => handleInstallmentMonthsChange(e.target.value)} min="1" max="24" /></div><div><label className="block text-sm text-gray-400 mb-1">نسبة الفائدة %</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.interestRate} onChange={(e) => handleInterestRateChange(e.target.value)} step="0.5" /></div></div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-sm p-2 bg-gray-700/30 rounded"><div className="text-gray-400">المتبقي بعد المقدم:</div><div className="text-white">{formData.remainingAfterDown.toFixed(2)}</div><div className="text-gray-400">قيمة الفائدة:</div><div className="text-yellow-400">{formData.interestAmount.toFixed(2)}</div><div className="text-gray-400">الإجمالي مع الفائدة:</div><div className="text-blue-400">{formData.totalWithInterest.toFixed(2)}</div><div className="text-gray-400">القسط الشهري:</div><div className="text-green-400">{formData.monthlyInstallment.toFixed(2)}</div></div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">المبلغ المقدم</label>
+                    <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.downPayment} onChange={(e) => handleDownPaymentChange(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">عدد الأشهر</label>
+                    <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.installmentMonths} onChange={(e) => handleInstallmentMonthsChange(e.target.value)} min="1" max="24" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">نسبة الفائدة %</label>
+                    <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.interestRate} onChange={(e) => handleInterestRateChange(e.target.value)} step="0.5" />
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm p-2 bg-gray-700/30 rounded">
+                  <div className="text-gray-400">المتبقي بعد المقدم:</div>
+                  <div className="text-white">{formData.remainingAfterDown.toFixed(2)}</div>
+                  <div className="text-gray-400">قيمة الفائدة:</div>
+                  <div className="text-yellow-400">{formData.interestAmount.toFixed(2)}</div>
+                  <div className="text-gray-400">الإجمالي مع الفائدة:</div>
+                  <div className="text-blue-400">{formData.totalWithInterest.toFixed(2)}</div>
+                  <div className="text-gray-400">القسط الشهري:</div>
+                  <div className="text-green-400">{formData.monthlyInstallment.toFixed(2)}</div>
+                </div>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-1">المبلغ المدفوع</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paidAmount} onChange={(e) => handlePaidAmountChange(e.target.value)} /></div><div><label className="block text-sm text-gray-400 mb-1">المبلغ المتبقي</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-gray-300" value={formData.remainingAmount.toFixed(2)} disabled readOnly /></div></div>
-
-            <div className="bg-gray-700/30 p-3 rounded-lg mb-4">
-              <div className="flex justify-between"><span className="text-gray-400">مجموع الخدمات:</span><span className="text-white font-semibold">{formData.subtotal.toFixed(2)}</span></div>
-              {formData.discount > 0 && (<div className="flex justify-between"><span className="text-gray-400">الخصم ({formData.discount}{formData.discountType === 'percentage' ? '%' : ''}):</span><span className="text-red-400">- {formData.discountAmount.toFixed(2)}</span></div>)}
-              <div className="flex justify-between border-t border-gray-600 pt-2 mt-2"><span className="font-bold text-white">الإجمالي النهائي:</span><span className="font-bold text-green-400">{formData.paymentStatus === 'installment' ? formData.totalWithInterest.toFixed(2) : formData.total.toFixed(2)}</span></div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">المبلغ المدفوع</label>
+                <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.paidAmount} onChange={(e) => handlePaidAmountChange(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">المبلغ المتبقي</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-gray-300" value={formData.remainingAmount.toFixed(2)} disabled readOnly />
+              </div>
             </div>
 
-            <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">ملاحظات</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} /></div>
+            <div className="bg-gray-700/30 p-3 rounded-lg mb-4">
+              <div className="flex justify-between">
+                <span className="text-gray-400">مجموع الخدمات:</span>
+                <span className="text-white font-semibold">{formData.subtotal.toFixed(2)}</span>
+              </div>
+              {formData.discount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">الخصم ({formData.discount}{formData.discountType === 'percentage' ? '%' : ''}):</span>
+                  <span className="text-red-400">- {formData.discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-gray-600 pt-2 mt-2">
+                <span className="font-bold text-white">الإجمالي النهائي:</span>
+                <span className="font-bold text-green-400">{formData.paymentStatus === 'installment' ? formData.totalWithInterest.toFixed(2) : formData.total.toFixed(2)}</span>
+              </div>
+            </div>
 
-            <div className="flex gap-3 pt-4 border-t border-gray-700"><button onClick={handleSaveInvoice} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">حفظ</button><button onClick={() => setShowInvoiceModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div>
+            <div className="md:col-span-2">
+              <label className="block text-sm text-gray-400 mb-1">ملاحظات</label>
+              <textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-700">
+              <button onClick={handleSaveInvoice} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                {isSubmitting ? 'جاري الحفظ...' : 'حفظ'}
+              </button>
+              <button onClick={() => setShowInvoiceModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
+                إلغاء
+              </button>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Add Doctor Modal */}
       {showAddDoctorModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">إضافة طبيب</h2><button onClick={() => setShowAddDoctorModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
-            <div className="space-y-3"><input type="text" placeholder="الاسم" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.nameAr} onChange={(e) => setNewDoctor({...newDoctor, nameAr: e.target.value})} /><input type="text" placeholder="التخصص" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.specializationAr} onChange={(e) => setNewDoctor({...newDoctor, specializationAr: e.target.value})} /><div className="flex gap-3 pt-4"><button onClick={handleAddDoctor} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">إضافة</button><button onClick={() => setShowAddDoctorModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">إضافة طبيب</h2>
+              <button onClick={() => setShowAddDoctorModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <input type="text" placeholder="الاسم" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.nameAr} onChange={(e) => setNewDoctor({...newDoctor, nameAr: e.target.value})} />
+              <input type="text" placeholder="التخصص" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newDoctor.specializationAr} onChange={(e) => setNewDoctor({...newDoctor, specializationAr: e.target.value})} />
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleAddDoctor} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">إضافة</button>
+                <button onClick={() => setShowAddDoctorModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
