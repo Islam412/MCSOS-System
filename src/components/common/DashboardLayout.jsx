@@ -5,6 +5,7 @@ import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
 import { useTheme } from '../../context/ThemeContext'
 import { useState, useEffect } from 'react'
+import { authService } from '../../services/api' // ✅ إضافة استيراد الخدمة
 
 export default function DashboardLayout() {
   const { t, i18n } = useTranslation()
@@ -103,10 +104,15 @@ export default function DashboardLayout() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
   const closeSidebar = () => { if (isMobile) setSidebarOpen(false) }
   
+  // ========== تحديث دالة تسجيل الخروج ==========
   const handleLogout = () => {
-    localStorage.removeItem('mcsos_user')
-    localStorage.removeItem('mcsos_token')
-    window.location.href = '/login'
+    authService.logout() // استخدام خدمة المصادقة لتسجيل الخروج
+    // authService.logout() تقوم بـ:
+    // - localStorage.removeItem('mcsos_user')
+    // - localStorage.removeItem('mcsos_token')
+    // - localStorage.removeItem('mcsos_remember')
+    // - localStorage.removeItem('mcsos_saved_email')
+    // - window.location.href = '/login'
   }
   
   const getRoleName = () => {
