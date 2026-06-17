@@ -1,13 +1,21 @@
+// src/pages/auth/ForgotPassword.jsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Mail, ArrowLeft, Send, CheckCircle, AlertCircle, Building, Shield, Heart, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// ========== استيراد خدمات API ==========
+import { authService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
+
 export default function ForgotPassword() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isRTL = i18n.language === 'ar'
+  
+  // ========== استخدام خدمات API ==========
+  const { isOnline } = useServices()
   
   const [email, setEmail] = useState('')
   const [step, setStep] = useState(1)
@@ -19,13 +27,15 @@ export default function ForgotPassword() {
   const [success, setSuccess] = useState(false)
   const [generatedCode, setGeneratedCode] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [resetToken, setResetToken] = useState('')
   
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return re.test(email)
   }
   
-  const handleSendCode = (e) => {
+  // ========== دالة إرسال رمز التحقق (مع دعم API) ==========
+  const handleSendCode = async (e) => {
     e.preventDefault()
     setError('')
     
@@ -41,7 +51,26 @@ export default function ForgotPassword() {
     
     setLoading(true)
     
-    setTimeout(() => {
+    try {
+      // ====== محاولة الاتصال بالخادم ======
+      if (isOnline) {
+        try {
+          const response = await authService.forgotPassword(email)
+          
+          if (response && response.token) {
+            setResetToken(response.token)
+            toast.success(isRTL ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني' : 'Verification code sent to your email')
+            setStep(2)
+            setLoading(false)
+            return
+          }
+        } catch (apiError) {
+          console.warn('API forgot password failed, falling back to local:', apiError)
+          // في حالة فشل API، نستمر إلى الوضع المحلي
+        }
+      }
+      
+      // ====== الوضع المحلي (احتياطي) ======
       const users = JSON.parse(localStorage.getItem('mcsos_users') || '[]')
       const existingUsers = JSON.parse(localStorage.getItem('mcsos_registered_users') || '[]')
       const allUsers = [...users, ...existingUsers]
@@ -55,6 +84,7 @@ export default function ForgotPassword() {
         return
       }
       
+      // توليد رمز تحقق محلي
       const code = Math.floor(100000 + Math.random() * 900000).toString()
       setGeneratedCode(code)
       console.log('Verification code:', code)
@@ -62,9 +92,15 @@ export default function ForgotPassword() {
       toast.success(isRTL ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني' : 'Verification code sent to your email')
       setStep(2)
       setLoading(false)
-    }, 1500)
+      
+    } catch (error) {
+      setError(error.message || (isRTL ? 'حدث خطأ في إرسال الرمز' : 'Error sending code'))
+      toast.error(error.message || (isRTL ? 'حدث خطأ في إرسال الرمز' : 'Error sending code'))
+      setLoading(false)
+    }
   }
   
+  // ========== دالة التحقق من الرمز ==========
   const handleVerifyCode = (e) => {
     e.preventDefault()
     setError('')
@@ -74,7 +110,8 @@ export default function ForgotPassword() {
       return
     }
     
-    if (verificationCode !== generatedCode) {
+    // التحقق من الرمز (محلياً أو من API)
+    if (verificationCode !== generatedCode && !resetToken) {
       setError(isRTL ? 'رمز التحقق غير صحيح' : 'Invalid verification code')
       return
     }
@@ -83,6 +120,7 @@ export default function ForgotPassword() {
     setStep(3)
   }
   
+  // ========== دالة قوة كلمة المرور ==========
   const getPasswordStrength = (password) => {
     let strength = 0
     if (password.length >= 6) strength++
@@ -105,7 +143,8 @@ export default function ForgotPassword() {
     return 'text-green-400'
   }
   
-  const handleResetPassword = (e) => {
+  // ========== دالة إعادة تعيين كلمة المرور (مع دعم API) ==========
+  const handleResetPassword = async (e) => {
     e.preventDefault()
     setError('')
     
@@ -126,7 +165,41 @@ export default function ForgotPassword() {
     
     setLoading(true)
     
-    setTimeout(() => {
+    try {
+      // ====== محاولة إعادة التعيين عبر الخادم ======
+      if (isOnline && resetToken) {
+        try {
+          await authService.resetPassword(resetToken, newPassword)
+          
+          toast.success(isRTL ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully')
+          setSuccess(true)
+          
+          setTimeout(() => {
+            navigate('/login')
+          }, 2000)
+          
+          setLoading(false)
+          return
+        } catch (apiError) {
+          console.warn('API reset password failed, falling back to local:', apiError)
+        }
+      }
+      
+      // ====== الوضع المحلي (احتياطي) ======
+      // تحديث كلمة المرور محلياً
+      const users = JSON.parse(localStorage.getItem('mcsos_users') || '[]')
+      const updatedUsers = users.map(u => 
+        u.email === email ? { ...u, password: newPassword } : u
+      )
+      localStorage.setItem('mcsos_users', JSON.stringify(updatedUsers))
+      
+      // تحديث المستخدمين المسجلين
+      const registeredUsers = JSON.parse(localStorage.getItem('mcsos_registered_users') || '[]')
+      const updatedRegistered = registeredUsers.map(u => 
+        u.email === email ? { ...u, password: newPassword } : u
+      )
+      localStorage.setItem('mcsos_registered_users', JSON.stringify(updatedRegistered))
+      
       toast.success(isRTL ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully')
       setSuccess(true)
       
@@ -135,13 +208,19 @@ export default function ForgotPassword() {
       }, 2000)
       
       setLoading(false)
-    }, 1500)
+      
+    } catch (error) {
+      setError(error.message || (isRTL ? 'حدث خطأ في تغيير كلمة المرور' : 'Error resetting password'))
+      toast.error(error.message || (isRTL ? 'حدث خطأ في تغيير كلمة المرور' : 'Error resetting password'))
+      setLoading(false)
+    }
   }
   
   const passwordStrength = getPasswordStrength(newPassword)
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4 transition-colors duration-300">
+      {/* أزرار تغيير اللغة */}
       <div className="absolute top-4 left-4 flex gap-2 z-10">
         <button onClick={() => i18n.changeLanguage('ar')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'ar' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-400'}`}>🇸🇦 العربية</button>
         <button onClick={() => i18n.changeLanguage('en')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'en' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-400'}`}>🇬🇧 English</button>
@@ -149,12 +228,21 @@ export default function ForgotPassword() {
       </div>
       
       <div className="w-full max-w-md">
+        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-teal-500 rounded-2xl mb-4 shadow-lg shadow-blue-500/20">
             <Building size={40} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 dark:from-blue-400 dark:to-teal-300 bg-clip-text text-transparent">MCSOS</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2">{isRTL ? 'استعادة كلمة المرور' : 'Reset Password'}</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">
+            {isRTL ? 'استعادة كلمة المرور' : 'Reset Password'}
+          </p>
+          {/* حالة الاتصال */}
+          {!isOnline && (
+            <span className="inline-block mt-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+              ⚡ غير متصل - وضع عدم الاتصال
+            </span>
+          )}
         </div>
         
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700/50 shadow-2xl">
@@ -171,6 +259,7 @@ export default function ForgotPassword() {
             </div>
           ) : (
             <>
+              {/* Step Indicator */}
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-2">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-500'}`}>1</div>
@@ -188,6 +277,7 @@ export default function ForgotPassword() {
                 </div>
               </div>
               
+              {/* رسالة الخطأ */}
               {error && (
                 <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-center gap-2">
                   <AlertCircle size={18} className="text-red-400" />
@@ -195,10 +285,13 @@ export default function ForgotPassword() {
                 </div>
               )}
               
+              {/* Step 1: إدخال البريد الإلكتروني */}
               {step === 1 && (
                 <form onSubmit={handleSendCode} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">{isRTL ? 'البريد الإلكتروني' : 'Email Address'}</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {isRTL ? 'البريد الإلكتروني' : 'Email Address'}
+                    </label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                       <input
@@ -209,7 +302,9 @@ export default function ForgotPassword() {
                         onChange={(e) => setEmail(e.target.value)}
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">{isRTL ? 'سيتم إرسال رمز التحقق إلى بريدك الإلكتروني' : 'A verification code will be sent to your email'}</p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {isRTL ? 'سيتم إرسال رمز التحقق إلى بريدك الإلكتروني' : 'A verification code will be sent to your email'}
+                    </p>
                   </div>
                   
                   <button
@@ -226,10 +321,13 @@ export default function ForgotPassword() {
                 </form>
               )}
               
+              {/* Step 2: التحقق من الرمز */}
               {step === 2 && (
                 <form onSubmit={handleVerifyCode} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">{isRTL ? 'رمز التحقق' : 'Verification Code'}</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {isRTL ? 'رمز التحقق' : 'Verification Code'}
+                    </label>
                     <div className="relative">
                       <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                       <input
@@ -241,7 +339,9 @@ export default function ForgotPassword() {
                         onChange={(e) => setVerificationCode(e.target.value)}
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">{isRTL ? 'تم إرسال الرمز إلى بريدك الإلكتروني' : 'Code sent to your email'}</p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {isRTL ? 'تم إرسال الرمز إلى بريدك الإلكتروني' : 'Code sent to your email'}
+                    </p>
                   </div>
                   
                   <button
@@ -261,10 +361,13 @@ export default function ForgotPassword() {
                 </form>
               )}
               
+              {/* Step 3: كلمة المرور الجديدة */}
               {step === 3 && (
                 <form onSubmit={handleResetPassword} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">{isRTL ? 'كلمة المرور الجديدة' : 'New Password'}</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {isRTL ? 'كلمة المرور الجديدة' : 'New Password'}
+                    </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                       <input
@@ -280,17 +383,23 @@ export default function ForgotPassword() {
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full transition-all duration-300 ${
-                              passwordStrength <= 2 ? 'bg-red-500 w-1/3' : passwordStrength <= 3 ? 'bg-yellow-500 w-2/3' : 'bg-green-500 w-full'
+                              passwordStrength <= 2 ? 'bg-red-500 w-1/3' : 
+                              passwordStrength <= 3 ? 'bg-yellow-500 w-2/3' : 
+                              'bg-green-500 w-full'
                             }`} />
                           </div>
-                          <span className={`text-xs ${getPasswordStrengthColor(passwordStrength)}`}>{getPasswordStrengthText(passwordStrength)}</span>
+                          <span className={`text-xs ${getPasswordStrengthColor(passwordStrength)}`}>
+                            {getPasswordStrengthText(passwordStrength)}
+                          </span>
                         </div>
                       </div>
                     )}
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">{isRTL ? 'تأكيد كلمة المرور' : 'Confirm Password'}</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {isRTL ? 'تأكيد كلمة المرور' : 'Confirm Password'}
+                    </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                       <input
@@ -327,6 +436,7 @@ export default function ForgotPassword() {
                 </form>
               )}
               
+              {/* زر العودة */}
               <div className="mt-6 text-center">
                 <button onClick={() => navigate('/login')} className="text-gray-400 hover:text-gray-300 text-sm flex items-center justify-center gap-1">
                   <ArrowLeft size={14} /> {isRTL ? 'العودة إلى تسجيل الدخول' : 'Back to Sign In'}

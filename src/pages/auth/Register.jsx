@@ -1,13 +1,21 @@
+// src/pages/auth/Register.jsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Mail, Lock, User, Shield, AlertCircle, Building, Heart, Phone, MapPin, Calendar, CheckCircle, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// ========== استيراد خدمات API ==========
+import { authService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
+
 export default function Register() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isRTL = i18n.language === 'ar'
+  
+  // ========== استخدام خدمات API ==========
+  const { isOnline } = useServices()
   
   const [formData, setFormData] = useState({
     name: '',
@@ -91,7 +99,8 @@ export default function Register() {
     return Object.keys(newErrors).length === 0
   }
   
-  const handleRegister = (e) => {
+  // ========== دالة التسجيل المتكاملة ==========
+  const handleRegister = async (e) => {
     e.preventDefault()
     
     if (!validateForm()) {
@@ -101,8 +110,48 @@ export default function Register() {
     
     setLoading(true)
     
-    // محاكاة تسجيل حساب جديد
-    setTimeout(() => {
+    try {
+      // ====== محاولة التسجيل عبر الخادم ======
+      if (isOnline) {
+        try {
+          const userData = {
+            name: formData.name,
+            nameEn: formData.nameEn || formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            password: formData.password,
+            role: formData.role,
+          }
+          
+          const response = await authService.register(userData)
+          
+          if (response && response.user) {
+            toast.success(
+              isRTL 
+                ? 'تم إنشاء الحساب بنجاح! يرجى انتظار الموافقة' 
+                : 'Account created successfully! Please wait for approval'
+            )
+            
+            setTimeout(() => {
+              navigate('/login')
+            }, 2000)
+            
+            setLoading(false)
+            return
+          }
+        } catch (apiError) {
+          console.warn('API registration failed, falling back to local:', apiError)
+          // في حالة فشل API بسبب وجود البريد مسبقاً، نعرض رسالة مناسبة
+          if (apiError.message && apiError.message.includes('email')) {
+            toast.error(isRTL ? 'البريد الإلكتروني موجود مسبقاً' : 'Email already exists')
+            setLoading(false)
+            return
+          }
+          // نستمر إلى التسجيل المحلي كاحتياطي
+        }
+      }
+      
+      // ====== التسجيل المحلي (احتياطي) ======
       // التحقق إذا كان البريد الإلكتروني موجود مسبقاً
       const existingUsers = JSON.parse(localStorage.getItem('mcsos_registered_users') || '[]')
       if (existingUsers.some(u => u.email === formData.email)) {
@@ -120,35 +169,57 @@ export default function Register() {
         phone: formData.phone,
         password: formData.password,
         role: formData.role,
-        roleAr: formData.role === 'doctor' ? 'طبيب' : formData.role === 'reception' ? 'موظف استقبال' : 'مستخدم',
-        roleEn: formData.role === 'doctor' ? 'Doctor' : formData.role === 'reception' ? 'Receptionist' : 'User',
+        roleAr: formData.role === 'doctor' ? 'طبيب' : 
+                formData.role === 'reception' ? 'موظف استقبال' : 
+                'مستخدم',
+        roleEn: formData.role === 'doctor' ? 'Doctor' : 
+                formData.role === 'reception' ? 'Receptionist' : 
+                'User',
         department: '',
         departmentEn: '',
         avatar: null,
         joinDate: new Date().toISOString().split('T')[0],
         status: 'pending',
-        requiresApproval: true
+        requiresApproval: true,
+        _syncPending: true // علامة للمزامنة مع الخادم لاحقاً
       }
       
       // حفظ المستخدم
       existingUsers.push(newUser)
       localStorage.setItem('mcsos_registered_users', JSON.stringify(existingUsers))
       
-      toast.success(isRTL ? 'تم إنشاء الحساب بنجاح! يرجى انتظار الموافقة' : 'Account created successfully! Please wait for approval')
+      // إذا كان متصلاً ولكن API فشل، نحاول المزامنة لاحقاً
+      if (isOnline) {
+        toast.warning(
+          isRTL 
+            ? 'تم الحفظ محلياً، سيتم المزامنة مع الخادم تلقائياً' 
+            : 'Saved locally, will sync with server automatically'
+        )
+      } else {
+        toast.success(
+          isRTL 
+            ? 'تم إنشاء الحساب بنجاح! سيتم المزامنة عند الاتصال بالإنترنت' 
+            : 'Account created successfully! Will sync when online'
+        )
+      }
       
-      // توجيه إلى صفحة تسجيل الدخول
       setTimeout(() => {
         navigate('/login')
       }, 2000)
       
       setLoading(false)
-    }, 1500)
+      
+    } catch (error) {
+      toast.error(error.message || (isRTL ? 'حدث خطأ في إنشاء الحساب' : 'Error creating account'))
+      setLoading(false)
+    }
   }
   
   const passwordStrength = getPasswordStrength(formData.password)
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4 transition-colors duration-300">
+      {/* أزرار تغيير اللغة */}
       <div className="absolute top-4 left-4 flex gap-2 z-10">
         <button onClick={() => i18n.changeLanguage('ar')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'ar' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-400'}`}>🇸🇦 العربية</button>
         <button onClick={() => i18n.changeLanguage('en')} className={`px-3 py-1 rounded-lg text-sm transition ${i18n.language === 'en' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-400'}`}>🇬🇧 English</button>
@@ -156,19 +227,32 @@ export default function Register() {
       </div>
       
       <div className="w-full max-w-lg">
+        {/* Logo */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-teal-500 rounded-2xl mb-3 shadow-lg shadow-blue-500/20">
             <User size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 dark:from-blue-400 dark:to-teal-300 bg-clip-text text-transparent">{isRTL ? 'إنشاء حساب جديد' : 'Create New Account'}</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{isRTL ? 'سجل حسابك للبدء في استخدام النظام' : 'Register to start using the system'}</p>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 dark:from-blue-400 dark:to-teal-300 bg-clip-text text-transparent">
+            {isRTL ? 'إنشاء حساب جديد' : 'Create New Account'}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+            {isRTL ? 'سجل حسابك للبدء في استخدام النظام' : 'Register to start using the system'}
+          </p>
+          {/* حالة الاتصال */}
+          {!isOnline && (
+            <span className="inline-block mt-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+              ⚡ غير متصل - وضع عدم الاتصال
+            </span>
+          )}
         </div>
         
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-2xl">
           <form onSubmit={handleRegister} className="space-y-4">
             {/* الاسم */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{isRTL ? 'الاسم الكامل' : 'Full Name'} *</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                {isRTL ? 'الاسم الكامل' : 'Full Name'} *
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
@@ -184,7 +268,9 @@ export default function Register() {
             
             {/* الاسم بالإنجليزي */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{isRTL ? 'الاسم (English)' : 'Name (English)'}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                {isRTL ? 'الاسم (English)' : 'Name (English)'}
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
@@ -199,7 +285,9 @@ export default function Register() {
             
             {/* البريد الإلكتروني */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{isRTL ? 'البريد الإلكتروني' : 'Email Address'} *</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                {isRTL ? 'البريد الإلكتروني' : 'Email Address'} *
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
@@ -215,7 +303,9 @@ export default function Register() {
             
             {/* رقم الجوال */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{isRTL ? 'رقم الجوال' : 'Phone Number'} *</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                {isRTL ? 'رقم الجوال' : 'Phone Number'} *
+              </label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
@@ -231,7 +321,9 @@ export default function Register() {
             
             {/* كلمة المرور */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{isRTL ? 'كلمة المرور' : 'Password'} *</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                {isRTL ? 'كلمة المرور' : 'Password'} *
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
@@ -241,7 +333,11 @@ export default function Register() {
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -250,12 +346,18 @@ export default function Register() {
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all duration-300 ${
-                        passwordStrength <= 2 ? 'bg-red-500 w-1/3' : passwordStrength <= 3 ? 'bg-yellow-500 w-2/3' : 'bg-green-500 w-full'
+                        passwordStrength <= 2 ? 'bg-red-500 w-1/3' : 
+                        passwordStrength <= 3 ? 'bg-yellow-500 w-2/3' : 
+                        'bg-green-500 w-full'
                       }`} />
                     </div>
-                    <span className={`text-xs ${getPasswordStrengthColor(passwordStrength)}`}>{getPasswordStrengthText(passwordStrength)}</span>
+                    <span className={`text-xs ${getPasswordStrengthColor(passwordStrength)}`}>
+                      {getPasswordStrengthText(passwordStrength)}
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{isRTL ? '6 أحرف على الأقل' : 'At least 6 characters'}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isRTL ? '6 أحرف على الأقل' : 'At least 6 characters'}
+                  </p>
                 </div>
               )}
               {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
@@ -263,7 +365,9 @@ export default function Register() {
             
             {/* تأكيد كلمة المرور */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{isRTL ? 'تأكيد كلمة المرور' : 'Confirm Password'} *</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                {isRTL ? 'تأكيد كلمة المرور' : 'Confirm Password'} *
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
@@ -273,7 +377,11 @@ export default function Register() {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                 />
-                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                <button 
+                  type="button" 
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -282,7 +390,9 @@ export default function Register() {
             
             {/* الدور */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{isRTL ? 'نوع الحساب' : 'Account Type'}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                {isRTL ? 'نوع الحساب' : 'Account Type'}
+              </label>
               <select
                 className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition"
                 value={formData.role}
@@ -292,7 +402,9 @@ export default function Register() {
                 <option value="doctor">{isRTL ? 'طبيب' : 'Doctor'}</option>
                 <option value="reception">{isRTL ? 'موظف استقبال' : 'Receptionist'}</option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">{isRTL ? 'سيتم مراجعة طلبك من قبل المدير' : 'Your request will be reviewed by admin'}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {isRTL ? 'سيتم مراجعة طلبك من قبل المدير' : 'Your request will be reviewed by admin'}
+              </p>
             </div>
             
             {/* الموافقة على الشروط */}
@@ -306,7 +418,9 @@ export default function Register() {
               />
               <label htmlFor="agreeTerms" className="text-sm text-gray-400">
                 {isRTL ? 'أوافق على ' : 'I agree to the '}
-                <button type="button" className="text-blue-400 hover:text-blue-300">{isRTL ? 'الشروط والأحكام' : 'Terms and Conditions'}</button>
+                <button type="button" className="text-blue-400 hover:text-blue-300">
+                  {isRTL ? 'الشروط والأحكام' : 'Terms and Conditions'}
+                </button>
               </label>
             </div>
             {errors.agreeTerms && <p className="text-red-400 text-xs">{errors.agreeTerms}</p>}
