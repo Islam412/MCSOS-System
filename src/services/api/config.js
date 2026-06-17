@@ -1,3 +1,5 @@
+// src/services/api/config.js
+
 // تكوين API
 export const API_CONFIG = {
   BASE_URL: 'https://medical-center-app-production.up.railway.app/api',
@@ -26,20 +28,20 @@ export const ENDPOINTS = {
   USERS: {
     LIST: '/users',
     CREATE: '/users',
-    UPDATE: (id) => `/users/${id}`,
-    DELETE: (id) => `/users/${id}`,
-    BLOCK: (id) => `/users/${id}/block`,
-    UNBLOCK: (id) => `/users/${id}/unblock',
-    CHANGE_PASSWORD: (id) => `/users/${id}/change-password',
-    RESET_PASSWORD: (id) => `/users/${id}/reset-password`,
+    UPDATE: (id) => '/users/' + id,
+    DELETE: (id) => '/users/' + id,
+    BLOCK: (id) => '/users/' + id + '/block',
+    UNBLOCK: (id) => '/users/' + id + '/unblock',
+    CHANGE_PASSWORD: (id) => '/users/' + id + '/change-password',
+    RESET_PASSWORD: (id) => '/users/' + id + '/reset-password',
   },
   // الأطباء
   DOCTORS: {
     LIST: '/doctors',
     CREATE: '/doctors',
-    UPDATE: (id) => `/doctors/${id}`,
-    DELETE: (id) => `/doctors/${id}`,
-    SLOTS: (id) => `/doctors/${id}/slots`,
+    UPDATE: (id) => '/doctors/' + id,
+    DELETE: (id) => '/doctors/' + id,
+    SLOTS: (id) => '/doctors/' + id + '/slots',
     AVAILABLE: '/doctors/available',
     STATS: '/doctors/stats',
   },
@@ -47,23 +49,23 @@ export const ENDPOINTS = {
   PATIENTS: {
     LIST: '/patients',
     CREATE: '/patients',
-    UPDATE: (id) => `/patients/${id}`,
-    DELETE: (id) => `/patients/${id}`,
+    UPDATE: (id) => '/patients/' + id,
+    DELETE: (id) => '/patients/' + id,
     SEARCH: '/patients/search',
     STATS: '/patients/stats',
-    PROGRESS: (id) => `/patients/${id}/progress`,
-    SESSIONS: (id) => `/patients/${id}/sessions`,
+    PROGRESS: (id) => '/patients/' + id + '/progress',
+    SESSIONS: (id) => '/patients/' + id + '/sessions',
   },
   // المواعيد
   APPOINTMENTS: {
     LIST: '/appointments',
     CREATE: '/appointments',
-    UPDATE: (id) => `/appointments/${id}`,
-    DELETE: (id) => `/appointments/${id}`,
+    UPDATE: (id) => '/appointments/' + id,
+    DELETE: (id) => '/appointments/' + id,
     BOOK: '/appointments/book',
-    CONFIRM: (id) => `/appointments/${id}/confirm',
-    CANCEL: (id) => `/appointments/${id}/cancel',
-    CHECK_IN: (id) => `/appointments/${id}/check-in',
+    CONFIRM: (id) => '/appointments/' + id + '/confirm',
+    CANCEL: (id) => '/appointments/' + id + '/cancel',
+    CHECK_IN: (id) => '/appointments/' + id + '/check-in',
     AVAILABLE_SLOTS: '/appointments/available-slots',
     TODAY: '/appointments/today',
     STATS: '/appointments/stats',
@@ -72,36 +74,36 @@ export const ENDPOINTS = {
   INVOICES: {
     LIST: '/invoices',
     CREATE: '/invoices',
-    UPDATE: (id) => `/invoices/${id}`,
-    DELETE: (id) => `/invoices/${id}`,
+    UPDATE: (id) => '/invoices/' + id,
+    DELETE: (id) => '/invoices/' + id,
     GENERATE: '/invoices/generate',
-    PDF: (id) => `/invoices/${id}/pdf`,
+    PDF: (id) => '/invoices/' + id + '/pdf',
     STATS: '/invoices/stats',
-    MARK_PAID: (id) => `/invoices/${id}/paid`,
+    MARK_PAID: (id) => '/invoices/' + id + '/paid',
   },
   // الروشتات
   PRESCRIPTIONS: {
     LIST: '/prescriptions',
     CREATE: '/prescriptions',
-    UPDATE: (id) => `/prescriptions/${id}`,
-    DELETE: (id) => `/prescriptions/${id}`,
-    BY_PATIENT: (id) => `/prescriptions/patient/${id}`,
-    BY_DOCTOR: (id) => `/prescriptions/doctor/${id}`,
-    PRINT: (id) => `/prescriptions/${id}/print`,
+    UPDATE: (id) => '/prescriptions/' + id,
+    DELETE: (id) => '/prescriptions/' + id,
+    BY_PATIENT: (id) => '/prescriptions/patient/' + id,
+    BY_DOCTOR: (id) => '/prescriptions/doctor/' + id,
+    PRINT: (id) => '/prescriptions/' + id + '/print',
   },
   // الباقات
   PACKAGES: {
     LIST: '/packages',
     CREATE: '/packages',
-    UPDATE: (id) => `/packages/${id}`,
-    DELETE: (id) => `/packages/${id}`,
+    UPDATE: (id) => '/packages/' + id,
+    DELETE: (id) => '/packages/' + id,
   },
   // الصور والملفات
   FILES: {
     UPLOAD: '/upload',
-    DELETE: (id) => `/files/${id}`,
-    DOWNLOAD: (id) => `/files/${id}/download`,
-    PATIENT_FILES: (id) => `/files/patient/${id}`,
+    DELETE: (id) => '/files/' + id,
+    DOWNLOAD: (id) => '/files/' + id + '/download',
+    PATIENT_FILES: (id) => '/files/patient/' + id,
   },
   // WhatsApp
   WHATSAPP: {
@@ -123,7 +125,7 @@ export const ENDPOINTS = {
   // التقارير
   REPORTS: {
     GENERATE: '/reports/generate',
-    DOWNLOAD: (id) => `/reports/${id}/download`,
+    DOWNLOAD: (id) => '/reports/' + id + '/download',
     LIST: '/reports',
   },
   // الإعدادات
