@@ -1,3 +1,4 @@
+// src/pages/ReceptionDashboard.jsx
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PatientRegistration from '../components/reception/PatientRegistration'
@@ -9,6 +10,17 @@ export default function ReceptionDashboard() {
   const [selectedPatient, setSelectedPatient] = useState(null)
   const isRTL = i18n.language === 'ar'
 
+  // ========== دالة معالجة نجاح التسجيل ==========
+  const handleRegistrationSuccess = (newPatient) => {
+    // يمكن إضافة منطق إضافي هنا مثل عرض رسالة أو تحديث القائمة
+    console.log('Patient registered successfully:', newPatient)
+  }
+
+  // ========== دالة معالجة اختيار مريض ==========
+  const handleSelectPatient = (patient) => {
+    setSelectedPatient(patient)
+  }
+
   return (
     <div className="space-y-6">
       <div className={`mb-6 ${isRTL ? 'text-right' : 'text-left'}`}>
@@ -19,8 +31,8 @@ export default function ReceptionDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PatientRegistration />
-        <PatientSearch onSelectPatient={setSelectedPatient} />
+        <PatientRegistration onRegistrationSuccess={handleRegistrationSuccess} />
+        <PatientSearch onSelectPatient={handleSelectPatient} />
       </div>
 
       {selectedPatient && <AppointmentBooking patient={selectedPatient} />}
