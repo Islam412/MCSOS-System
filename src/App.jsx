@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+// src/App.jsx
+import { Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -29,51 +30,50 @@ import BookAppointment from './pages/patient/BookAppointment'
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/" element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }>
-            {/* مسارات الأدمن */}
-            <Route path="admin" element={<AdminDashboard />} />
-            <Route path="dashboard" element={<HospitalDashboard />} />
-            <Route path="doctors-manager" element={<DoctorsManager />} />
-            <Route path="users-manager" element={<UsersManager />} />
-            
-            {/* مسارات الدكتور */}
-            <Route path="doctor-dashboard" element={<DoctorDashboard />} />
-            <Route path="doctor" element={<DoctorPage />} />
-            
-            {/* مسارات الاستقبال */}
-            <Route path="reception-dashboard" element={<ReceptionDashboard />} />
-            <Route path="reception" element={<ReceptionPage />} />
-            
-            {/* مسار المريض */}
-            <Route path="patient-dashboard" element={<PatientDashboard />} />
-            <Route path="appointments" element={<Appointments />} />
-            
-            {/* المسارات المشتركة */}
-            <Route path="finance" element={<FinanceManager />} />
-            <Route path="operations" element={<OperationsDashboard />} />
-            <Route path="scheduling" element={<SchedulingEngine />} />
-            <Route path="packages" element={<PackagesManager />} />
-            <Route path="whatsapp" element={<WhatsAppManager />} />
-            <Route path="invoice" element={<InvoiceManager />} />
-            <Route path="prescription" element={<PrescriptionManager />} />
-            <Route path="patients" element={<PatientProfile />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="book-appointment" element={<BookAppointment />} />
-            
-            {/* الصفحة الرئيسية الافتراضية */}
-            <Route index element={<AdminDashboard />} />
-          </Route>
-        </Routes>
-      </Router>
+      {/* ❌ إزالة <Router> من هنا لأنها موجودة في main.jsx */}
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }>
+          {/* مسارات الأدمن */}
+          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="dashboard" element={<HospitalDashboard />} />
+          <Route path="doctors-manager" element={<DoctorsManager />} />
+          <Route path="users-manager" element={<UsersManager />} />
+          
+          {/* مسارات الدكتور */}
+          <Route path="doctor-dashboard" element={<DoctorDashboard />} />
+          <Route path="doctor" element={<DoctorPage />} />
+          
+          {/* مسارات الاستقبال */}
+          <Route path="reception-dashboard" element={<ReceptionDashboard />} />
+          <Route path="reception" element={<ReceptionPage />} />
+          
+          {/* مسار المريض */}
+          <Route path="patient-dashboard" element={<PatientDashboard />} />
+          <Route path="appointments" element={<Appointments />} />
+          
+          {/* المسارات المشتركة */}
+          <Route path="finance" element={<FinanceManager />} />
+          <Route path="operations" element={<OperationsDashboard />} />
+          <Route path="scheduling" element={<SchedulingEngine />} />
+          <Route path="packages" element={<PackagesManager />} />
+          <Route path="whatsapp" element={<WhatsAppManager />} />
+          <Route path="invoice" element={<InvoiceManager />} />
+          <Route path="prescription" element={<PrescriptionManager />} />
+          <Route path="patients" element={<PatientProfile />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="book-appointment" element={<BookAppointment />} />
+          
+          {/* الصفحة الرئيسية الافتراضية */}
+          <Route index element={<AdminDashboard />} />
+        </Route>
+      </Routes>
     </ThemeProvider>
   )
 }

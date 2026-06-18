@@ -1,4 +1,7 @@
-// خدمة إدارة البيانات - حفظ واسترجاع البيانات من LocalStorage
+// src/services/dataService.js
+// خدمة إدارة البيانات - تدعم API و localStorage كاحتياطي
+
+import { doctorsService, appointmentsService } from './api'
 
 const STORAGE_KEYS = {
   STATS: 'mcsos_stats',
@@ -38,93 +41,188 @@ const defaultWeeklySchedule = [
   { id: 6, day: 'الخميس', date: '2024-05-25', morning: 11, evening: 5, total: 16 }
 ]
 
-// الحصول على البيانات
-export const getStats = () => {
-  const saved = localStorage.getItem(STORAGE_KEYS.STATS)
-  return saved ? JSON.parse(saved) : defaultStats
+// ========== دوال مساعدة للـ API ==========
+const get = async (endpoint) => {
+  const token = localStorage.getItem('mcsos_token')
+  const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  })
+  return response.json()
 }
 
-export const getDoctors = () => {
-  const saved = localStorage.getItem(STORAGE_KEYS.DOCTORS)
-  return saved ? JSON.parse(saved) : defaultDoctors
+const post = async (endpoint, data) => {
+  const token = localStorage.getItem('mcsos_token')
+  const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  return response.json()
 }
 
-export const getWeeklySchedule = () => {
-  const saved = localStorage.getItem(STORAGE_KEYS.WEEKLY_SCHEDULE)
-  return saved ? JSON.parse(saved) : defaultWeeklySchedule
+const put = async (endpoint, data) => {
+  const token = localStorage.getItem('mcsos_token')
+  const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  return response.json()
 }
 
-// حفظ البيانات
-export const saveStats = (data) => {
+const del = async (endpoint) => {
+  const token = localStorage.getItem('mcsos_token')
+  const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
+  return response.json()
+}
+
+// ========== الحصول على البيانات (مع دعم API) ==========
+export const getStats = async () => {
+  try {
+    const response = await get('/stats/operations')
+    return response || defaultStats
+  } catch (error) {
+    console.warn('API getStats failed, using local:', error)
+    const saved = localStorage.getItem(STORAGE_KEYS.STATS)
+    return saved ? JSON.parse(saved) : defaultStats
+  }
+}
+
+export const getDoctors = async () => {
+  try {
+    const response = await get('/doctors')
+    return response?.doctors || response || defaultDoctors
+  } catch (error) {
+    console.warn('API getDoctors failed, using local:', error)
+    const saved = localStorage.getItem(STORAGE_KEYS.DOCTORS)
+    return saved ? JSON.parse(saved) : defaultDoctors
+  }
+}
+
+export const getWeeklySchedule = async () => {
+  try {
+    const response = await get('/schedule/weekly')
+    return response?.schedule || response || defaultWeeklySchedule
+  } catch (error) {
+    console.warn('API getWeeklySchedule failed, using local:', error)
+    const saved = localStorage.getItem(STORAGE_KEYS.WEEKLY_SCHEDULE)
+    return saved ? JSON.parse(saved) : defaultWeeklySchedule
+  }
+}
+
+// ========== حفظ البيانات ==========
+export const saveStats = async (data) => {
   localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(data))
+  try {
+    await put('/stats/operations', data)
+  } catch (error) {
+    console.warn('Failed to save stats to API:', error)
+  }
 }
 
-export const saveDoctors = (data) => {
+export const saveDoctors = async (data) => {
   localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(data))
+  try {
+    for (const doctor of data) {
+      await put(`/doctors/${doctor.id}`, doctor)
+    }
+  } catch (error) {
+    console.warn('Failed to save doctors to API:', error)
+  }
 }
 
-export const saveWeeklySchedule = (data) => {
+export const saveWeeklySchedule = async (data) => {
   localStorage.setItem(STORAGE_KEYS.WEEKLY_SCHEDULE, JSON.stringify(data))
+  try {
+    await put('/schedule/weekly', { schedule: data })
+  } catch (error) {
+    console.warn('Failed to save schedule to API:', error)
+  }
 }
 
-// تحديث بيانات محددة
-export const updateDoctor = (id, updatedData) => {
-  const doctors = getDoctors()
+// ========== تحديث بيانات محددة ==========
+export const updateDoctor = async (id, updatedData) => {
+  const doctors = await getDoctors()
   const updated = doctors.map(d => d.id === id ? { ...d, ...updatedData } : d)
-  saveDoctors(updated)
+  await saveDoctors(updated)
   return updated
 }
 
-export const addDoctor = (doctor) => {
-  const doctors = getDoctors()
-  const newId = Math.max(...doctors.map(d => d.id), 0) + 1
+export const addDoctor = async (doctor) => {
+  const doctors = await getDoctors()
+  const newId = Math.max(...doctors.map(d => d.id || 0), 0) + 1
   const newDoctor = { ...doctor, id: newId }
   const updated = [...doctors, newDoctor]
-  saveDoctors(updated)
+  await saveDoctors(updated)
   return updated
 }
 
-export const deleteDoctor = (id) => {
-  const doctors = getDoctors()
+export const deleteDoctor = async (id) => {
+  const doctors = await getDoctors()
   const updated = doctors.filter(d => d.id !== id)
-  saveDoctors(updated)
+  await saveDoctors(updated)
   return updated
 }
 
-export const updateSchedule = (id, updatedData) => {
-  const schedule = getWeeklySchedule()
+export const updateSchedule = async (id, updatedData) => {
+  const schedule = await getWeeklySchedule()
   const updated = schedule.map(s => s.id === id ? { ...s, ...updatedData, total: (updatedData.morning || s.morning) + (updatedData.evening || s.evening) } : s)
-  saveWeeklySchedule(updated)
+  await saveWeeklySchedule(updated)
   return updated
 }
 
-export const addSchedule = (schedule) => {
-  const schedules = getWeeklySchedule()
-  const newId = Math.max(...schedules.map(s => s.id), 0) + 1
+export const addSchedule = async (schedule) => {
+  const schedules = await getWeeklySchedule()
+  const newId = Math.max(...schedules.map(s => s.id || 0), 0) + 1
   const newSchedule = { ...schedule, id: newId, total: (schedule.morning || 0) + (schedule.evening || 0) }
   const updated = [...schedules, newSchedule]
-  saveWeeklySchedule(updated)
+  await saveWeeklySchedule(updated)
   return updated
 }
 
-export const deleteSchedule = (id) => {
-  const schedules = getWeeklySchedule()
+export const deleteSchedule = async (id) => {
+  const schedules = await getWeeklySchedule()
   const updated = schedules.filter(s => s.id !== id)
-  saveWeeklySchedule(updated)
+  await saveWeeklySchedule(updated)
   return updated
 }
 
-// حساب الإحصائيات تلقائياً من الجدول
+// ========== حساب الإحصائيات ==========
 export const calculateStatsFromSchedule = (schedule) => {
   const total = schedule.reduce((sum, day) => sum + day.total, 0)
   const completed = schedule.reduce((sum, day) => sum + (day.morning + day.evening), 0)
   return { totalAppointments: total, completedAppointments: completed }
 }
 
-// إعادة تعيين جميع البيانات للقيم الافتراضية
-export const resetAllData = () => {
+// ========== إعادة تعيين البيانات ==========
+export const resetAllData = async () => {
   localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(defaultStats))
   localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(defaultDoctors))
   localStorage.setItem(STORAGE_KEYS.WEEKLY_SCHEDULE, JSON.stringify(defaultWeeklySchedule))
+  
+  try {
+    await put('/stats/operations', defaultStats)
+    for (const doctor of defaultDoctors) {
+      await put(`/doctors/${doctor.id}`, doctor)
+    }
+    await put('/schedule/weekly', { schedule: defaultWeeklySchedule })
+  } catch (error) {
+    console.warn('Failed to reset data on API:', error)
+  }
+  
   return { stats: defaultStats, doctors: defaultDoctors, schedule: defaultWeeklySchedule }
 }

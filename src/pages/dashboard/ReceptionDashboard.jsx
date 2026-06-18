@@ -1,3 +1,4 @@
+// src/pages/dashboard/ReceptionDashboard.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { 
@@ -8,9 +9,9 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-// ========== استيراد الخدمات ==========
-import { patientsService, appointmentsService, doctorsService } from '../services/api'
-import { useServices } from '../context/ServiceContext'
+// ========== استيراد الخدمات (المسار الصحيح) ==========
+import { patientsService, appointmentsService, doctorsService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
 
 export default function ReceptionDashboard() {
   const { t, i18n } = useTranslation()

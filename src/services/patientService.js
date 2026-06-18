@@ -1,4 +1,7 @@
-// خدمة متكاملة لإدارة بيانات المرضى
+// src/services/patientService.js
+// خدمة متكاملة لإدارة بيانات المرضى - تدعم API و localStorage كاحتياطي
+
+import { patientsService, prescriptionsService } from './api'
 
 const STORAGE_KEYS = {
   PATIENTS: 'mcsos_patients_v2',
@@ -29,7 +32,7 @@ export const sessionStatus = {
   cancelled: { ar: 'ملغي', en: 'Cancelled', color: 'text-gray-400', progressValue: 0 }
 }
 
-// حالة المريض العامة (محدثة)
+// حالة المريض العامة
 export const patientStatus = {
   critical: { ar: 'حرج', en: 'Critical', color: 'text-red-600', progressBonus: -20, description: 'حالة حرجة تحتاج تدخل فوري' },
   declining: { ar: 'متدهور', en: 'Declining', color: 'text-red-400', progressBonus: -10, description: 'الحالة في تدهور' },
@@ -77,53 +80,68 @@ const defaultPatients = [
   }
 ]
 
-export const getPatients = () => {
-  const saved = localStorage.getItem(STORAGE_KEYS.PATIENTS)
-  return saved ? JSON.parse(saved) : defaultPatients
+// ========== الحصول على المرضى (مع دعم API) ==========
+export const getPatients = async () => {
+  try {
+    const response = await patientsService.getPatients()
+    return response || JSON.parse(localStorage.getItem(STORAGE_KEYS.PATIENTS) || '[]')
+  } catch (error) {
+    console.warn('API getPatients failed, using local:', error)
+    const saved = localStorage.getItem(STORAGE_KEYS.PATIENTS)
+    return saved ? JSON.parse(saved) : defaultPatients
+  }
 }
 
-export const savePatients = (patients) => {
+export const savePatients = async (patients) => {
   localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients))
+  try {
+    for (const patient of patients) {
+      await patientsService.updatePatient(patient.id, patient)
+    }
+  } catch (error) {
+    console.warn('Failed to save patients to API:', error)
+  }
 }
 
-export const addPatient = (patient) => {
-  const patients = getPatients()
-  const newId = Math.max(...patients.map(p => p.id), 0) + 1
+export const addPatient = async (patient) => {
+  const patients = await getPatients()
+  const newId = Math.max(...patients.map(p => p.id || 0), 0) + 1
   const newPatient = { ...patient, id: newId, sessionsHistory: [], reports: [], images: [], progressHistory: [], completedSessions: 0, progress: 0 }
   const updated = [...patients, newPatient]
-  savePatients(updated)
+  await savePatients(updated)
   return updated
 }
 
-export const updatePatient = (id, updatedData) => {
-  const patients = getPatients()
+export const updatePatient = async (id, updatedData) => {
+  const patients = await getPatients()
   const updated = patients.map(p => p.id === id ? { ...p, ...updatedData } : p)
-  savePatients(updated)
-  updatePatientProgress(id)
+  await savePatients(updated)
+  await updatePatientProgress(id)
   return updated
 }
 
-export const deletePatient = (id) => {
-  const patients = getPatients()
+export const deletePatient = async (id) => {
+  const patients = await getPatients()
   const updated = patients.filter(p => p.id !== id)
-  savePatients(updated)
+  await savePatients(updated)
   return updated
 }
 
-export const addSession = (patientId, sessionData) => {
-  const patients = getPatients()
+// ========== إدارة الجلسات ==========
+export const addSession = async (patientId, sessionData) => {
+  const patients = await getPatients()
   const patient = patients.find(p => p.id === patientId)
   if (patient) {
     const newSession = { id: Date.now(), ...sessionData }
     patient.sessionsHistory = [newSession, ...(patient.sessionsHistory || [])]
-    savePatients(patients)
-    updatePatientProgress(patientId)
+    await savePatients(patients)
+    await updatePatientProgress(patientId)
   }
   return patients
 }
 
-export const updateSessionStatus = (patientId, sessionId, status, notes = '') => {
-  const patients = getPatients()
+export const updateSessionStatus = async (patientId, sessionId, status, notes = '') => {
+  const patients = await getPatients()
   const patient = patients.find(p => p.id === patientId)
   if (patient) {
     const session = patient.sessionsHistory.find(s => s.id === sessionId)
@@ -132,37 +150,38 @@ export const updateSessionStatus = (patientId, sessionId, status, notes = '') =>
       session.status = status
       session.notes = notes || session.notes
       
-      // تحديث عدد الجلسات المكتملة
       if (status === 'attended' && oldStatus !== 'attended') {
         patient.completedSessions = (patient.completedSessions || 0) + 1
       } else if (oldStatus === 'attended' && status !== 'attended') {
         patient.completedSessions = Math.max(0, (patient.completedSessions || 0) - 1)
       }
       
-      savePatients(patients)
-      updatePatientProgress(patientId)
+      await savePatients(patients)
+      await updatePatientProgress(patientId)
     }
   }
   return patients
 }
 
-export const addReport = (patientId, reportData) => {
-  const patients = getPatients()
+// ========== إدارة التقارير ==========
+export const addReport = async (patientId, reportData) => {
+  const patients = await getPatients()
   const patient = patients.find(p => p.id === patientId)
   if (patient) {
     const newReport = { id: Date.now(), date: new Date().toISOString(), ...reportData }
     patient.reports = [newReport, ...(patient.reports || [])]
-    savePatients(patients)
-    updatePatientProgress(patientId)
+    await savePatients(patients)
+    await updatePatientProgress(patientId)
   }
   return patients
 }
 
+// ========== إدارة الصور ==========
 export const addImageToPatient = (patientId, imageFile, type, title, description = '') => {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     const reader = new FileReader()
-    reader.onloadend = () => {
-      const patients = getPatients()
+    reader.onloadend = async () => {
+      const patients = await getPatients()
       const patient = patients.find(p => p.id === patientId)
       if (patient) {
         const newImage = {
@@ -176,7 +195,7 @@ export const addImageToPatient = (patientId, imageFile, type, title, description
           date: new Date().toISOString()
         }
         patient.images = [newImage, ...(patient.images || [])]
-        savePatients(patients)
+        await savePatients(patients)
         resolve(patients)
       }
       resolve(null)
@@ -185,18 +204,19 @@ export const addImageToPatient = (patientId, imageFile, type, title, description
   })
 }
 
-export const deleteImage = (patientId, imageId) => {
-  const patients = getPatients()
+export const deleteImage = async (patientId, imageId) => {
+  const patients = await getPatients()
   const patient = patients.find(p => p.id === patientId)
   if (patient && patient.images) {
     patient.images = patient.images.filter(img => img.id !== imageId)
-    savePatients(patients)
+    await savePatients(patients)
   }
   return patients
 }
 
-export const addProgressAssessment = (patientId, assessment) => {
-  const patients = getPatients()
+// ========== تقييم التقدم ==========
+export const addProgressAssessment = async (patientId, assessment) => {
+  const patients = await getPatients()
   const patient = patients.find(p => p.id === patientId)
   if (patient) {
     const progressHistory = patient.progressHistory || []
@@ -210,49 +230,42 @@ export const addProgressAssessment = (patientId, assessment) => {
     patient.progressHistory = progressHistory
     patient.lastAssessmentDate = new Date().toISOString().split('T')[0]
     patient.doctorAssessment = assessment.note
-    savePatients(patients)
-    updatePatientProgress(patientId)
+    await savePatients(patients)
+    await updatePatientProgress(patientId)
   }
   return patients
 }
 
-// حساب التقدم العلاجي المحسن
+// ========== حساب التقدم ==========
 export const calculateProgress = (patient) => {
   let progress = 0
   let factors = []
   
-  // 1. الجلسات المكتملة (40% من التقدم)
   const sessionProgress = (patient.completedSessions / patient.totalSessions) * 40
   factors.push({ name: 'الجلسات المكتملة', value: sessionProgress, max: 40, current: patient.completedSessions, total: patient.totalSessions })
   progress += sessionProgress
   
-  // 2. نسبة حضور الجلسات (15% من التقدم)
   const totalSessions = patient.sessionsHistory?.length || 0
   const attendedSessions = patient.sessionsHistory?.filter(s => s.status === 'attended').length || 0
   const attendanceRate = totalSessions > 0 ? (attendedSessions / totalSessions) * 15 : 0
   factors.push({ name: 'نسبة الحضور', value: attendanceRate, max: 15, attended: attendedSessions, total: totalSessions })
   progress += attendanceRate
   
-  // 3. حالة المريض (20% من التقدم)
   const statusBonus = patientStatus[patient.status]?.progressBonus || 0
   let statusValue = Math.max(0, statusBonus)
   if (statusBonus < 0) statusValue = 0
   factors.push({ name: 'حالة المريض', value: statusValue, max: 20, status: patient.status, bonus: statusBonus })
   progress += statusValue
   
-  // 4. درجة الحالة (10% من التقدم)
   const severityBonus = severityLevels[patient.severity]?.progressBonus || 0
   factors.push({ name: 'درجة الحالة', value: severityBonus, max: 10, severity: patient.severity })
   progress += severityBonus
   
-  // 5. التقارير الإيجابية (10% من التقدم)
   const positiveReports = patient.reports?.filter(r => r.type === 'positive').length || 0
   const reportBonus = Math.min(10, positiveReports * 2)
   factors.push({ name: 'التقارير الإيجابية', value: reportBonus, max: 10, count: positiveReports })
   progress += reportBonus
   
-  // 6. انتظام الجلسات (5% من التقدم)
-  // حساب إذا كانت الجلسات منتظمة (في نفس اليوم من كل أسبوع)
   let regularityBonus = 0
   if (patient.sessionsHistory && patient.sessionsHistory.length >= 2) {
     const days = patient.sessionsHistory.map(s => new Date(s.date).getDay())
@@ -262,10 +275,8 @@ export const calculateProgress = (patient) => {
   factors.push({ name: 'انتظام الجلسات', value: regularityBonus, max: 5 })
   progress += regularityBonus
   
-  // التأكد من أن النسبة بين 0 و 100
   progress = Math.min(100, Math.max(0, Math.round(progress)))
   
-  // تحديد حالة المريض بناءً على التقدم
   let newStatus = patient.status
   if (progress >= 90) newStatus = 'completed'
   else if (progress >= 75) newStatus = 'excellent'
@@ -275,7 +286,6 @@ export const calculateProgress = (patient) => {
   else if (progress >= 5) newStatus = 'declining'
   else newStatus = 'critical'
   
-  // حفظ تاريخ التقدم إذا تغيرت النسبة
   if (progress !== patient.progress) {
     const progressHistory = patient.progressHistory || []
     progressHistory.push({
@@ -294,15 +304,14 @@ export const calculateProgress = (patient) => {
   return { progress, factors, newStatus }
 }
 
-// تحديث تقدم المريض بعد كل تغيير
-export const updatePatientProgress = (patientId) => {
-  const patients = getPatients()
+export const updatePatientProgress = async (patientId) => {
+  const patients = await getPatients()
   const patient = patients.find(p => p.id === patientId)
   if (patient) {
     const { progress, factors, newStatus } = calculateProgress(patient)
     patient.progress = progress
     patient.status = newStatus
-    savePatients(patients)
+    await savePatients(patients)
     return { progress, factors, newStatus }
   }
   return null
@@ -314,9 +323,8 @@ export const getDoctorName = (doctorId, lang = 'ar') => {
   return lang === 'ar' ? doctor.nameAr : doctor.nameEn
 }
 
-// دالة للحصول على تفاصيل التقدم
-export const getProgressDetails = (patientId) => {
-  const patients = getPatients()
+export const getProgressDetails = async (patientId) => {
+  const patients = await getPatients()
   const patient = patients.find(p => p.id === patientId)
   if (!patient) return null
   

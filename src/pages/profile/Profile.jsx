@@ -1,3 +1,4 @@
+// src/pages/profile/Profile.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { 
@@ -5,10 +6,15 @@ import {
   Edit, Save, X, Camera, Lock, Key, LogOut, CheckCircle,
   Shield, Bell, Globe, Moon, Sun, Monitor, Award, TrendingUp,
   Users, Calendar as CalendarIcon, FileText, Stethoscope,
-  RefreshCw, AlertCircle, Upload, Image as ImageIcon
+  RefreshCw, AlertCircle, Upload, Image as ImageIcon,
+  Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTheme } from '../../context/ThemeContext'
+
+// ========== استيراد الخدمات ==========
+import { authService, usersService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
 
 // خدمة حفظ واسترجاع بيانات المستخدم
 const STORAGE_KEY = 'mcsos_user_profile'
@@ -49,6 +55,9 @@ export default function Profile() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   const { theme, setTheme } = useTheme()
+
+  // ========== استخدام خدمات API ==========
+  const { isOnline, executeWithOfflineSupport } = useServices()
   
   const [isEditing, setIsEditing] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -56,6 +65,7 @@ export default function Profile() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [activeTab, setActiveTab] = useState('info')
   const [loading, setLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // بيانات المستخدم
   const [userData, setUserData] = useState(defaultProfile)
@@ -87,20 +97,81 @@ export default function Profile() {
     { id: 4, action: 'تسجيل خروج', time: '2024-05-19 18:00:00', type: 'warning' },
     { id: 5, action: 'تعديل موعد مريض', time: '2024-05-19 14:20:00', type: 'info' },
   ])
-  
-  // تحميل بيانات المستخدم المحفوظة
+
+  // ========== تحميل بيانات المستخدم ==========
   useEffect(() => {
+    loadUserProfile()
+  }, [])
+
+  const loadUserProfile = async () => {
+    setLoading(true)
+    try {
+      // محاولة جلب البيانات من API
+      if (isOnline) {
+        try {
+          const response = await authService.getMe()
+          if (response && response.user) {
+            const user = response.user
+            // دمج البيانات من API مع البيانات المحلية
+            const mergedData = {
+              ...defaultProfile,
+              ...user,
+              id: user.id || 'admin_001',
+              name: user.name || user.nameAr || defaultProfile.name,
+              nameEn: user.nameEn || user.name || defaultProfile.nameEn,
+              email: user.email || defaultProfile.email,
+              phone: user.phone || defaultProfile.phone,
+              role: user.roleAr || user.role || defaultProfile.role,
+              roleEn: user.roleEn || user.role || defaultProfile.roleEn,
+              department: user.department || defaultProfile.department,
+              departmentEn: user.departmentEn || defaultProfile.departmentEn,
+              joinDate: user.joinDate || defaultProfile.joinDate,
+              lastLogin: new Date().toLocaleString()
+            }
+            setUserData(mergedData)
+            setEditData(mergedData)
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData))
+          }
+        } catch (apiError) {
+          console.warn('API get profile failed, using local data:', apiError)
+          loadLocalProfile()
+        }
+      } else {
+        loadLocalProfile()
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error)
+      loadLocalProfile()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadLocalProfile = () => {
     const savedProfile = localStorage.getItem(STORAGE_KEY)
     if (savedProfile) {
-      setUserData(JSON.parse(savedProfile))
-      setEditData(JSON.parse(savedProfile))
+      const data = JSON.parse(savedProfile)
+      setUserData(data)
+      setEditData(data)
+    } else {
+      setUserData(defaultProfile)
+      setEditData(defaultProfile)
     }
-  }, [])
-  
-  // حفظ بيانات المستخدم
+  }
+
+  // ========== حفظ بيانات المستخدم ==========
   const saveUserData = (data) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     setUserData(data)
+    
+    // محاولة المزامنة مع الخادم
+    if (isOnline) {
+      try {
+        usersService.updateUser(data.id, data)
+      } catch (error) {
+        console.warn('Failed to sync profile with server:', error)
+      }
+    }
   }
   
   const handleAvatarUpload = (e) => {
@@ -133,11 +204,11 @@ export default function Profile() {
   }
   
   const handleSaveProfile = () => {
-    setLoading(true)
+    setIsSubmitting(true)
     setTimeout(() => {
       saveUserData(editData)
       setIsEditing(false)
-      setLoading(false)
+      setIsSubmitting(false)
       toast.success('تم حفظ التغييرات بنجاح')
     }, 500)
   }
@@ -147,7 +218,7 @@ export default function Profile() {
     setIsEditing(false)
   }
   
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
       toast.error('الرجاء ملء جميع الحقول')
       return
@@ -160,9 +231,23 @@ export default function Profile() {
       toast.error('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
       return
     }
-    toast.success('تم تغيير كلمة المرور بنجاح')
-    setShowPasswordModal(false)
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+    setIsSubmitting(true)
+    try {
+      if (isOnline) {
+        await usersService.changePassword(userData.id, {
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
+      }
+      toast.success('تم تغيير كلمة المرور بنجاح')
+      setShowPasswordModal(false)
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في تغيير كلمة المرور')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
   
   const handleDeleteAccount = () => {
@@ -188,28 +273,57 @@ export default function Profile() {
     if (userData.gender === 'female') return isRTL ? 'أنثى' : 'Female'
     return '-'
   }
+
+  // ========== تحديث البيانات ==========
+  const refreshData = () => {
+    loadUserProfile()
+    toast.success('تم تحديث البيانات')
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
+          <div className="text-white">جاري التحميل...</div>
+        </div>
+      </div>
+    )
+  }
   
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold gradient-text">الملف الشخصي</h1>
-          <p className="text-gray-400 mt-1">إدارة معلومات حسابك وإعداداتك الشخصية</p>
+          <p className="text-gray-400 mt-1">
+            إدارة معلومات حسابك وإعداداتك الشخصية
+            {!isOnline && (
+              <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+                ⚡ غير متصل
+              </span>
+            )}
+          </p>
         </div>
-        {!isEditing ? (
-          <button onClick={() => setIsEditing(true)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30 transition">
-            <Edit size={18} /> تعديل الملف
+        <div className="flex gap-2">
+          <button onClick={refreshData} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30 transition">
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> تحديث
           </button>
-        ) : (
-          <div className="flex gap-2">
-            <button onClick={handleSaveProfile} disabled={loading} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30 transition">
-              {loading ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />} حفظ
+          {!isEditing ? (
+            <button onClick={() => setIsEditing(true)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30 transition">
+              <Edit size={18} /> تعديل الملف
             </button>
-            <button onClick={handleCancelEdit} className="bg-gray-600/50 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-xl flex items-center gap-2 transition">
-              <X size={18} /> إلغاء
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={handleSaveProfile} disabled={isSubmitting} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30 transition disabled:opacity-50">
+                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} حفظ
+              </button>
+              <button onClick={handleCancelEdit} className="bg-gray-600/50 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-xl flex items-center gap-2 transition">
+                <X size={18} /> إلغاء
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -232,6 +346,9 @@ export default function Profile() {
             <h2 className="text-xl font-bold text-white mt-4">{userData.name}</h2>
             <p className="text-gray-400 text-sm">{getRoleText()}</p>
             <p className="text-gray-500 text-xs mt-1">{getDepartmentText()}</p>
+            {userData._syncPending && (
+              <span className="text-xs text-yellow-400 mt-1 block">⏳ في انتظار المزامنة</span>
+            )}
             <div className="mt-4 pt-4 border-t border-gray-700">
               <div className="flex justify-between text-sm"><span className="text-gray-400">تاريخ الانضمام</span><span className="text-white">{userData.joinDate}</span></div>
               <div className="flex justify-between text-sm mt-2"><span className="text-gray-400">آخر تسجيل</span><span className="text-white">{userData.lastLogin}</span></div>
@@ -321,7 +438,18 @@ export default function Profile() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">تغيير كلمة المرور</h2><button onClick={() => setShowPasswordModal(false)}><X size={20} className="text-gray-400" /></button></div>
-            <div className="space-y-4"><div><label className="block text-sm text-gray-400 mb-1">كلمة المرور الحالية</label><input type="password" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={passwordData.currentPassword} onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})} /></div><div><label className="block text-sm text-gray-400 mb-1">كلمة المرور الجديدة</label><input type="password" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={passwordData.newPassword} onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} /></div><div><label className="block text-sm text-gray-400 mb-1">تأكيد كلمة المرور</label><input type="password" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})} /></div><div className="flex gap-3 pt-4"><button onClick={handleChangePassword} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition">تغيير</button><button onClick={() => setShowPasswordModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div></div>
+            <div className="space-y-4">
+              <div><label className="block text-sm text-gray-400 mb-1">كلمة المرور الحالية</label><input type="password" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={passwordData.currentPassword} onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400 mb-1">كلمة المرور الجديدة</label><input type="password" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={passwordData.newPassword} onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} /></div>
+              <div><label className="block text-sm text-gray-400 mb-1">تأكيد كلمة المرور</label><input type="password" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})} /></div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleChangePassword} disabled={isSubmitting} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition disabled:opacity-50">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : null}
+                  {isSubmitting ? 'جاري التغيير...' : 'تغيير'}
+                </button>
+                <button onClick={() => setShowPasswordModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
