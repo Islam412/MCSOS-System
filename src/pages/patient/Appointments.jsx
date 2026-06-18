@@ -1,3 +1,4 @@
+// src/pages/patient/Appointments.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
@@ -6,12 +7,20 @@ import {
   User, Phone, Mail, AlertCircle, Video, Download, Printer,
   ChevronRight, ChevronLeft, Sparkles, Heart, Shield, Star,
   ArrowRight, Clock8, CalendarCheck, Building, Smartphone, Award,
-  Send, Copy, Share2, Bookmark, Trash2, Edit
+  Send, Copy, Share2, Bookmark, Trash2, Edit, Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// ========== استيراد الخدمات ==========
+import { appointmentsService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
+
 export default function Appointments() {
   const navigate = useNavigate()
+  
+  // ========== استخدام خدمات API ==========
+  const { isOnline, executeWithOfflineSupport } = useServices()
+  
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
@@ -19,6 +28,7 @@ export default function Appointments() {
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [user, setUser] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     const userData = localStorage.getItem('mcsos_user')
@@ -28,124 +38,140 @@ export default function Appointments() {
     loadAppointments()
   }, [])
 
-  const loadAppointments = () => {
-    setTimeout(() => {
-      // محاولة تحميل المواعيد من localStorage
-      const savedAppointments = localStorage.getItem('mcsos_appointments')
-      let allAppointments = []
-      
-      if (savedAppointments) {
-        allAppointments = JSON.parse(savedAppointments)
+  // ========== تحميل المواعيد من API ==========
+  const loadAppointments = async () => {
+    setLoading(true)
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => appointmentsService.getAppointments({ patientId: user?.id }),
+          'appointments',
+          JSON.parse(localStorage.getItem('mcsos_appointments_v2') || '[]')
+        )
+        const data = response || []
+        setAppointments(data)
+        localStorage.setItem('mcsos_appointments_v2', JSON.stringify(data))
+      } else {
+        const saved = localStorage.getItem('mcsos_appointments_v2')
+        if (saved) {
+          setAppointments(JSON.parse(saved))
+        } else {
+          // بيانات تجريبية في حالة عدم وجود بيانات محلية
+          const demoAppointments = getDemoAppointments()
+          setAppointments(demoAppointments)
+          localStorage.setItem('mcsos_appointments_v2', JSON.stringify(demoAppointments))
+        }
       }
-      
-      // إذا لم توجد مواعيد، نضيف بيانات تجريبية
-      if (allAppointments.length === 0) {
-        const demoAppointments = [
-          { 
-            id: 1, 
-            doctor: 'د. أحمد علي',
-            doctorName: 'Ahmed Ali',
-            specialization: 'استشاري جراحة عظام',
-            date: '2024-05-25',
-            time: '10:00',
-            status: 'upcoming',
-            type: 'كشف طبي',
-            location: 'مجمع العيادات - الطابق الأول',
-            room: 'عيادة 203',
-            phone: '0501112222',
-            whatsapp: '966501112222',
-            email: 'ahmed@medical.com',
-            notes: 'يرجى إحضار التقارير السابقة',
-            icon: '🦴',
-            color: 'blue'
-          },
-          { 
-            id: 2, 
-            doctor: 'د. منى حسن',
-            doctorName: 'Mona Hassan',
-            specialization: 'أخصائية علاج طبيعي',
-            date: '2024-05-28',
-            time: '11:00',
-            status: 'upcoming',
-            type: 'جلسة علاج طبيعي',
-            location: 'مركز العلاج الطبيعي',
-            room: 'غرفة 305',
-            phone: '0502223333',
-            whatsapp: '966502223333',
-            email: 'mona@medical.com',
-            notes: '',
-            icon: '💪',
-            color: 'green'
-          },
-          { 
-            id: 3, 
-            doctor: 'د. محمد عبدالله',
-            doctorName: 'Mohamed Abdullah',
-            specialization: 'استشاري جراحة عامة',
-            date: '2024-06-01',
-            time: '09:30',
-            status: 'upcoming',
-            type: 'استشارة جراحية',
-            location: 'مجمع العيادات - الطابق الثاني',
-            room: 'عيادة 150',
-            phone: '0505556666',
-            whatsapp: '966505556666',
-            email: 'mohamed@medical.com',
-            notes: 'صيام 8 ساعات قبل الموعد',
-            icon: '🔪',
-            color: 'orange'
-          },
-          { 
-            id: 4, 
-            doctor: 'د. خالد محمود',
-            doctorName: 'Khaled Mahmoud',
-            specialization: 'استشاري أعصاب',
-            date: '2024-05-18',
-            time: '09:00',
-            status: 'completed',
-            type: 'متابعة',
-            location: 'مجمع العيادات',
-            room: 'عيادة 101',
-            phone: '0503334444',
-            whatsapp: '966503334444',
-            email: 'khaled@medical.com',
-            notes: 'تحسن ملحوظ في الحالة',
-            icon: '🧠',
-            color: 'purple'
-          },
-          { 
-            id: 5, 
-            doctor: 'د. نورة سعيد',
-            doctorName: 'Noura Saeed',
-            specialization: 'استشارية أطفال',
-            date: '2024-05-15',
-            time: '14:00',
-            status: 'completed',
-            type: 'فحص دوري',
-            location: 'مجمع العيادات',
-            room: 'عيادة 402',
-            phone: '0504445555',
-            whatsapp: '966504445555',
-            email: 'noura@medical.com',
-            notes: 'الحالة جيدة',
-            icon: '👶',
-            color: 'pink'
-          }
-        ]
-        localStorage.setItem('mcsos_appointments', JSON.stringify(demoAppointments))
-        allAppointments = demoAppointments
+    } catch (error) {
+      console.error('Error loading appointments:', error)
+      toast.error('حدث خطأ في تحميل المواعيد')
+      // استخدام البيانات المحلية كاحتياطي
+      const saved = localStorage.getItem('mcsos_appointments_v2')
+      if (saved) {
+        setAppointments(JSON.parse(saved))
       }
-      
-      // تصفية مواعيد المستخدم الحالي
-      const userAppointments = allAppointments.filter(apt => 
-        apt.patient === user?.name || apt.patientId === user?.id || !apt.patient
-      )
-      
-      setAppointments(userAppointments.length > 0 ? userAppointments : allAppointments)
+    } finally {
       setLoading(false)
-    }, 500)
+    }
   }
 
+  // ========== بيانات تجريبية ==========
+  const getDemoAppointments = () => {
+    return [
+      { 
+        id: 1, 
+        doctor: 'د. أحمد علي',
+        doctorName: 'Ahmed Ali',
+        specialization: 'استشاري جراحة عظام',
+        date: '2024-05-25',
+        time: '10:00',
+        status: 'upcoming',
+        type: 'كشف طبي',
+        location: 'مجمع العيادات - الطابق الأول',
+        room: 'عيادة 203',
+        phone: '0501112222',
+        whatsapp: '966501112222',
+        email: 'ahmed@medical.com',
+        notes: 'يرجى إحضار التقارير السابقة',
+        icon: '🦴',
+        color: 'blue'
+      },
+      { 
+        id: 2, 
+        doctor: 'د. منى حسن',
+        doctorName: 'Mona Hassan',
+        specialization: 'أخصائية علاج طبيعي',
+        date: '2024-05-28',
+        time: '11:00',
+        status: 'upcoming',
+        type: 'جلسة علاج طبيعي',
+        location: 'مركز العلاج الطبيعي',
+        room: 'غرفة 305',
+        phone: '0502223333',
+        whatsapp: '966502223333',
+        email: 'mona@medical.com',
+        notes: '',
+        icon: '💪',
+        color: 'green'
+      },
+      { 
+        id: 3, 
+        doctor: 'د. محمد عبدالله',
+        doctorName: 'Mohamed Abdullah',
+        specialization: 'استشاري جراحة عامة',
+        date: '2024-06-01',
+        time: '09:30',
+        status: 'upcoming',
+        type: 'استشارة جراحية',
+        location: 'مجمع العيادات - الطابق الثاني',
+        room: 'عيادة 150',
+        phone: '0505556666',
+        whatsapp: '966505556666',
+        email: 'mohamed@medical.com',
+        notes: 'صيام 8 ساعات قبل الموعد',
+        icon: '🔪',
+        color: 'orange'
+      },
+      { 
+        id: 4, 
+        doctor: 'د. خالد محمود',
+        doctorName: 'Khaled Mahmoud',
+        specialization: 'استشاري أعصاب',
+        date: '2024-05-18',
+        time: '09:00',
+        status: 'completed',
+        type: 'متابعة',
+        location: 'مجمع العيادات',
+        room: 'عيادة 101',
+        phone: '0503334444',
+        whatsapp: '966503334444',
+        email: 'khaled@medical.com',
+        notes: 'تحسن ملحوظ في الحالة',
+        icon: '🧠',
+        color: 'purple'
+      },
+      { 
+        id: 5, 
+        doctor: 'د. نورة سعيد',
+        doctorName: 'Noura Saeed',
+        specialization: 'استشارية أطفال',
+        date: '2024-05-15',
+        time: '14:00',
+        status: 'completed',
+        type: 'فحص دوري',
+        location: 'مجمع العيادات',
+        room: 'عيادة 402',
+        phone: '0504445555',
+        whatsapp: '966504445555',
+        email: 'noura@medical.com',
+        notes: 'الحالة جيدة',
+        icon: '👶',
+        color: 'pink'
+      }
+    ]
+  }
+
+  // ========== تنسيق التاريخ ==========
   const formatDate = (date) => {
     const d = new Date(date)
     const today = new Date()
@@ -158,6 +184,7 @@ export default function Appointments() {
     return `${d.getDate()} ${['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'][d.getMonth()]}`
   }
 
+  // ========== حساب الأيام المتبقية ==========
   const getDaysLeft = (date) => {
     const diff = Math.ceil((new Date(date) - new Date()) / (1000 * 60 * 60 * 24))
     if (diff < 0) return null
@@ -166,6 +193,7 @@ export default function Appointments() {
     return `باقي ${diff} أيام`
   }
 
+  // ========== ألوان المواعيد ==========
   const getColorClasses = (color) => {
     const colors = {
       blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400', gradient: 'from-blue-500 to-blue-600' },
@@ -177,12 +205,13 @@ export default function Appointments() {
     return colors[color] || colors.blue
   }
 
+  // ========== عرض تفاصيل الموعد ==========
   const handleViewDetails = (appointment) => {
     setSelectedAppointment(appointment)
     setShowDetailsModal(true)
   }
 
-  // دالة التواصل عبر واتساب
+  // ========== التواصل عبر واتساب ==========
   const handleContactWhatsApp = (phoneNumber, doctorName) => {
     let cleanPhone = phoneNumber?.replace(/[^0-9]/g, '') || ''
     if (!cleanPhone.startsWith('966') && cleanPhone.length === 9) {
@@ -197,59 +226,71 @@ export default function Appointments() {
     toast.success(`جاري فتح واتساب للتواصل مع ${doctorName}`)
   }
 
+  // ========== الاتصال ==========
   const handleCall = (phoneNumber, doctorName) => {
     const cleanPhone = phoneNumber?.replace(/[^0-9]/g, '') || ''
     window.location.href = `tel:${cleanPhone}`
     toast.success(`جاري الاتصال بـ ${doctorName}`)
   }
 
+  // ========== نسخ رقم الهاتف ==========
   const handleCopyPhone = (phoneNumber, doctorName) => {
     navigator.clipboard.writeText(phoneNumber)
     toast.success(`تم نسخ رقم هاتف ${doctorName}`)
   }
 
-  // زر حجز موعد جديد - يوجه إلى صفحة حجز الموعد
+  // ========== حجز موعد جديد ==========
   const handleBookNewAppointment = () => {
     navigate('/book-appointment')
   }
 
-  // إلغاء موعد
-  const handleCancelAppointment = (id) => {
-    if (window.confirm('هل أنت متأكد من إلغاء هذا الموعد؟')) {
-      const updatedAppointments = appointments.map(apt => 
-        apt.id === id ? { ...apt, status: 'cancelled' } : apt
-      )
-      setAppointments(updatedAppointments)
-      
-      // تحديث localStorage
-      const savedAppointments = localStorage.getItem('mcsos_appointments')
-      if (savedAppointments) {
-        const allAppointments = JSON.parse(savedAppointments)
-        const updatedAll = allAppointments.map(apt => 
-          apt.id === id ? { ...apt, status: 'cancelled' } : apt
-        )
-        localStorage.setItem('mcsos_appointments', JSON.stringify(updatedAll))
+  // ========== إلغاء موعد ==========
+  const handleCancelAppointment = async (id) => {
+    if (!window.confirm('هل أنت متأكد من إلغاء هذا الموعد؟')) return
+
+    setIsSubmitting(true)
+    try {
+      if (isOnline) {
+        await appointmentsService.cancelAppointment(id, 'تم الإلغاء من قبل المريض')
       }
       
+      const updatedAppointments = appointments.map(apt => 
+        apt.id === id ? { ...apt, status: 'cancelled', _syncPending: !isOnline } : apt
+      )
+      setAppointments(updatedAppointments)
+      localStorage.setItem('mcsos_appointments_v2', JSON.stringify(updatedAppointments))
+      
       toast.success('تم إلغاء الموعد بنجاح')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في إلغاء الموعد')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
+  // ========== إرسال تذكير ==========
   const handleReminder = (doctor, date, time) => {
     toast.success(`تم إرسال تذكير للموعد مع ${doctor} يوم ${date} الساعة ${time}`)
   }
 
+  // ========== تحديث البيانات ==========
+  const refreshData = () => {
+    loadAppointments()
+    toast.success('تم تحديث البيانات')
+  }
+
+  // ========== تصفية المواعيد ==========
   const filteredApps = appointments.filter(apt => {
-    if (filter === 'upcoming') return apt.status === 'upcoming'
+    if (filter === 'upcoming') return apt.status === 'upcoming' || apt.status === 'scheduled'
     if (filter === 'past') return apt.status === 'completed'
     if (filter === 'cancelled') return apt.status === 'cancelled'
     return true
   }).filter(apt => 
-    apt.doctor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    apt.doctor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (apt.specialization && apt.specialization.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  const upcomingApps = filteredApps.filter(a => a.status === 'upcoming')
+  const upcomingApps = filteredApps.filter(a => a.status === 'upcoming' || a.status === 'scheduled')
   const pastApps = filteredApps.filter(a => a.status === 'completed')
   const cancelledApps = filteredApps.filter(a => a.status === 'cancelled')
 
@@ -257,7 +298,7 @@ export default function Appointments() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
           <p className="text-gray-400">جاري تحميل مواعيدك...</p>
         </div>
       </div>
@@ -275,15 +316,30 @@ export default function Appointments() {
             </div>
             <h1 className="text-3xl font-bold text-white">مواعيدي</h1>
           </div>
-          <p className="text-gray-400">إدارة ومتابعة جميع مواعيدك الطبية</p>
+          <p className="text-gray-400">
+            إدارة ومتابعة جميع مواعيدك الطبية
+            {!isOnline && (
+              <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+                ⚡ غير متصل
+              </span>
+            )}
+          </p>
         </div>
-        <button
-          onClick={handleBookNewAppointment}
-          className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-500/25"
-        >
-          <Plus size={18} />
-          <span>حجز موعد جديد</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={refreshData}
+            className="px-4 py-2.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl transition flex items-center gap-2 border border-green-500/30"
+          >
+            تحديث
+          </button>
+          <button
+            onClick={handleBookNewAppointment}
+            className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-500/25"
+          >
+            <Plus size={18} />
+            <span>حجز موعد جديد</span>
+          </button>
+        </div>
       </div>
 
       {/* إحصائيات سريعة */}
@@ -318,7 +374,7 @@ export default function Appointments() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-xl transition ${filter === 'all' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'}`}>الكل</button>
           <button onClick={() => setFilter('upcoming')} className={`px-4 py-2 rounded-xl transition ${filter === 'upcoming' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'}`}>القادمة</button>
           <button onClick={() => setFilter('past')} className={`px-4 py-2 rounded-xl transition ${filter === 'past' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'}`}>السابقة</button>
@@ -338,6 +394,7 @@ export default function Appointments() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {upcomingApps.map((apt) => {
               const colors = getColorClasses(apt.color)
+              const isPending = apt._syncPending === true
               return (
                 <div key={apt.id} className={`group bg-gray-800/40 rounded-2xl border ${colors.border} hover:border-blue-500/50 transition-all duration-300 overflow-hidden hover:shadow-xl`}>
                   <div className="p-5">
@@ -345,11 +402,19 @@ export default function Appointments() {
                       <div className={`w-16 h-16 ${colors.bg} rounded-xl flex items-center justify-center text-3xl`}>{apt.icon}</div>
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
-                          <div><h3 className="text-lg font-bold text-white">{apt.doctor}</h3><p className={`text-sm ${colors.text}`}>{apt.specialization}</p></div>
+                          <div>
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                              {apt.doctor}
+                              {isPending && (
+                                <span className="text-xs text-yellow-400">⏳ مزامنة</span>
+                              )}
+                            </h3>
+                            <p className={`text-sm ${colors.text}`}>{apt.specialization}</p>
+                          </div>
                           <div className="flex gap-1">
                             <button onClick={() => handleReminder(apt.doctor, apt.date, apt.time)} className="p-1.5 text-gray-400 hover:text-blue-400 transition-colors"><Bell size={16} /></button>
                             <button onClick={() => handleContactWhatsApp(apt.whatsapp || apt.phone, apt.doctor)} className="p-1.5 text-gray-400 hover:text-green-400 transition-colors"><MessageCircle size={16} /></button>
-                            <button onClick={() => handleCancelAppointment(apt.id)} className="p-1.5 text-red-400 hover:text-red-500 transition-colors"><X size={16} /></button>
+                            <button onClick={() => handleCancelAppointment(apt.id)} disabled={isSubmitting} className="p-1.5 text-red-400 hover:text-red-500 transition-colors disabled:opacity-50"><X size={16} /></button>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-3 mt-3 text-sm">
@@ -490,6 +555,9 @@ export default function Appointments() {
                 <div>
                   <h3 className="text-xl font-bold text-white">{selectedAppointment.doctor}</h3>
                   <p className="text-blue-400 text-sm">{selectedAppointment.specialization}</p>
+                  {selectedAppointment._syncPending && (
+                    <span className="text-xs text-yellow-400">⏳ في انتظار المزامنة</span>
+                  )}
                 </div>
               </div>
               

@@ -6,11 +6,15 @@ import {
   CalendarDays, Search, Filter, Star, StarHalf, 
   Award, Users, Heart, MessageCircle, Phone,
   X, AlertCircle, CalendarCheck, Building, Smartphone,
-  DollarSign, User, Mail, Sparkles
+  DollarSign, User, Mail, Sparkles, Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-// بيانات الأطباء الثابتة (لن تتعطل أبداً)
+// ========== استيراد الخدمات ==========
+import { doctorsService, appointmentsService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
+
+// ========== بيانات الأطباء الثابتة (احتياطي) ==========
 const FIXED_DOCTORS = [
   { 
     id: 1, 
@@ -94,9 +98,14 @@ const FIXED_DOCTORS = [
 
 export default function BookAppointment() {
   const navigate = useNavigate()
+  
+  // ========== استخدام خدمات API ==========
+  const { isOnline, executeWithOfflineSupport } = useServices()
+  
   const [user, setUser] = useState(null)
-  const [doctors, setDoctors] = useState(FIXED_DOCTORS) // استخدام البيانات الثابتة مباشرة
-  const [loading, setLoading] = useState(false)
+  const [doctors, setDoctors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
@@ -104,6 +113,7 @@ export default function BookAppointment() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSpecialty, setSelectedSpecialty] = useState('all')
   const [bookingType, setBookingType] = useState('clinic')
+  const [availableSlots, setAvailableSlots] = useState([])
 
   const specialties = [
     { id: 'all', name: 'جميع التخصصات', icon: '🏥' },
@@ -114,20 +124,82 @@ export default function BookAppointment() {
     { id: 'جراحة عامة', name: 'جراحة عامة', icon: '🔪' }
   ]
 
+  // ========== تحميل البيانات ==========
   useEffect(() => {
-    try {
-      const userData = localStorage.getItem('mcsos_user')
-      if (userData) {
-        setUser(JSON.parse(userData))
-      }
-    } catch (error) {
-      console.error('Error loading user:', error)
+    const userData = localStorage.getItem('mcsos_user')
+    if (userData) {
+      setUser(JSON.parse(userData))
     }
-    // استخدام البيانات الثابتة مباشرة
-    setDoctors(FIXED_DOCTORS)
-    setLoading(false)
+    loadDoctors()
   }, [])
 
+  const loadDoctors = async () => {
+    setLoading(true)
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => doctorsService.getDoctors(),
+          'doctors',
+          JSON.parse(localStorage.getItem('mcsos_doctors') || '[]')
+        )
+        const data = response?.doctors || response || []
+        if (data.length > 0) {
+          setDoctors(data)
+          localStorage.setItem('mcsos_doctors', JSON.stringify(data))
+        } else {
+          setDoctors(FIXED_DOCTORS)
+        }
+      } else {
+        const saved = localStorage.getItem('mcsos_doctors')
+        if (saved && JSON.parse(saved).length > 0) {
+          setDoctors(JSON.parse(saved))
+        } else {
+          setDoctors(FIXED_DOCTORS)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading doctors:', error)
+      setDoctors(FIXED_DOCTORS)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ========== جلب المواعيد المتاحة ==========
+  useEffect(() => {
+    if (selectedDoctor && selectedDate) {
+      loadAvailableSlots()
+    } else {
+      setAvailableSlots([])
+    }
+  }, [selectedDoctor, selectedDate])
+
+  const loadAvailableSlots = async () => {
+    try {
+      if (isOnline) {
+        const response = await appointmentsService.getAvailableSlots({
+          doctorId: selectedDoctor.id,
+          date: selectedDate
+        })
+        setAvailableSlots(response?.slots || response || [])
+      } else {
+        // استخدام المواعيد الثابتة من الطبيب
+        const fixedSlots = selectedDoctor.availableSlots?.filter(
+          slot => slot.date === selectedDate && slot.available
+        ) || []
+        setAvailableSlots(fixedSlots)
+      }
+    } catch (error) {
+      console.error('Error loading available slots:', error)
+      // استخدام المواعيد الثابتة كاحتياطي
+      const fixedSlots = selectedDoctor.availableSlots?.filter(
+        slot => slot.date === selectedDate && slot.available
+      ) || []
+      setAvailableSlots(fixedSlots)
+    }
+  }
+
+  // ========== عرض النجوم ==========
   const renderStars = (rating) => {
     const stars = []
     const fullStars = Math.floor(rating || 0)
@@ -140,6 +212,7 @@ export default function BookAppointment() {
     return stars
   }
 
+  // ========== ألوان الأطباء ==========
   const getColorClasses = (color) => {
     const colors = {
       blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400', gradient: 'from-blue-500 to-blue-600' },
@@ -151,40 +224,57 @@ export default function BookAppointment() {
     return colors[color] || colors.blue
   }
 
+  // ========== فتح نافذة الحجز ==========
   const handleBookNow = (doctor) => {
     setSelectedDoctor(doctor)
     setSelectedDate('')
     setSelectedTime('')
+    setAvailableSlots([])
     setShowBookingModal(true)
   }
 
-  const handleConfirmBooking = () => {
+  // ========== تأكيد الحجز ==========
+  const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedTime) {
       toast.error('الرجاء اختيار التاريخ والوقت')
       return
     }
 
+    setIsSubmitting(true)
     try {
-      const newAppointment = {
-        id: Date.now(),
-        patient: user?.name || 'مريض',
-        patientId: user?.id || Date.now(),
-        doctor: selectedDoctor.name,
+      const appointmentData = {
         doctorId: selectedDoctor.id,
+        patientId: user?.id || Date.now(),
+        patientName: user?.name || 'مريض',
         date: selectedDate,
         time: selectedTime,
-        type: bookingType === 'clinic' ? 'كشف طبي' : 'استشارة أونلاين',
-        status: 'scheduled',
-        location: bookingType === 'clinic' ? 'العيادة - الطابق الأول' : 'رابط الاجتماع: سيتم إرساله لاحقاً',
-        price: selectedDoctor.price,
-        createdAt: new Date().toISOString()
+        type: bookingType === 'clinic' ? 'clinic' : 'online',
+        price: selectedDoctor.price
       }
 
-      const existingAppointments = JSON.parse(localStorage.getItem('mcsos_appointments') || '[]')
-      existingAppointments.push(newAppointment)
-      localStorage.setItem('mcsos_appointments', JSON.stringify(existingAppointments))
+      let newAppointment
 
-      toast.success(`تم حجز موعد مع ${selectedDoctor.name} يوم ${selectedDate} الساعة ${selectedTime}`)
+      if (isOnline) {
+        const response = await appointmentsService.bookAppointment(appointmentData)
+        newAppointment = response?.appointment || response
+        toast.success(`تم حجز موعد مع ${selectedDoctor.name} يوم ${selectedDate} الساعة ${selectedTime}`)
+      } else {
+        // وضع غير متصل - حفظ محلياً
+        newAppointment = {
+          ...appointmentData,
+          id: Date.now(),
+          status: 'scheduled',
+          location: bookingType === 'clinic' ? 'العيادة - الطابق الأول' : 'رابط الاجتماع: سيتم إرساله لاحقاً',
+          _syncPending: true,
+          createdAt: new Date().toISOString()
+        }
+        
+        const existingAppointments = JSON.parse(localStorage.getItem('mcsos_appointments') || '[]')
+        existingAppointments.push(newAppointment)
+        localStorage.setItem('mcsos_appointments', JSON.stringify(existingAppointments))
+        toast.success(`تم حجز موعد مع ${selectedDoctor.name} (تم الحفظ محلياً)`)
+      }
+
       setShowBookingModal(false)
       setSelectedDoctor(null)
       
@@ -192,27 +282,34 @@ export default function BookAppointment() {
         navigate('/appointments')
       }, 1500)
     } catch (error) {
-      console.error('Error:', error)
-      toast.error('حدث خطأ، يرجى المحاولة مرة أخرى')
+      console.error('Booking error:', error)
+      toast.error(error.message || 'حدث خطأ، يرجى المحاولة مرة أخرى')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
+  // ========== الحصول على التواريخ المتاحة ==========
   const getAvailableDates = () => {
-    if (!selectedDoctor || !selectedDoctor.availableSlots) return []
-    const dates = [...new Set(selectedDoctor.availableSlots
-      .filter(slot => slot.available)
-      .map(slot => slot.date))]
+    if (!selectedDoctor) return []
+    const dates = [...new Set(
+      (selectedDoctor.availableSlots || [])
+        .filter(slot => slot.available)
+        .map(slot => slot.date)
+    )]
     return dates.sort()
   }
 
+  // ========== الحصول على الأوقات المتاحة ==========
   const getAvailableTimesForDate = (date) => {
-    if (!selectedDoctor || !selectedDoctor.availableSlots) return []
-    return selectedDoctor.availableSlots
+    if (!selectedDoctor) return []
+    const slots = availableSlots.length > 0 ? availableSlots : (selectedDoctor.availableSlots || [])
+    return slots
       .filter(slot => slot.date === date && slot.available)
       .map(slot => slot.time)
   }
 
-  // تصفية الأطباء مع التحقق من وجود البيانات
+  // ========== تصفية الأطباء ==========
   const filteredDoctors = doctors.filter(doctor => {
     if (!doctor || !doctor.name) return false
     const matchesSearch = doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -225,8 +322,8 @@ export default function BookAppointment() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">جاري التحميل...</p>
+          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
+          <p className="text-gray-400">جاري تحميل الأطباء...</p>
         </div>
       </div>
     )
@@ -244,7 +341,14 @@ export default function BookAppointment() {
               </div>
               <h1 className="text-3xl font-bold text-white">حجز موعد</h1>
             </div>
-            <p className="text-gray-400">اختر الطبيب المناسب واحجز موعدك بسهولة</p>
+            <p className="text-gray-400">
+              اختر الطبيب المناسب واحجز موعدك بسهولة
+              {!isOnline && (
+                <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+                  ⚡ غير متصل
+                </span>
+              )}
+            </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <User size={16} className="text-blue-400" />
@@ -317,7 +421,12 @@ export default function BookAppointment() {
                        doctor.specialization === 'أطفال' ? '👶' : '👨‍⚕️'}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-white">{doctor.name}</h3>
+                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        {doctor.name}
+                        {doctor._syncPending && (
+                          <span className="text-xs text-yellow-400">⏳ مزامنة</span>
+                        )}
+                      </h3>
                       <p className={`text-sm ${colors.text}`}>{doctor.specialization}</p>
                       <div className="flex items-center gap-1 mt-1">
                         {renderStars(doctor.rating)}
@@ -383,7 +492,11 @@ export default function BookAppointment() {
 
               <div>
                 <label className="block text-sm text-gray-400 mb-1">اختر التاريخ</label>
-                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
+                <select 
+                  className="w-full p-2 bg-gray-700 rounded-lg text-white" 
+                  value={selectedDate} 
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                >
                   <option value="">اختر التاريخ</option>
                   {getAvailableDates().map(date => (
                     <option key={date} value={date}>{new Date(date).toLocaleDateString('ar')}</option>
@@ -396,9 +509,18 @@ export default function BookAppointment() {
                   <label className="block text-sm text-gray-400 mb-1">اختر الوقت</label>
                   <div className="grid grid-cols-3 gap-2">
                     {getAvailableTimesForDate(selectedDate).map(time => (
-                      <button key={time} onClick={() => setSelectedTime(time)} className={`py-2 rounded-lg transition ${selectedTime === time ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>{time}</button>
+                      <button 
+                        key={time} 
+                        onClick={() => setSelectedTime(time)} 
+                        className={`py-2 rounded-lg transition ${selectedTime === time ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                      >
+                        {time}
+                      </button>
                     ))}
                   </div>
+                  {availableSlots.length === 0 && (
+                    <p className="text-xs text-yellow-400 mt-2">لا توجد مواعيد متاحة في هذا اليوم</p>
+                  )}
                 </div>
               )}
 
@@ -408,7 +530,14 @@ export default function BookAppointment() {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button onClick={handleConfirmBooking} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition"><CalendarCheck size={16} /> تأكيد الحجز</button>
+                <button 
+                  onClick={handleConfirmBooking} 
+                  disabled={isSubmitting}
+                  className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CalendarCheck size={16} />}
+                  {isSubmitting ? 'جاري الحجز...' : 'تأكيد الحجز'}
+                </button>
                 <button onClick={() => setShowBookingModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button>
               </div>
             </div>
