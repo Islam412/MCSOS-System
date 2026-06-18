@@ -1,4 +1,3 @@
-// src/context/ServiceContext.jsx
 import { createContext, useContext, useEffect, useState } from 'react'
 import * as apiServices from '../services/api'
 import { localStorageService } from '../services/localStorage/syncService'
