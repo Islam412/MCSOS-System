@@ -1,3 +1,4 @@
+// src/services/api/client.js
 
 import { API_CONFIG, ENDPOINTS, ERROR_MESSAGES } from './config'
 
@@ -39,6 +40,9 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(user ? { 'X-User-Role': user.role } : {}),
     },
+    // ✅ إضافة mode و credentials لحل مشكلة CORS
+    mode: 'cors',
+    credentials: 'include',
   }
 
   const mergedOptions = {
@@ -59,12 +63,15 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
     const response = await fetch(url, mergedOptions)
     clearTimeout(timeoutId)
 
+    // ✅ معالجة CORS بشكل أفضل
+    if (response.type === 'opaque') {
+      throw new Error('CORS error: Unable to access resource')
+    }
+
     // معالجة حالة 401 (غير مصرح)
     if (response.status === 401) {
       const errorData = await response.json().catch(() => ({}))
-      // محاولة تحديث التوكن تلقائياً (بسيط)
       if (errorData.code === 'TOKEN_EXPIRED') {
-        // يمكن إضافة منطق تحديث التوكن هنا
         throw new Error(ERROR_MESSAGES.UNAUTHORIZED)
       }
       throw new Error(ERROR_MESSAGES.UNAUTHORIZED)
@@ -82,7 +89,7 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
 
     // معالجة حالة 422 (خطأ في التحقق)
     if (response.status === 422) {
-      const errorData = await response.json()
+      const errorData = await response.json().catch(() => ({}))
       throw new Error(errorData.message || ERROR_MESSAGES.VALIDATION_ERROR)
     }
 
@@ -105,12 +112,16 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
 
     // معالجة خطأ الشبكة
     if (error.message === 'Failed to fetch' || error.message === 'NetworkError') {
-      // إعادة المحاولة إذا كان مسموحاً
       if (retryCount < API_CONFIG.RETRY_COUNT) {
         await new Promise(resolve => setTimeout(resolve, API_CONFIG.RETRY_DELAY * (retryCount + 1)))
         return apiRequest(url, options, retryCount + 1)
       }
       throw new Error(ERROR_MESSAGES.NETWORK_ERROR)
+    }
+
+    // ✅ معالجة CORS بشكل أفضل
+    if (error.message === 'CORS error: Unable to access resource') {
+      throw new Error('CORS policy blocked the request. Please check server CORS configuration.')
     }
 
     // إعادة الخطأ الأصلي
@@ -163,6 +174,8 @@ export const uploadFile = async (endpoint, file, additionalData = {}) => {
   const token = getToken()
   const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
     method: 'POST',
+    mode: 'cors',        // ✅ إضافة mode
+    credentials: 'include', // ✅ إضافة credentials
     headers: {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     },
