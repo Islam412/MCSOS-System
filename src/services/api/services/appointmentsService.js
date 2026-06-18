@@ -115,4 +115,24 @@ export const appointmentsService = {
       throw error
     }
   },
+
+  // ========== إنشاء مواعيد مجمعة ==========
+  createBulkSlots: async (slotData) => {
+    try {
+      const response = await post('/appointments/bulk', slotData)
+      return response
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // ========== إنشاء مواعيد ديناميكية ==========
+  createDynamicSlots: async (slotData) => {
+    try {
+      const response = await post('/appointments/dynamic', slotData)
+      return response
+    } catch (error) {
+      throw error
+    }
+  },
 }
