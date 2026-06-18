@@ -1,27 +1,107 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserPlus, Mail, Phone, User, IdCard, Sparkles } from 'lucide-react'
+import { UserPlus, Mail, Phone, User, IdCard, Sparkles, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-export default function PatientRegistration() {
+// ========== استيراد الخدمات ==========
+import { patientsService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
+
+export default function PatientRegistration({ onRegistrationSuccess }) {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
-  const [form, setForm] = useState({ 
-    name: '', 
-    phone: '', 
+
+  // ========== استخدام خدمات API ==========
+  const { isOnline } = useServices()
+
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
     email: '',
     idNumber: ''
   })
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  // ========== معالجة تسجيل المريض ==========
+  const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // التحقق من الحقول المطلوبة
     if (!form.name || !form.phone) {
       toast.error('الرجاء ملء الحقول المطلوبة')
       return
     }
-    const patientId = 'P' + Math.floor(Math.random() * 10000)
-    toast.success(`${form.name} تم التسجيل بنجاح - ID: ${patientId}`)
-    setForm({ name: '', phone: '', email: '', idNumber: '' })
+
+    setLoading(true)
+    try {
+      const patientData = {
+        nameAr: form.name,
+        nameEn: form.name,
+        phone: form.phone,
+        email: form.email || '',
+        nationalId: form.idNumber || '',
+        // حقول إضافية يمكن إضافتها
+        age: 0,
+        address: '',
+        bloodType: '',
+        diagnosis: 'قيد التشخيص',
+        status: 'active'
+      }
+
+      let response
+
+      if (isOnline) {
+        // محاولة التسجيل عبر API
+        response = await patientsService.createPatient(patientData)
+        const newPatient = response?.patient || response
+
+        toast.success(`${form.name} تم التسجيل بنجاح - ID: ${newPatient.id || 'تم التسجيل'}`)
+
+        // استدعاء دالة النجاح إذا وجدت
+        if (onRegistrationSuccess) {
+          onRegistrationSuccess(newPatient)
+        }
+      } else {
+        // وضع غير متصل - حفظ محلياً
+        const newPatient = {
+          ...patientData,
+          id: 'P' + Math.floor(Math.random() * 10000),
+          _syncPending: true,
+          registerDate: new Date().toISOString()
+        }
+
+        // حفظ في localStorage
+        const existingPatients = JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
+        existingPatients.push(newPatient)
+        localStorage.setItem('mcsos_patients_v2', JSON.stringify(existingPatients))
+
+        toast.success(`${form.name} تم التسجيل بنجاح - ID: ${newPatient.id} (تم الحفظ محلياً)`)
+
+        if (onRegistrationSuccess) {
+          onRegistrationSuccess(newPatient)
+        }
+      }
+
+      // إعادة تعيين النموذج
+      setForm({
+        name: '',
+        phone: '',
+        email: '',
+        idNumber: ''
+      })
+
+    } catch (error) {
+      console.error('Registration error:', error)
+
+      // عرض رسالة خطأ مناسبة
+      if (error.message?.includes('duplicate') || error.message?.includes('exists')) {
+        toast.error('هذا المريض مسجل مسبقاً')
+      } else {
+        toast.error(error.message || 'حدث خطأ في تسجيل المريض')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -36,11 +116,15 @@ export default function PatientRegistration() {
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             معلومات التواصل
+            {!isOnline && (
+              <span className="block text-xs text-yellow-400">⚡ غير متصل - سيتم الحفظ محلياً</span>
+            )}
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* الاسم الكامل */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
             الاسم الكامل <span className="text-red-500">*</span>
@@ -54,10 +138,12 @@ export default function PatientRegistration() {
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              disabled={loading}
             />
           </div>
         </div>
 
+        {/* رقم الجوال */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
             رقم الجوال <span className="text-red-500">*</span>
@@ -71,10 +157,12 @@ export default function PatientRegistration() {
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              disabled={loading}
             />
           </div>
         </div>
 
+        {/* البريد الإلكتروني */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
             البريد الإلكتروني
@@ -87,10 +175,12 @@ export default function PatientRegistration() {
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              disabled={loading}
             />
           </div>
         </div>
 
+        {/* رقم الهوية */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
             رقم الهوية
@@ -103,16 +193,23 @@ export default function PatientRegistration() {
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
               value={form.idNumber}
               onChange={(e) => setForm({ ...form, idNumber: e.target.value })}
+              disabled={loading}
             />
           </div>
         </div>
 
+        {/* زر التسجيل */}
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Sparkles size={18} />
-          تسجيل مريض
+          {loading ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Sparkles size={18} />
+          )}
+          {loading ? 'جاري التسجيل...' : 'تسجيل مريض'}
         </button>
       </form>
     </div>
