@@ -4,14 +4,24 @@ import {
   UserPlus, Calendar, Clock, Users, CheckCircle, Activity, Search, 
   Phone, Mail, MapPin, X, Save, Eye, Printer, FileText, 
   Edit, Trash2, Stethoscope, Award, Heart, AlertCircle, Droplet,
-  User
+  User, Loader2, RefreshCw
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+// ========== استيراد الخدمات ==========
+import { patientsService, appointmentsService, doctorsService } from '../services/api'
+import { useServices } from '../context/ServiceContext'
 
 export default function ReceptionDashboard() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
+  
+  // ========== استخدام خدمات API ==========
+  const { isOnline, executeWithOfflineSupport } = useServices()
+  
   const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // حالة النوافذ المنبثقة
   const [showNewPatientModal, setShowNewPatientModal] = useState(false)
@@ -70,87 +80,147 @@ export default function ReceptionDashboard() {
   const [todayAppointments, setTodayAppointments] = useState([])
   const [recentPatients, setRecentPatients] = useState([])
   const [patientsList, setPatientsList] = useState([])
-  
-  // قائمة الأطباء
-  const doctors = [
-    { id: 1, name: 'د. أحمد علي', specialization: 'جراحة عظام' },
-    { id: 2, name: 'د. منى حسن', specialization: 'علاج طبيعي' },
-    { id: 3, name: 'د. خالد محمود', specialization: 'أعصاب' },
-    { id: 4, name: 'د. نورة سعيد', specialization: 'أطفال' }
-  ]
-  
-  // تحميل البيانات من localStorage
+  const [doctors, setDoctors] = useState([])
+
+  // ========== تحميل البيانات ==========
   useEffect(() => {
     const userData = localStorage.getItem('mcsos_user')
     if (userData) {
       setUser(JSON.parse(userData))
     }
-    loadData()
+    loadAllData()
   }, [])
-  
-  const loadData = () => {
-    // تحميل المواعيد
-    const savedAppointments = localStorage.getItem('mcsos_appointments')
-    let appointments = savedAppointments ? JSON.parse(savedAppointments) : []
-    
-    if (appointments.length === 0) {
-      appointments = [
-        { id: 1, time: '09:00', patient: 'أحمد محمد', phone: '0501234567', status: 'checked-in', doctor: 'د. أحمد علي', date: new Date().toISOString().split('T')[0] },
-        { id: 2, time: '09:30', patient: 'سارة حسن', phone: '0507654321', status: 'checked-in', doctor: 'د. منى حسن', date: new Date().toISOString().split('T')[0] },
-        { id: 3, time: '10:00', patient: 'محمود علي', phone: '0505566778', status: 'waiting', doctor: 'د. خالد محمود', date: new Date().toISOString().split('T')[0] },
-        { id: 4, time: '10:30', patient: 'نورة عبدالله', phone: '0509988776', status: 'scheduled', doctor: 'د. أحمد علي', date: new Date().toISOString().split('T')[0] },
-        { id: 5, time: '11:00', patient: 'عمر خالد', phone: '0501122334', status: 'scheduled', doctor: 'د. منى حسن', date: new Date().toISOString().split('T')[0] }
-      ]
-      localStorage.setItem('mcsos_appointments', JSON.stringify(appointments))
+
+  const loadAllData = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([
+        loadDoctors(),
+        loadTodayAppointments(),
+        loadPatients()
+      ])
+    } catch (error) {
+      console.error('Error loading data:', error)
+      toast.error('حدث خطأ في تحميل البيانات')
+    } finally {
+      setLoading(false)
     }
-    
-    // تصفية مواعيد اليوم
-    const today = new Date().toISOString().split('T')[0]
-    const todayApps = appointments.filter(a => a.date === today)
-    setTodayAppointments(todayApps)
-    
-    // تحميل المرضى
-    const savedPatients = localStorage.getItem('mcsos_patients_v2')
-    let patients = savedPatients ? JSON.parse(savedPatients) : []
-    
-    if (patients.length === 0) {
-      patients = [
-        { id: 1, nameAr: 'أحمد محمد', nameEn: 'Ahmed Mohamed', phone: '0501234567', age: 35, address: 'الرياض', bloodType: 'O+', diagnosis: 'تمزق في الرباط الصليبي', doctor: 'د. أحمد علي', lastVisit: '2024-05-18', totalSessions: 12, completedSessions: 8, progress: 66.7, status: 'active', registerDate: new Date().toISOString(), registeredBy: 'نورة' },
-        { id: 2, nameAr: 'سارة حسن', nameEn: 'Sara Hassan', phone: '0507654321', age: 28, address: 'جدة', bloodType: 'A+', diagnosis: 'انزلاق غضروفي', doctor: 'د. منى حسن', lastVisit: '2024-05-17', totalSessions: 10, completedSessions: 5, progress: 50, status: 'active', registerDate: new Date().toISOString(), registeredBy: 'أحمد' },
-        { id: 3, nameAr: 'محمود علي', nameEn: 'Mahmoud Ali', phone: '0505566778', age: 42, address: 'الدمام', bloodType: 'B+', diagnosis: 'التهاب المفاصل', doctor: 'د. خالد محمود', lastVisit: '2024-05-19', totalSessions: 8, completedSessions: 8, progress: 100, status: 'completed', registerDate: new Date().toISOString(), registeredBy: 'نورة' }
-      ]
-      localStorage.setItem('mcsos_patients_v2', JSON.stringify(patients))
-    }
-    
-    setPatientsList(patients)
-    
-    // آخر 5 مرضى مسجلين
-    const sortedPatients = [...patients].sort((a, b) => new Date(b.registerDate) - new Date(a.registerDate))
-    setRecentPatients(sortedPatients.slice(0, 5).map(p => ({
-      id: p.id,
-      name: p.nameAr,
-      phone: p.phone,
-      time: new Date(p.registerDate).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
-      registeredBy: p.registeredBy || 'موظف'
-    })))
-    
-    // حساب الإحصائيات
-    const checkedIn = todayApps.filter(a => a.status === 'checked-in').length
-    const waiting = todayApps.filter(a => a.status === 'waiting').length
-    const todayDate = new Date().toLocaleDateString()
-    const newTodayPatients = patients.filter(p => {
-      const pDate = new Date(p.registerDate).toLocaleDateString()
-      return pDate === todayDate
-    }).length
-    
-    setStats({
-      todayAppointments: todayApps.length,
-      completedCheckIns: checkedIn,
-      waitingPatients: waiting,
-      newRegistrations: newTodayPatients
-    })
   }
-  
+
+  // ========== تحميل الأطباء ==========
+  const loadDoctors = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => doctorsService.getDoctors(),
+          'doctors',
+          JSON.parse(localStorage.getItem('mcsos_doctors') || '[]')
+        )
+        const data = response?.doctors || response || []
+        setDoctors(data)
+        localStorage.setItem('mcsos_doctors', JSON.stringify(data))
+      } else {
+        const saved = localStorage.getItem('mcsos_doctors')
+        if (saved) setDoctors(JSON.parse(saved))
+      }
+    } catch (error) {
+      console.error('Error loading doctors:', error)
+    }
+  }
+
+  // ========== تحميل مواعيد اليوم ==========
+  const loadTodayAppointments = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => appointmentsService.getTodayAppointments(),
+          'today_appointments',
+          JSON.parse(localStorage.getItem('mcsos_today_appointments') || '[]')
+        )
+        const data = response || []
+        setTodayAppointments(data)
+        localStorage.setItem('mcsos_today_appointments', JSON.stringify(data))
+        
+        // تحديث الإحصائيات
+        const checkedIn = data.filter(a => a.status === 'checked-in').length
+        const waiting = data.filter(a => a.status === 'waiting').length
+        setStats(prev => ({
+          ...prev,
+          todayAppointments: data.length,
+          completedCheckIns: checkedIn,
+          waitingPatients: waiting
+        }))
+      } else {
+        const saved = localStorage.getItem('mcsos_today_appointments')
+        if (saved) {
+          const data = JSON.parse(saved)
+          setTodayAppointments(data)
+          const checkedIn = data.filter(a => a.status === 'checked-in').length
+          const waiting = data.filter(a => a.status === 'waiting').length
+          setStats(prev => ({
+            ...prev,
+            todayAppointments: data.length,
+            completedCheckIns: checkedIn,
+            waitingPatients: waiting
+          }))
+        }
+      }
+    } catch (error) {
+      console.error('Error loading today appointments:', error)
+    }
+  }
+
+  // ========== تحميل المرضى ==========
+  const loadPatients = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => patientsService.getPatients(),
+          'patients',
+          JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
+        )
+        const data = response || []
+        setPatientsList(data)
+        localStorage.setItem('mcsos_patients_v2', JSON.stringify(data))
+        
+        // تحديث آخر المرضى المسجلين
+        const sorted = [...data].sort((a, b) => new Date(b.registerDate) - new Date(a.registerDate))
+        setRecentPatients(sorted.slice(0, 5).map(p => ({
+          id: p.id,
+          name: p.nameAr || p.name,
+          phone: p.phone,
+          time: new Date(p.registerDate || Date.now()).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
+          registeredBy: p.registeredBy || 'موظف'
+        })))
+        
+        // تحديث إحصائيات التسجيلات الجديدة
+        const today = new Date().toLocaleDateString()
+        const newToday = data.filter(p => {
+          const pDate = new Date(p.registerDate).toLocaleDateString()
+          return pDate === today
+        }).length
+        setStats(prev => ({ ...prev, newRegistrations: newToday }))
+      } else {
+        const saved = localStorage.getItem('mcsos_patients_v2')
+        if (saved) {
+          const data = JSON.parse(saved)
+          setPatientsList(data)
+          const sorted = [...data].sort((a, b) => new Date(b.registerDate) - new Date(a.registerDate))
+          setRecentPatients(sorted.slice(0, 5).map(p => ({
+            id: p.id,
+            name: p.nameAr || p.name,
+            phone: p.phone,
+            time: new Date(p.registerDate || Date.now()).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
+            registeredBy: p.registeredBy || 'موظف'
+          })))
+        }
+      }
+    } catch (error) {
+      console.error('Error loading patients:', error)
+    }
+  }
+
+  // ========== دوال مساعدة ==========
   const getStatusBadge = (status) => {
     switch(status) {
       case 'checked-in': return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ تم الحضور</span>
@@ -158,7 +228,7 @@ export default function ReceptionDashboard() {
       default: return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">📅 مجدول</span>
     }
   }
-  
+
   const getPatientStatusBadge = (status) => {
     if (status === 'active') {
       return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ نشط</span>
@@ -167,7 +237,7 @@ export default function ReceptionDashboard() {
     }
     return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status}</span>
   }
-  
+
   const getBloodTypeColor = (bloodType) => {
     const colors = {
       'A+': 'text-red-400', 'A-': 'text-red-300',
@@ -177,38 +247,42 @@ export default function ReceptionDashboard() {
     }
     return colors[bloodType] || 'text-gray-400'
   }
-  
-  // دالة تسجيل حضور
-  const handleCheckIn = (id) => {
-    const savedAppointments = localStorage.getItem('mcsos_appointments')
-    let appointments = savedAppointments ? JSON.parse(savedAppointments) : []
-    
-    appointments = appointments.map(app => 
-      app.id === id ? { ...app, status: 'checked-in' } : app
-    )
-    localStorage.setItem('mcsos_appointments', JSON.stringify(appointments))
-    
-    setTodayAppointments(todayAppointments.map(app => 
-      app.id === id ? { ...app, status: 'checked-in' } : app
-    ))
-    
-    setStats(prev => ({
-      ...prev,
-      completedCheckIns: prev.completedCheckIns + 1,
-      waitingPatients: Math.max(0, prev.waitingPatients - 1)
-    }))
-    
-    toast.success('تم تسجيل حضور المريض')
-  }
-  
-  // دالة حذف موعد
-  const handleDeleteAppointment = (id) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا الموعد؟')) {
-      const savedAppointments = localStorage.getItem('mcsos_appointments')
-      let appointments = savedAppointments ? JSON.parse(savedAppointments) : []
+
+  // ========== تسجيل حضور ==========
+  const handleCheckIn = async (id) => {
+    setIsSubmitting(true)
+    try {
+      if (isOnline) {
+        await appointmentsService.checkInAppointment(id)
+      }
       
-      appointments = appointments.filter(app => app.id !== id)
-      localStorage.setItem('mcsos_appointments', JSON.stringify(appointments))
+      // تحديث محلياً
+      setTodayAppointments(todayAppointments.map(app => 
+        app.id === id ? { ...app, status: 'checked-in' } : app
+      ))
+      
+      setStats(prev => ({
+        ...prev,
+        completedCheckIns: prev.completedCheckIns + 1,
+        waitingPatients: Math.max(0, prev.waitingPatients - 1)
+      }))
+      
+      toast.success('تم تسجيل حضور المريض')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في تسجيل الحضور')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ========== حذف موعد ==========
+  const handleDeleteAppointment = async (id) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الموعد؟')) return
+
+    try {
+      if (isOnline) {
+        await appointmentsService.deleteAppointment(id)
+      }
       
       setTodayAppointments(todayAppointments.filter(app => app.id !== id))
       setStats(prev => ({
@@ -217,10 +291,12 @@ export default function ReceptionDashboard() {
       }))
       
       toast.success('تم حذف الموعد بنجاح')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في حذف الموعد')
     }
   }
-  
-  // دالة تعديل موعد
+
+  // ========== تعديل موعد ==========
   const handleEditAppointment = (appointment) => {
     setEditingAppointment(appointment)
     setEditAppointmentData({
@@ -231,55 +307,63 @@ export default function ReceptionDashboard() {
     })
     setShowEditAppointmentModal(true)
   }
-  
-  // دالة حفظ تعديل الموعد
-  const handleSaveAppointmentEdit = () => {
-    const savedAppointments = localStorage.getItem('mcsos_appointments')
-    let appointments = savedAppointments ? JSON.parse(savedAppointments) : []
-    
-    appointments = appointments.map(app => 
-      app.id === editingAppointment.id ? {
-        ...app,
-        patient: editAppointmentData.patient,
-        doctor: editAppointmentData.doctor,
-        time: editAppointmentData.time,
-        status: editAppointmentData.status
-      } : app
-    )
-    localStorage.setItem('mcsos_appointments', JSON.stringify(appointments))
-    
-    setTodayAppointments(todayAppointments.map(app => 
-      app.id === editingAppointment.id ? {
-        ...app,
-        patient: editAppointmentData.patient,
-        doctor: editAppointmentData.doctor,
-        time: editAppointmentData.time,
-        status: editAppointmentData.status
-      } : app
-    ))
-    
-    setShowEditAppointmentModal(false)
-    setEditingAppointment(null)
-    toast.success('تم تعديل الموعد بنجاح')
-  }
-  
-  // دالة حذف مريض
-  const handleDeletePatient = (id) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المريض؟')) {
-      const savedPatients = localStorage.getItem('mcsos_patients_v2')
-      let patients = savedPatients ? JSON.parse(savedPatients) : []
+
+  // ========== حفظ تعديل الموعد ==========
+  const handleSaveAppointmentEdit = async () => {
+    setIsSubmitting(true)
+    try {
+      if (isOnline) {
+        await appointmentsService.updateAppointment(editingAppointment.id, {
+          patient: editAppointmentData.patient,
+          doctor: editAppointmentData.doctor,
+          time: editAppointmentData.time,
+          status: editAppointmentData.status
+        })
+      }
       
-      patients = patients.filter(p => p.id !== id)
-      localStorage.setItem('mcsos_patients_v2', JSON.stringify(patients))
-      setPatientsList(patients)
+      setTodayAppointments(todayAppointments.map(app => 
+        app.id === editingAppointment.id ? {
+          ...app,
+          patient: editAppointmentData.patient,
+          doctor: editAppointmentData.doctor,
+          time: editAppointmentData.time,
+          status: editAppointmentData.status
+        } : app
+      ))
+      
+      setShowEditAppointmentModal(false)
+      setEditingAppointment(null)
+      toast.success('تم تعديل الموعد بنجاح')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في تعديل الموعد')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ========== حذف مريض ==========
+  const handleDeletePatient = async (id) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا المريض؟')) return
+
+    try {
+      if (isOnline) {
+        await patientsService.deletePatient(id)
+      }
+      
+      const updated = patientsList.filter(p => p.id !== id)
+      setPatientsList(updated)
       setRecentPatients(recentPatients.filter(p => p.id !== id))
+      localStorage.setItem('mcsos_patients_v2', JSON.stringify(updated))
+      
       toast.success('تم حذف المريض بنجاح')
       setShowPatientDetailsModal(false)
       setSelectedPatient(null)
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في حذف المريض')
     }
   }
-  
-  // دالة تعديل مريض
+
+  // ========== تعديل مريض ==========
   const handleEditPatient = (patient) => {
     setEditingPatient(patient)
     setEditPatientData({
@@ -290,136 +374,169 @@ export default function ReceptionDashboard() {
     })
     setShowEditPatientModal(true)
   }
-  
-  // دالة حفظ تعديل المريض
-  const handleSavePatientEdit = () => {
-    const savedPatients = localStorage.getItem('mcsos_patients_v2')
-    let patients = savedPatients ? JSON.parse(savedPatients) : []
-    
-    patients = patients.map(p => 
-      p.id === editingPatient.id ? {
-        ...p,
-        nameAr: editPatientData.name,
-        nameEn: editPatientData.name,
-        age: parseInt(editPatientData.age) || 0,
-        phone: editPatientData.phone,
-        address: editPatientData.address
-      } : p
-    )
-    localStorage.setItem('mcsos_patients_v2', JSON.stringify(patients))
-    setPatientsList(patients)
-    
-    setRecentPatients(recentPatients.map(p => 
-      p.id === editingPatient.id ? {
-        ...p,
-        name: editPatientData.name,
-        phone: editPatientData.phone
-      } : p
-    ))
-    
-    if (selectedPatient && selectedPatient.id === editingPatient.id) {
-      const updated = patients.find(p => p.id === editingPatient.id)
-      setSelectedPatient(updated)
+
+  // ========== حفظ تعديل المريض ==========
+  const handleSavePatientEdit = async () => {
+    setIsSubmitting(true)
+    try {
+      if (isOnline) {
+        await patientsService.updatePatient(editingPatient.id, {
+          name: editPatientData.name,
+          phone: editPatientData.phone,
+          age: parseInt(editPatientData.age) || 0,
+          address: editPatientData.address
+        })
+      }
+      
+      const updated = patientsList.map(p => 
+        p.id === editingPatient.id ? {
+          ...p,
+          nameAr: editPatientData.name,
+          nameEn: editPatientData.name,
+          age: parseInt(editPatientData.age) || 0,
+          phone: editPatientData.phone,
+          address: editPatientData.address
+        } : p
+      )
+      setPatientsList(updated)
+      localStorage.setItem('mcsos_patients_v2', JSON.stringify(updated))
+      
+      setRecentPatients(recentPatients.map(p => 
+        p.id === editingPatient.id ? {
+          ...p,
+          name: editPatientData.name,
+          phone: editPatientData.phone
+        } : p
+      ))
+      
+      if (selectedPatient && selectedPatient.id === editingPatient.id) {
+        setSelectedPatient(updated.find(p => p.id === editingPatient.id))
+      }
+      
+      setShowEditPatientModal(false)
+      setEditingPatient(null)
+      toast.success('تم تعديل بيانات المريض بنجاح')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في تعديل المريض')
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    setShowEditPatientModal(false)
-    setEditingPatient(null)
-    toast.success('تم تعديل بيانات المريض بنجاح')
   }
-  
-  // دالة تسجيل مريض جديد
-  const handleRegisterPatient = () => {
+
+  // ========== تسجيل مريض جديد ==========
+  const handleRegisterPatient = async () => {
     if (!newPatient.name) {
       toast.error('الرجاء إدخال اسم المريض')
       return
     }
-    
-    const patient = {
-      id: Date.now(),
-      nameAr: newPatient.name,
-      nameEn: newPatient.name,
-      age: parseInt(newPatient.age) || 0,
-      phone: newPatient.phone || '',
-      address: newPatient.address || '',
-      bloodType: '',
-      diagnosis: 'قيد التشخيص',
-      doctor: '',
-      lastVisit: new Date().toISOString().split('T')[0],
-      totalSessions: 6,
-      completedSessions: 0,
-      progress: 0,
-      status: 'active',
-      registerDate: new Date().toISOString(),
-      registeredBy: user?.name || 'موظف الاستقبال'
+
+    setIsSubmitting(true)
+    try {
+      const patientData = {
+        nameAr: newPatient.name,
+        nameEn: newPatient.name,
+        age: parseInt(newPatient.age) || 0,
+        phone: newPatient.phone || '',
+        address: newPatient.address || '',
+        status: 'active',
+        registeredBy: user?.name || 'موظف الاستقبال'
+      }
+
+      let newPatientData
+      if (isOnline) {
+        const response = await patientsService.createPatient(patientData)
+        newPatientData = response?.patient || response
+      } else {
+        newPatientData = {
+          ...patientData,
+          id: Date.now(),
+          _syncPending: true,
+          registerDate: new Date().toISOString(),
+          diagnosis: 'قيد التشخيص',
+          doctor: '',
+          lastVisit: new Date().toISOString().split('T')[0],
+          totalSessions: 6,
+          completedSessions: 0,
+          progress: 0,
+          bloodType: ''
+        }
+        toast.info('تم الحفظ في وضع عدم الاتصال')
+      }
+
+      const updated = [newPatientData, ...patientsList]
+      setPatientsList(updated)
+      localStorage.setItem('mcsos_patients_v2', JSON.stringify(updated))
+      
+      setRecentPatients([{
+        id: newPatientData.id,
+        name: newPatientData.nameAr || newPatientData.name,
+        phone: newPatientData.phone,
+        time: new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
+        registeredBy: user?.name || 'موظف'
+      }, ...recentPatients.slice(0, 4)])
+      
+      setStats(prev => ({
+        ...prev,
+        newRegistrations: prev.newRegistrations + 1
+      }))
+      
+      toast.success(`تم تسجيل المريض ${newPatient.name} بنجاح`)
+      setNewPatient({ name: '', age: '', phone: '', address: '' })
+      setShowNewPatientModal(false)
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في تسجيل المريض')
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    const existingPatients = JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
-    existingPatients.push(patient)
-    localStorage.setItem('mcsos_patients_v2', JSON.stringify(existingPatients))
-    setPatientsList(existingPatients)
-    
-    setRecentPatients([{
-      id: patient.id,
-      name: patient.nameAr,
-      phone: patient.phone,
-      time: new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
-      registeredBy: user?.name || 'موظف'
-    }, ...recentPatients.slice(0, 4)])
-    
-    setStats(prev => ({
-      ...prev,
-      newRegistrations: prev.newRegistrations + 1
-    }))
-    
-    toast.success(`تم تسجيل المريض ${newPatient.name} بنجاح`)
-    setNewPatient({ name: '', age: '', phone: '', address: '' })
-    setShowNewPatientModal(false)
   }
-  
-  // دالة حجز موعد جديد
-  const handleBookAppointment = () => {
+
+  // ========== حجز موعد جديد ==========
+  const handleBookAppointment = async () => {
     if (!newAppointment.patientName || !newAppointment.doctorName || !newAppointment.date || !newAppointment.time) {
       toast.error('الرجاء ملء جميع الحقول')
       return
     }
-    
-    const appointment = {
-      id: Date.now(),
-      patient: newAppointment.patientName,
-      patientId: newAppointment.patientId || Date.now(),
-      doctor: newAppointment.doctorName,
-      doctorId: newAppointment.doctorId,
-      date: newAppointment.date,
-      time: newAppointment.time,
-      status: 'scheduled',
-      createdAt: new Date().toISOString()
+
+    setIsSubmitting(true)
+    try {
+      const appointmentData = {
+        patientName: newAppointment.patientName,
+        patientId: newAppointment.patientId || Date.now(),
+        doctorId: newAppointment.doctorId,
+        date: newAppointment.date,
+        time: newAppointment.time,
+        status: 'scheduled'
+      }
+
+      if (isOnline) {
+        await appointmentsService.bookAppointment(appointmentData)
+      }
+
+      const newApp = {
+        id: Date.now(),
+        ...appointmentData,
+        _syncPending: !isOnline
+      }
+
+      const today = new Date().toISOString().split('T')[0]
+      if (appointmentData.date === today) {
+        setTodayAppointments([...todayAppointments, newApp])
+        setStats(prev => ({
+          ...prev,
+          todayAppointments: prev.todayAppointments + 1
+        }))
+      }
+
+      toast.success(`تم حجز موعد للمريض ${newAppointment.patientName} مع ${newAppointment.doctorName}`)
+      setNewAppointment({ patientId: '', patientName: '', doctorId: '', doctorName: '', date: '', time: '' })
+      setShowAppointmentModal(false)
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في حجز الموعد')
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    const existingAppointments = JSON.parse(localStorage.getItem('mcsos_appointments') || '[]')
-    existingAppointments.push(appointment)
-    localStorage.setItem('mcsos_appointments', JSON.stringify(existingAppointments))
-    
-    const today = new Date().toISOString().split('T')[0]
-    if (appointment.date === today) {
-      setTodayAppointments([...todayAppointments, {
-        id: appointment.id,
-        time: appointment.time,
-        patient: appointment.patient,
-        phone: '',
-        status: 'scheduled',
-        doctor: appointment.doctor
-      }])
-      setStats(prev => ({
-        ...prev,
-        todayAppointments: prev.todayAppointments + 1
-      }))
-    }
-    
-    toast.success(`تم حجز موعد للمريض ${newAppointment.patientName} مع ${newAppointment.doctorName}`)
-    setNewAppointment({ patientId: '', patientName: '', doctorId: '', doctorName: '', date: '', time: '' })
-    setShowAppointmentModal(false)
   }
-  
+
   // ========== دالة فتح نافذة حجز موعد من تفاصيل المريض ==========
   const handleBookAppointmentFromDetails = (patient) => {
     setNewAppointment({
@@ -433,44 +550,43 @@ export default function ReceptionDashboard() {
     setShowPatientDetailsModal(false)
     setShowAppointmentModal(true)
   }
-  
-  // دالة البحث عن مريض
-  const handleSearchPatient = () => {
+
+  // ========== البحث عن مريض ==========
+  const handleSearchPatient = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([])
       return
     }
-    
-    const allPatients = JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
-    const results = allPatients.filter(p => 
-      p.nameAr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.phone && p.phone.includes(searchQuery))
-    )
-    setSearchResults(results)
+
+    try {
+      if (isOnline) {
+        const results = await patientsService.searchPatients(searchQuery)
+        setSearchResults(results || [])
+      } else {
+        const allPatients = patientsList
+        const results = allPatients.filter(p => 
+          p.nameAr?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.phone?.includes(searchQuery)
+        )
+        setSearchResults(results)
+      }
+    } catch (error) {
+      console.error('Search error:', error)
+      toast.error('حدث خطأ في البحث')
+    }
   }
-  
-  // دالة عرض تفاصيل المريض (العين)
+
+  // ========== عرض تفاصيل المريض ==========
   const viewPatientDetails = (patient) => {
     const fullPatient = patientsList.find(p => p.id === patient.id) || patient
     setSelectedPatient(fullPatient)
     setShowPatientDetailsModal(true)
   }
-  
-  // دالة إنشاء تقرير يومي
+
+  // ========== إنشاء تقرير يومي ==========
   const generateDailyReport = () => {
     const today = new Date().toLocaleDateString('ar')
-    const allPatients = JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
-    const allAppointments = JSON.parse(localStorage.getItem('mcsos_appointments') || '[]')
-    
-    const todayPatients = allPatients.filter(p => {
-      const pDate = new Date(p.registerDate).toLocaleDateString('ar')
-      return pDate === today
-    })
-    
-    const todayApps = allAppointments.filter(a => {
-      const aDate = new Date(a.date).toLocaleDateString('ar')
-      return aDate === today
-    })
+    const todayApps = todayAppointments
     
     const printWindow = window.open('', '_blank')
     if (printWindow) {
@@ -504,7 +620,7 @@ export default function ReceptionDashboard() {
               <div class="stat-item"><div class="stat-value">${stats.todayAppointments}</div><div class="stat-label">مواعيد اليوم</div></div>
               <div class="stat-item"><div class="stat-value">${stats.completedCheckIns}</div><div class="stat-label">تم الحضور</div></div>
               <div class="stat-item"><div class="stat-value">${stats.waitingPatients}</div><div class="stat-label">مرضى في الانتظار</div></div>
-              <div class="stat-item"><div class="stat-value">${todayPatients.length}</div><div class="stat-label">مرضى جدد</div></div>
+              <div class="stat-item"><div class="stat-value">${stats.newRegistrations}</div><div class="stat-label">مرضى جدد</div></div>
             </div></div>
             <div class="section"><div class="section-title">📋 مواعيد اليوم</div>${todayApps.map(a => `<div class="list-item">⏰ ${a.time} - ${a.patient} (${a.doctor})</div>`).join('') || '<div class="list-item">لا توجد مواعيد اليوم</div>'}</div>
             <div class="section"><div class="section-title">👤 آخر المرضى المسجلين</div>${recentPatients.map(p => `<div class="list-item">👨‍⚕️ ${p.name} - ${p.time}</div>`).join('')}</div>
@@ -518,10 +634,37 @@ export default function ReceptionDashboard() {
     }
     toast.success('تم إنشاء التقرير اليومي')
   }
-  
+
+  // ========== تحديث البيانات ==========
+  const refreshData = () => {
+    loadAllData()
+    toast.success('تم تحديث البيانات')
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
+          <div className="text-white">جاري التحميل...</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <div><h1 className="text-3xl font-bold gradient-text">لوحة تحكم الاستقبال</h1><p className="text-gray-400 mt-1">مرحباً {user?.name || 'نورة عبدالله'} | إدارة المرضى والمواعيد</p></div>
+      <div>
+        <h1 className="text-3xl font-bold gradient-text">لوحة تحكم الاستقبال</h1>
+        <p className="text-gray-400 mt-1">
+          مرحباً {user?.name || 'نورة عبدالله'} | إدارة المرضى والمواعيد
+          {!isOnline && (
+            <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+              ⚡ غير متصل
+            </span>
+          )}
+        </p>
+      </div>
       
       {/* بطاقات الإحصائيات */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -568,12 +711,21 @@ export default function ReceptionDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     {getStatusBadge(app.status)}
-                    <button onClick={() => handleCheckIn(app.id)} disabled={app.status !== 'scheduled'} className={`px-2 py-1 rounded-lg text-xs ${app.status === 'scheduled' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-gray-600 text-gray-500 cursor-not-allowed'}`}>تسجيل حضور</button>
+                    <button 
+                      onClick={() => handleCheckIn(app.id)} 
+                      disabled={app.status !== 'scheduled' || isSubmitting} 
+                      className={`px-2 py-1 rounded-lg text-xs ${app.status === 'scheduled' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-gray-600 text-gray-500 cursor-not-allowed'}`}
+                    >
+                      تسجيل حضور
+                    </button>
                     {app.status === 'scheduled' && (
                       <>
                         <button onClick={() => handleEditAppointment(app)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded opacity-0 group-hover:opacity-100 transition"><Edit size={14} /></button>
                         <button onClick={() => handleDeleteAppointment(app.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded opacity-0 group-hover:opacity-100 transition"><Trash2 size={14} /></button>
                       </>
+                    )}
+                    {app._syncPending && (
+                      <span className="text-xs text-yellow-400">⏳ مزامنة</span>
                     )}
                   </div>
                 </div>
@@ -617,14 +769,16 @@ export default function ReceptionDashboard() {
       {/* إجراءات سريعة */}
       <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Search size={20} className="text-purple-400" /> إجراءات سريعة</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button onClick={() => setShowNewPatientModal(true)} className="p-3 bg-blue-500/20 rounded-xl text-blue-400 hover:bg-blue-500/30 transition flex items-center justify-center gap-2"><UserPlus size={18} /> تسجيل مريض جديد</button>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <button onClick={() => setShowNewPatientModal(true)} className="p-3 bg-blue-500/20 rounded-xl text-blue-400 hover:bg-blue-500/30 transition flex items-center justify-center gap-2"><UserPlus size={18} /> تسجيل مريض</button>
           <button onClick={() => setShowAppointmentModal(true)} className="p-3 bg-green-500/20 rounded-xl text-green-400 hover:bg-green-500/30 transition flex items-center justify-center gap-2"><Calendar size={18} /> حجز موعد</button>
-          <button onClick={() => setShowSearchModal(true)} className="p-3 bg-purple-500/20 rounded-xl text-purple-400 hover:bg-purple-500/30 transition flex items-center justify-center gap-2"><Search size={18} /> بحث عن مريض</button>
+          <button onClick={() => setShowSearchModal(true)} className="p-3 bg-purple-500/20 rounded-xl text-purple-400 hover:bg-purple-500/30 transition flex items-center justify-center gap-2"><Search size={18} /> بحث</button>
           <button onClick={generateDailyReport} className="p-3 bg-orange-500/20 rounded-xl text-orange-400 hover:bg-orange-500/30 transition flex items-center justify-center gap-2"><Printer size={18} /> تقرير يومي</button>
+          <button onClick={refreshData} className="p-3 bg-teal-500/20 rounded-xl text-teal-400 hover:bg-teal-500/30 transition flex items-center justify-center gap-2"><RefreshCw size={18} /> تحديث</button>
         </div>
       </div>
       
+      {/* باقي المودالات - نفس الكود مع تحديث الدوال */}
       {/* Modal تسجيل مريض جديد */}
       {showNewPatientModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -635,7 +789,13 @@ export default function ReceptionDashboard() {
               <input type="number" placeholder="العمر" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.age} onChange={(e) => setNewPatient({...newPatient, age: e.target.value})} />
               <input type="tel" placeholder="رقم الجوال" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.phone} onChange={(e) => setNewPatient({...newPatient, phone: e.target.value})} />
               <input type="text" placeholder="العنوان" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.address} onChange={(e) => setNewPatient({...newPatient, address: e.target.value})} />
-              <div className="flex gap-3 pt-4"><button onClick={handleRegisterPatient} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition"><Save size={16} className="inline ml-1" /> حفظ</button><button onClick={() => setShowNewPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button></div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleRegisterPatient} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : <Save size={16} className="inline ml-1" />}
+                  {isSubmitting ? 'جاري الحفظ...' : 'حفظ'}
+                </button>
+                <button onClick={() => setShowNewPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
+              </div>
             </div>
           </div>
         </div>
@@ -648,10 +808,19 @@ export default function ReceptionDashboard() {
             <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">حجز موعد جديد</h2><button onClick={() => setShowAppointmentModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
             <div className="space-y-3">
               <input type="text" placeholder="اسم المريض *" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newAppointment.patientName} onChange={(e) => setNewAppointment({...newAppointment, patientName: e.target.value})} />
-              <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newAppointment.doctorId} onChange={(e) => { const doctor = doctors.find(d => d.id === parseInt(e.target.value)); setNewAppointment({...newAppointment, doctorId: doctor?.id || '', doctorName: doctor?.name || ''}); }}><option value="">اختر الطبيب *</option>{doctors.map(d => (<option key={d.id} value={d.id}>{d.name} - {d.specialization}</option>))}</select>
+              <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newAppointment.doctorId} onChange={(e) => { const doctor = doctors.find(d => d.id === parseInt(e.target.value)); setNewAppointment({...newAppointment, doctorId: doctor?.id || '', doctorName: doctor?.name || ''}); }}>
+                <option value="">اختر الطبيب *</option>
+                {doctors.map(d => (<option key={d.id} value={d.id}>{d.name} - {d.specialization}</option>))}
+              </select>
               <input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newAppointment.date} onChange={(e) => setNewAppointment({...newAppointment, date: e.target.value})} />
               <input type="time" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newAppointment.time} onChange={(e) => setNewAppointment({...newAppointment, time: e.target.value})} />
-              <div className="flex gap-3 pt-4"><button onClick={handleBookAppointment} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition"><Calendar size={16} className="inline ml-1" /> حجز</button><button onClick={() => setShowAppointmentModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button></div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleBookAppointment} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : <Calendar size={16} className="inline ml-1" />}
+                  {isSubmitting ? 'جاري الحجز...' : 'حجز'}
+                </button>
+                <button onClick={() => setShowAppointmentModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
+              </div>
             </div>
           </div>
         </div>
@@ -662,13 +831,16 @@ export default function ReceptionDashboard() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">البحث عن مريض</h2><button onClick={() => setShowSearchModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
-            <div className="flex gap-2 mb-4"><input type="text" placeholder="ابحث بالاسم أو رقم الجوال..." className="flex-1 p-2 bg-gray-700 rounded-lg text-white" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); handleSearchPatient(); }} /><button onClick={handleSearchPatient} className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30"><Search size={20} /></button></div>
+            <div className="flex gap-2 mb-4">
+              <input type="text" placeholder="ابحث بالاسم أو رقم الجوال..." className="flex-1 p-2 bg-gray-700 rounded-lg text-white" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); handleSearchPatient(); }} />
+              <button onClick={handleSearchPatient} className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30"><Search size={20} /></button>
+            </div>
             <div className="overflow-y-auto max-h-96">
               {searchResults.length === 0 && searchQuery && <div className="text-center text-gray-400 py-8">لا توجد نتائج</div>}
               {searchResults.map(patient => (
                 <div key={patient.id} className="bg-gray-700/50 rounded-lg p-3 mb-2 flex justify-between items-center">
                   <div>
-                    <div className="font-semibold text-white">{patient.nameAr}</div>
+                    <div className="font-semibold text-white">{patient.nameAr || patient.name}</div>
                     <div className="text-xs text-gray-400">{patient.phone || 'لا يوجد رقم'} | العمر: {patient.age || '-'}</div>
                     <div className="text-xs text-gray-500 mt-1">{patient.diagnosis || 'لا يوجد تشخيص'}</div>
                   </div>
@@ -698,7 +870,13 @@ export default function ReceptionDashboard() {
               <input type="text" placeholder="اسم الطبيب" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editAppointmentData.doctor} onChange={(e) => setEditAppointmentData({...editAppointmentData, doctor: e.target.value})} />
               <input type="time" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editAppointmentData.time} onChange={(e) => setEditAppointmentData({...editAppointmentData, time: e.target.value})} />
               <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editAppointmentData.status} onChange={(e) => setEditAppointmentData({...editAppointmentData, status: e.target.value})}><option value="scheduled">مجدول</option><option value="waiting">في الانتظار</option><option value="checked-in">تم الحضور</option></select>
-              <div className="flex gap-3 pt-4"><button onClick={handleSaveAppointmentEdit} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition"><Save size={16} className="inline ml-1" /> حفظ</button><button onClick={() => setShowEditAppointmentModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button></div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleSaveAppointmentEdit} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : <Save size={16} className="inline ml-1" />}
+                  {isSubmitting ? 'جاري الحفظ...' : 'حفظ'}
+                </button>
+                <button onClick={() => setShowEditAppointmentModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
+              </div>
             </div>
           </div>
         </div>
@@ -714,13 +892,19 @@ export default function ReceptionDashboard() {
               <input type="number" placeholder="العمر" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.age} onChange={(e) => setEditPatientData({...editPatientData, age: e.target.value})} />
               <input type="tel" placeholder="رقم الجوال" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.phone} onChange={(e) => setEditPatientData({...editPatientData, phone: e.target.value})} />
               <input type="text" placeholder="العنوان" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.address} onChange={(e) => setEditPatientData({...editPatientData, address: e.target.value})} />
-              <div className="flex gap-3 pt-4"><button onClick={handleSavePatientEdit} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition"><Save size={16} className="inline ml-1" /> حفظ</button><button onClick={() => setShowEditPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button></div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleSavePatientEdit} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : <Save size={16} className="inline ml-1" />}
+                  {isSubmitting ? 'جاري الحفظ...' : 'حفظ'}
+                </button>
+                <button onClick={() => setShowEditPatientModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
+              </div>
             </div>
           </div>
         </div>
       )}
       
-      {/* ========== Modal عرض تفاصيل المريض (العين) مع زر حجز موعد يعمل ========== */}
+      {/* Modal عرض تفاصيل المريض */}
       {showPatientDetailsModal && selectedPatient && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -732,7 +916,6 @@ export default function ReceptionDashboard() {
               </div>
             </div>
             
-            {/* صورة تعريفية */}
             <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-700">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-2xl text-white font-bold">
                 {selectedPatient.nameAr?.charAt(0) || selectedPatient.name?.charAt(0) || '?'}
@@ -747,7 +930,6 @@ export default function ReceptionDashboard() {
               </div>
             </div>
             
-            {/* المعلومات الشخصية */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-700/30 rounded-xl p-4">
                 <h4 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2"><User size={16} /> المعلومات الشخصية</h4>
@@ -759,7 +941,6 @@ export default function ReceptionDashboard() {
                   <div className="flex justify-between"><span className="text-gray-400">فصيلة الدم:</span><span className={getBloodTypeColor(selectedPatient.bloodType)}>{selectedPatient.bloodType || '-'}</span></div>
                 </div>
               </div>
-              
               <div className="bg-gray-700/30 rounded-xl p-4">
                 <h4 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-2"><Stethoscope size={16} /> المعلومات الطبية</h4>
                 <div className="space-y-2 text-sm">
@@ -771,7 +952,6 @@ export default function ReceptionDashboard() {
               </div>
             </div>
             
-            {/* تقدم العلاج */}
             <div className="bg-gray-700/30 rounded-xl p-4 mb-6">
               <h4 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2"><Activity size={16} /> تقدم العلاج</h4>
               <div className="flex justify-between items-center mb-2"><span className="text-gray-400 text-sm">الجلسات:</span><span className="text-white text-sm">{selectedPatient.completedSessions || 0} / {selectedPatient.totalSessions || 0}</span></div>
@@ -779,30 +959,19 @@ export default function ReceptionDashboard() {
               <div className="flex justify-between items-center mt-2"><span className="text-gray-400 text-sm">نسبة التقدم:</span><span className="text-blue-400 font-bold">{selectedPatient.progress || 0}%</span></div>
             </div>
             
-            {/* معلومات إضافية */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-gray-700/30 rounded-xl p-4"><h4 className="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2"><AlertCircle size={16} /> الحساسية</h4><p className="text-gray-300 text-sm">{selectedPatient.allergies || 'لا توجد حساسية معروفة'}</p></div>
               <div className="bg-gray-700/30 rounded-xl p-4"><h4 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2"><Heart size={16} /> الأمراض المزمنة</h4><p className="text-gray-300 text-sm">{selectedPatient.chronicDiseases || 'لا توجد أمراض مزمنة'}</p></div>
             </div>
             
-            {/* أزرار الإجراءات - زر حجز موعد يعمل الآن */}
             <div className="flex gap-3 pt-4 mt-4 border-t border-gray-700">
-              <button 
-                onClick={() => { handleEditPatient(selectedPatient); setShowPatientDetailsModal(false); }} 
-                className="flex-1 bg-yellow-500/20 text-yellow-400 py-2 rounded-lg hover:bg-yellow-500/30 transition flex items-center justify-center gap-2"
-              >
+              <button onClick={() => { handleEditPatient(selectedPatient); setShowPatientDetailsModal(false); }} className="flex-1 bg-yellow-500/20 text-yellow-400 py-2 rounded-lg hover:bg-yellow-500/30 transition flex items-center justify-center gap-2">
                 <Edit size={16} /> تعديل
               </button>
-              <button 
-                onClick={() => handleBookAppointmentFromDetails(selectedPatient)}
-                className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
-              >
+              <button onClick={() => handleBookAppointmentFromDetails(selectedPatient)} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition flex items-center justify-center gap-2">
                 <Calendar size={16} /> حجز موعد
               </button>
-              <button 
-                onClick={() => setShowPatientDetailsModal(false)} 
-                className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition"
-              >
+              <button onClick={() => setShowPatientDetailsModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
                 إغلاق
               </button>
             </div>
