@@ -1,3 +1,5 @@
+// src/services/api/services/appointmentsService.js
+
 import { ENDPOINTS } from '../config'
 import { get, post, put, del } from '../client'
 
