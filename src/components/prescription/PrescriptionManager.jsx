@@ -1,12 +1,38 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, Calendar, Clock, Pill, FileText, Hospital, Phone, Mail, MapPin, Building, Syringe, ClipboardList, AlertCircle, Signature, PenTool, UserCheck, Stamp, Upload, Eye, EyeOff } from 'lucide-react'
+import { Printer, Plus, Trash2, Edit, Save, X, CheckCircle, User, Stethoscope, Calendar, Clock, Pill, FileText, Hospital, Phone, Mail, MapPin, Building, Syringe, ClipboardList, AlertCircle, Signature, PenTool, UserCheck, Stamp, Upload, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+// ========== استيراد الخدمات ==========
+import { prescriptionsService, patientsService, doctorsService } from '../../services/api'
+import { useServices } from '../../context/ServiceContext'
+
+// ========== مفاتيح التخزين في localStorage ==========
+const STORAGE_KEYS = {
+  PRESCRIPTIONS: 'mcsos_prescriptions_v2',
+  PATIENTS: 'mcsos_patients_v2',
+  DOCTORS: 'mcsos_doctors_v2',
+  HOSPITAL_INFO: 'mcsos_hospital_info_v2'
+}
+
+// ========== دالة مساعدة للوصول إلى localStorage ==========
+const getLocalData = (key) => {
+  try {
+    const data = localStorage.getItem(key)
+    return data ? JSON.parse(data) : null
+  } catch (error) {
+    console.error(`Error reading ${key}:`, error)
+    return null
+  }
+}
 
 export default function PrescriptionManager() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   const currentLang = i18n.language
+
+  // ========== استخدام خدمات API ==========
+  const { isOnline, executeWithOfflineSupport } = useServices()
 
   const [prescriptions, setPrescriptions] = useState([])
   const [selectedPrescription, setSelectedPrescription] = useState(null)
@@ -15,6 +41,7 @@ export default function PrescriptionManager() {
   const [showHospitalSettings, setShowHospitalSettings] = useState(false)
   const [signatureType, setSignatureType] = useState('patient')
   const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [patients, setPatients] = useState([])
   const [doctors, setDoctors] = useState([])
 
@@ -49,7 +76,6 @@ export default function PrescriptionManager() {
     doctorSignatureDate: '',
     hospitalStamp: '',
     hospitalStampDate: '',
-    // إعدادات إظهار/إخفاء التوقيعات
     showDoctorSignature: true,
     showPatientSignature: true,
     showHospitalStamp: true,
@@ -61,46 +87,133 @@ export default function PrescriptionManager() {
     expiryDate: ''
   })
 
+  // ========== تحميل البيانات من API ==========
   useEffect(() => {
-    loadPatients()
-    loadDoctors()
-    loadPrescriptions()
-    loadHospitalInfo()
+    loadAllData()
   }, [])
 
-  const loadPatients = () => {
-    const saved = localStorage.getItem('mcsos_patients_v2')
-    if (saved) setPatients(JSON.parse(saved))
-    else setPatients([])
+  const loadAllData = async () => {
+    setLoading(true)
+    await Promise.all([
+      loadPatients(),
+      loadDoctors(),
+      loadPrescriptions(),
+      loadHospitalInfo()
+    ])
     setLoading(false)
   }
 
-  const loadDoctors = () => {
-    const saved = localStorage.getItem('mcsos_doctors')
-    if (saved) setDoctors(JSON.parse(saved))
-    else setDoctors([])
+  // ========== تحميل المرضى من API ==========
+  const loadPatients = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => patientsService.getPatients(),
+          'patients',
+          getLocalData(STORAGE_KEYS.PATIENTS)
+        )
+        const data = response?.patients || response || []
+        setPatients(data)
+        localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(data))
+      } else {
+        const saved = getLocalData(STORAGE_KEYS.PATIENTS)
+        setPatients(saved || [])
+      }
+    } catch (error) {
+      console.error('Error loading patients:', error)
+      toast.error('حدث خطأ في تحميل المرضى')
+      const saved = getLocalData(STORAGE_KEYS.PATIENTS)
+      setPatients(saved || [])
+    }
   }
 
-  const loadPrescriptions = () => {
-    const saved = localStorage.getItem('mcsos_prescriptions')
-    if (saved) setPrescriptions(JSON.parse(saved))
+  // ========== تحميل الأطباء من API ==========
+  const loadDoctors = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => doctorsService.getDoctors(),
+          'doctors',
+          getLocalData(STORAGE_KEYS.DOCTORS)
+        )
+        const data = response?.doctors || response || []
+        setDoctors(data)
+        localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(data))
+      } else {
+        const saved = getLocalData(STORAGE_KEYS.DOCTORS)
+        setDoctors(saved || [])
+      }
+    } catch (error) {
+      console.error('Error loading doctors:', error)
+      toast.error('حدث خطأ في تحميل الأطباء')
+      const saved = getLocalData(STORAGE_KEYS.DOCTORS)
+      setDoctors(saved || [])
+    }
   }
 
+  // ========== تحميل الروشتات من API ==========
+  const loadPrescriptions = async () => {
+    try {
+      if (isOnline) {
+        const response = await executeWithOfflineSupport(
+          () => prescriptionsService.getPrescriptions(),
+          'prescriptions',
+          getLocalData(STORAGE_KEYS.PRESCRIPTIONS)
+        )
+        const data = response?.prescriptions || response || []
+        setPrescriptions(data)
+        localStorage.setItem(STORAGE_KEYS.PRESCRIPTIONS, JSON.stringify(data))
+      } else {
+        const saved = getLocalData(STORAGE_KEYS.PRESCRIPTIONS)
+        setPrescriptions(saved || [])
+      }
+    } catch (error) {
+      console.error('Error loading prescriptions:', error)
+      toast.error('حدث خطأ في تحميل الروشتات')
+      const saved = getLocalData(STORAGE_KEYS.PRESCRIPTIONS)
+      setPrescriptions(saved || [])
+    }
+  }
+
+  // ========== تحميل معلومات المستشفى ==========
   const loadHospitalInfo = () => {
-    const saved = localStorage.getItem('mcsos_hospital_info')
-    if (saved) setHospitalInfo(JSON.parse(saved))
+    const saved = getLocalData(STORAGE_KEYS.HOSPITAL_INFO)
+    if (saved) {
+      setHospitalInfo(saved)
+    } else {
+      localStorage.setItem(STORAGE_KEYS.HOSPITAL_INFO, JSON.stringify(hospitalInfo))
+    }
   }
 
-  const savePrescriptions = (data) => {
-    localStorage.setItem('mcsos_prescriptions', JSON.stringify(data))
+  // ========== حفظ الروشتات (محلي + API) ==========
+  const savePrescriptions = async (data) => {
+    localStorage.setItem(STORAGE_KEYS.PRESCRIPTIONS, JSON.stringify(data))
     setPrescriptions(data)
+
+    if (isOnline) {
+      const pending = data.filter(item => item._syncPending)
+      for (const item of pending) {
+        try {
+          await prescriptionsService.createPrescription(item)
+          const synced = data.map(p =>
+            p.id === item.id ? { ...p, _syncPending: false } : p
+          )
+          localStorage.setItem(STORAGE_KEYS.PRESCRIPTIONS, JSON.stringify(synced))
+          setPrescriptions(synced)
+        } catch (error) {
+          console.warn('Failed to sync prescription:', error)
+        }
+      }
+    }
   }
 
+  // ========== حفظ معلومات المستشفى ==========
   const saveHospitalInfo = (data) => {
-    localStorage.setItem('mcsos_hospital_info', JSON.stringify(data))
+    localStorage.setItem(STORAGE_KEYS.HOSPITAL_INFO, JSON.stringify(data))
     setHospitalInfo(data)
   }
 
+  // ========== رفع شعار المستشفى ==========
   const handleLogoUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -115,6 +228,7 @@ export default function PrescriptionManager() {
     }
   }
 
+  // ========== رفع ختم المستشفى ==========
   const handleStampUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -129,6 +243,7 @@ export default function PrescriptionManager() {
     }
   }
 
+  // ========== اختيار مريض ==========
   const handleSelectPatient = (patientId) => {
     const patient = patients.find(p => p.id == patientId)
     if (patient) {
@@ -142,6 +257,7 @@ export default function PrescriptionManager() {
     }
   }
 
+  // ========== اختيار طبيب ==========
   const handleSelectDoctor = (doctorId) => {
     const doctor = doctors.find(d => d.id == doctorId)
     if (doctor) {
@@ -154,6 +270,7 @@ export default function PrescriptionManager() {
     }
   }
 
+  // ========== التوقيعات ==========
   const handleAddSignature = (type) => {
     setSignatureType(type)
     setShowSignatureModal(true)
@@ -185,6 +302,7 @@ export default function PrescriptionManager() {
     toast.success(`تم إزالة ${name}`)
   }
 
+  // ========== إدارة الأدوية ==========
   const handleAddMedication = () => {
     const newId = Math.max(...formData.medications.map(m => m.id), 0) + 1
     setFormData(prev => ({
@@ -211,7 +329,8 @@ export default function PrescriptionManager() {
     }))
   }
 
-  const handleSavePrescription = () => {
+  // ========== حفظ الروشتة ==========
+  const handleSavePrescription = async () => {
     if (!formData.patientName || !formData.doctorName || formData.medications.length === 0) {
       toast.error('الرجاء إدخال بيانات المريض والطبيب وإضافة دواء واحد على الأقل')
       return
@@ -223,42 +342,114 @@ export default function PrescriptionManager() {
       return
     }
 
-    const newPrescription = {
-      id: selectedPrescription?.id || Date.now(),
-      ...formData,
-      medications: validMedications,
-      hospitalName: hospitalInfo.nameAr,
-      hospitalAddress: hospitalInfo.addressAr,
-      hospitalPhone: hospitalInfo.phone,
-      hospitalLogo: hospitalInfo.logoPreview,
-      hospitalStampImage: hospitalInfo.stampPreview,
-      createdAt: selectedPrescription?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
+    setIsSubmitting(true)
+    try {
+      const prescriptionData = {
+        patientId: formData.patientId,
+        patientName: formData.patientName,
+        patientAge: parseInt(formData.patientAge) || 0,
+        patientPhone: formData.patientPhone || '',
+        patientAddress: formData.patientAddress || '',
+        doctorId: formData.doctorId,
+        doctorName: formData.doctorName,
+        doctorSpecialization: formData.doctorSpecialization || '',
+        prescriptionDate: formData.prescriptionDate,
+        expiryDate: formData.expiryDate || '',
+        diagnosis: formData.diagnosis || '',
+        notes: formData.notes || '',
+        medications: validMedications.map(m => ({
+          name: m.name,
+          dosage: m.dosage || '',
+          frequency: m.frequency || '',
+          duration: m.duration || '',
+          durationUnit: m.durationUnit || 'days',
+          quantity: m.quantity || '',
+          instructions: m.instructions || ''
+        })),
+        isRefillable: formData.isRefillable || false,
+        refillCount: formData.refillCount || 0,
+        patientSignature: formData.patientSignature || '',
+        doctorSignature: formData.doctorSignature || '',
+        hospitalStamp: formData.hospitalStamp || '',
+        showPatientSignature: formData.showPatientSignature,
+        showDoctorSignature: formData.showDoctorSignature,
+        showHospitalStamp: formData.showHospitalStamp
+      }
 
-    const updatedPrescriptions = selectedPrescription
-      ? prescriptions.map(p => p.id === selectedPrescription.id ? newPrescription : p)
-      : [newPrescription, ...prescriptions]
-    
-    savePrescriptions(updatedPrescriptions)
-    setShowPrescriptionModal(false)
-    resetForm()
-    toast.success(selectedPrescription ? 'تم تحديث الروشتة' : 'تم إضافة الروشتة')
+      let newPrescription
+
+      if (isOnline) {
+        try {
+          if (selectedPrescription) {
+            const response = await prescriptionsService.updatePrescription(selectedPrescription.id, prescriptionData)
+            newPrescription = response?.prescription || response
+          } else {
+            const response = await prescriptionsService.createPrescription(prescriptionData)
+            newPrescription = response?.prescription || response
+          }
+        } catch (apiError) {
+          console.warn('API save failed, saving locally:', apiError)
+          newPrescription = {
+            ...prescriptionData,
+            id: selectedPrescription?.id || Date.now(),
+            prescriptionNumber: formData.prescriptionNumber,
+            _syncPending: true
+          }
+          toast.warning('تم الحفظ محلياً، سيتم المزامنة عند الاتصال')
+        }
+      } else {
+        newPrescription = {
+          ...prescriptionData,
+          id: selectedPrescription?.id || Date.now(),
+          prescriptionNumber: formData.prescriptionNumber,
+          _syncPending: true
+        }
+        toast.info('تم الحفظ في وضع عدم الاتصال')
+      }
+
+      const updatedPrescriptions = selectedPrescription
+        ? prescriptions.map(p => p.id === selectedPrescription.id ? { ...newPrescription, id: selectedPrescription.id } : p)
+        : [{ ...newPrescription, hospitalName: hospitalInfo.nameAr, hospitalAddress: hospitalInfo.addressAr, hospitalPhone: hospitalInfo.phone, hospitalLogo: hospitalInfo.logoPreview, hospitalStampImage: hospitalInfo.stampPreview, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...prescriptions]
+
+      await savePrescriptions(updatedPrescriptions)
+      setShowPrescriptionModal(false)
+      resetForm()
+      toast.success(selectedPrescription ? 'تم تحديث الروشتة' : 'تم إضافة الروشتة')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في حفظ الروشتة')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
+  // ========== تعديل روشتة ==========
   const handleEditPrescription = (prescription) => {
     setSelectedPrescription(prescription)
     setFormData({ ...prescription })
     setShowPrescriptionModal(true)
   }
 
-  const handleDeletePrescription = (id) => {
-    if (confirm('هل أنت متأكد من حذف هذه الروشتة؟')) {
-      savePrescriptions(prescriptions.filter(p => p.id !== id))
+  // ========== حذف روشتة ==========
+  const handleDeletePrescription = async (id) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الروشتة؟')) return
+
+    try {
+      if (isOnline) {
+        try {
+          await prescriptionsService.deletePrescription(id)
+        } catch (apiError) {
+          console.warn('API delete failed, removing locally:', apiError)
+        }
+      }
+      const updated = prescriptions.filter(p => p.id !== id)
+      await savePrescriptions(updated)
       toast.success('تم حذف الروشتة')
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ في حذف الروشتة')
     }
   }
 
+  // ========== إعادة تعيين النموذج ==========
   const resetForm = () => {
     setSelectedPrescription(null)
     setFormData({
@@ -278,6 +469,7 @@ export default function PrescriptionManager() {
     })
   }
 
+  // ========== طباعة الروشتة ==========
   const handlePrint = (prescription) => {
     const printWindow = window.open('', '_blank')
     if (printWindow) {
@@ -288,6 +480,7 @@ export default function PrescriptionManager() {
     toast.success('جاري الطباعة...')
   }
 
+  // ========== مكون الرسم للتوقيع ==========
   const SignatureDraw = ({ onSave, onClose }) => {
     const [isDrawing, setIsDrawing] = useState(false)
     const [ctx, setCtx] = useState(null)
@@ -363,6 +556,7 @@ export default function PrescriptionManager() {
     )
   }
 
+  // ========== HTML الطباعة ==========
   const getPrintHTML = (prescription) => {
     const isRTLPrint = isRTL ? 'rtl' : 'ltr'
     
@@ -439,7 +633,6 @@ export default function PrescriptionManager() {
           ${prescription.notes ? `<div class="diagnosis-box" style="background:#f0fdf4;">📝 ملاحظات: ${prescription.notes}</div>` : ''}
           
           <div class="signatures-section">
-            <!-- توقيع المريض -->
             <div>
               <div class="sign-line"></div>
               <p style="margin-top:5px;font-size:10px;">توقيع المريض</p>
@@ -447,7 +640,6 @@ export default function PrescriptionManager() {
               ${prescription.patientSignatureDate ? `<p style="font-size:8px;color:#666;">${prescription.patientSignatureDate}</p>` : ''}
             </div>
             
-            <!-- توقيع الطبيب -->
             <div>
               <div class="sign-line"></div>
               <p style="margin-top:5px;font-size:10px;">توقيع الطبيب</p>
@@ -456,7 +648,6 @@ export default function PrescriptionManager() {
               <div class="doctor-stamp"><p style="font-size:9px;">${prescription.doctorName}</p><p style="font-size:8px;color:#2563eb;">${prescription.doctorSpecialization || ''}</p></div>
             </div>
             
-            <!-- ختم المستشفى -->
             <div>
               <div class="sign-line"></div>
               <p style="margin-top:5px;font-size:10px;">ختم المستشفى</p>
@@ -478,67 +669,185 @@ export default function PrescriptionManager() {
     `
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="text-white">جاري التحميل...</div></div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-white">جاري التحميل...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
-        <div><h1 className="text-3xl font-bold gradient-text">الروشتات الطبية</h1><p className="text-gray-400 mt-1">إدارة الروشتات والأدوية الموصوفة</p></div>
+        <div>
+          <h1 className="text-3xl font-bold gradient-text">الروشتات الطبية</h1>
+          <p className="text-gray-400 mt-1">
+            إدارة الروشتات والأدوية الموصوفة
+            {!isOnline && (
+              <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+                ⚡ غير متصل
+              </span>
+            )}
+          </p>
+        </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowHospitalSettings(true)} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30"><Hospital size={18} /> إعدادات المستشفى</button>
-          <button onClick={() => { resetForm(); setShowPrescriptionModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30"><Plus size={18} /> روشتة جديدة</button>
+          <button onClick={() => setShowHospitalSettings(true)} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30">
+            <Hospital size={18} /> إعدادات المستشفى
+          </button>
+          <button onClick={loadAllData} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30">
+            <RefreshCw size={18} /> تحديث
+          </button>
+          <button onClick={() => { resetForm(); setShowPrescriptionModal(true); }} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30">
+            <Plus size={18} /> روشتة جديدة
+          </button>
         </div>
       </div>
 
       <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
-        <div className="px-6 py-4 border-b border-gray-700/50"><h2 className="text-xl font-bold text-white">قائمة الروشتات</h2></div>
+        <div className="px-6 py-4 border-b border-gray-700/50 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white">قائمة الروشتات</h2>
+          <span className="text-sm text-gray-400">
+            {prescriptions.filter(p => p._syncPending).length > 0 && (
+              <span className="text-yellow-400">⏳ {prescriptions.filter(p => p._syncPending).length} في انتظار المزامنة</span>
+            )}
+          </span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/80"><tr className={`${isRTL ? 'text-right' : 'text-left'}`}><th className="px-4 py-2 text-sm text-gray-300">الرقم</th><th className="px-4 py-2 text-sm text-gray-300">المريض</th><th className="px-4 py-2 text-sm text-gray-300">الطبيب</th><th className="px-4 py-2 text-sm text-gray-300">التاريخ</th><th className="px-4 py-2 text-sm text-gray-300">الأدوية</th><th className="px-4 py-2 text-sm text-gray-300">إجراءات</th></tr></thead>
+            <thead className="bg-gray-800/80">
+              <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
+                <th className="px-4 py-2 text-sm text-gray-300">الرقم</th>
+                <th className="px-4 py-2 text-sm text-gray-300">المريض</th>
+                <th className="px-4 py-2 text-sm text-gray-300">الطبيب</th>
+                <th className="px-4 py-2 text-sm text-gray-300">التاريخ</th>
+                <th className="px-4 py-2 text-sm text-gray-300">الأدوية</th>
+                <th className="px-4 py-2 text-sm text-gray-300">إجراءات</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-gray-700/50">
               {prescriptions.length === 0 ? (
                 <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">لا توجد روشتات</td></tr>
               ) : (
-                prescriptions.map((pres) => (
-                  <tr key={pres.id} className="hover:bg-gray-700/30">
-                    <td className="px-4 py-2 text-blue-400 text-sm">{pres.prescriptionNumber}</td>
-                    <td className="px-4 py-2"><div className="font-semibold text-white">{pres.patientName}</div><div className="text-xs text-gray-400">{pres.patientAge} سنة</div></td>
-                    <td className="px-4 py-2 text-gray-300 text-sm">{pres.doctorName}</td>
-                    <td className="px-4 py-2 text-gray-400 text-sm">{new Date(pres.prescriptionDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-2 text-gray-300 text-sm">{pres.medications.filter(m => m.name).length} أدوية</td>
-                    <td className="px-4 py-2"><div className="flex gap-2"><button onClick={() => handleEditPrescription(pres)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Edit size={16} /></button><button onClick={() => handlePrint(pres)} className="p-1 text-green-400 hover:bg-green-500/20 rounded"><Printer size={16} /></button><button onClick={() => handleDeletePrescription(pres.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={16} /></button></div></td>
-                  </tr>
-                ))
+                prescriptions.map((pres) => {
+                  const isPending = pres._syncPending === true
+                  return (
+                    <tr key={pres.id} className="hover:bg-gray-700/30">
+                      <td className="px-4 py-2 text-blue-400 text-sm">
+                        {pres.prescriptionNumber}
+                        {isPending && (
+                          <span className="block text-[8px] text-yellow-400">⏳ مزامنة</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="font-semibold text-white">{pres.patientName}</div>
+                        <div className="text-xs text-gray-400">{pres.patientAge} سنة</div>
+                      </td>
+                      <td className="px-4 py-2 text-gray-300 text-sm">{pres.doctorName}</td>
+                      <td className="px-4 py-2 text-gray-400 text-sm">{new Date(pres.prescriptionDate).toLocaleDateString()}</td>
+                      <td className="px-4 py-2 text-gray-300 text-sm">{pres.medications?.filter(m => m.name).length || 0} أدوية</td>
+                      <td className="px-4 py-2">
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditPrescription(pres)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded">
+                            <Edit size={16} />
+                          </button>
+                          <button onClick={() => handlePrint(pres)} className="p-1 text-green-400 hover:bg-green-500/20 rounded">
+                            <Printer size={16} />
+                          </button>
+                          <button onClick={() => handleDeletePrescription(pres.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal إعدادات المستشفى */}
+      {/* Hospital Settings Modal */}
       {showHospitalSettings && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">إعدادات المستشفى</h2><button onClick={() => setShowHospitalSettings(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">إعدادات المستشفى</h2>
+              <button onClick={() => setShowHospitalSettings(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
             <div className="space-y-4">
-              <div className="bg-gray-700/30 rounded-lg p-3"><label className="block text-sm text-gray-400 mb-2">شعار المستشفى</label><div className="flex items-center gap-4">{hospitalInfo.logoPreview && <img src={hospitalInfo.logoPreview} alt="الشعار" className="w-20 h-20 object-contain border rounded p-1 bg-white" />}<label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2"><Upload size={18} /> رفع شعار</label><input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" /></div></div>
-              <div className="bg-gray-700/30 rounded-lg p-3"><label className="block text-sm text-gray-400 mb-2">ختم المستشفى</label><div className="flex items-center gap-4">{hospitalInfo.stampPreview && <img src={hospitalInfo.stampPreview} alt="الختم" className="w-20 h-20 object-contain border rounded p-1 bg-white" />}<label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2"><Stamp size={18} /> رفع ختم</label><input type="file" accept="image/*" onChange={handleStampUpload} className="hidden" /></div></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm text-gray-400 mb-1">اسم المستشفى</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.nameAr} onChange={(e) => setHospitalInfo({...hospitalInfo, nameAr: e.target.value})} /></div><div><label className="block text-sm text-gray-400 mb-1">العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.addressAr} onChange={(e) => setHospitalInfo({...hospitalInfo, addressAr: e.target.value})} /></div><div><label className="block text-sm text-gray-400 mb-1">رقم الهاتف</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.phone} onChange={(e) => setHospitalInfo({...hospitalInfo, phone: e.target.value})} /></div><div><label className="block text-sm text-gray-400 mb-1">رقم الترخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.licenseNumber} onChange={(e) => setHospitalInfo({...hospitalInfo, licenseNumber: e.target.value})} /></div></div>
-              <div className="flex gap-3 pt-4"><button onClick={() => { saveHospitalInfo(hospitalInfo); setShowHospitalSettings(false); }} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">حفظ</button><button onClick={() => setShowHospitalSettings(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button></div>
+              <div className="bg-gray-700/30 rounded-lg p-3">
+                <label className="block text-sm text-gray-400 mb-2">شعار المستشفى</label>
+                <div className="flex items-center gap-4">
+                  {hospitalInfo.logoPreview && <img src={hospitalInfo.logoPreview} alt="الشعار" className="w-20 h-20 object-contain border rounded p-1 bg-white" />}
+                  <label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2">
+                    <Upload size={18} /> رفع شعار
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
+              <div className="bg-gray-700/30 rounded-lg p-3">
+                <label className="block text-sm text-gray-400 mb-2">ختم المستشفى</label>
+                <div className="flex items-center gap-4">
+                  {hospitalInfo.stampPreview && <img src={hospitalInfo.stampPreview} alt="الختم" className="w-20 h-20 object-contain border rounded p-1 bg-white" />}
+                  <label className="cursor-pointer bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg flex items-center gap-2">
+                    <Stamp size={18} /> رفع ختم
+                    <input type="file" accept="image/*" onChange={handleStampUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-sm text-gray-400 mb-1">اسم المستشفى</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.nameAr} onChange={(e) => setHospitalInfo({...hospitalInfo, nameAr: e.target.value})} /></div>
+                <div><label className="block text-sm text-gray-400 mb-1">العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.addressAr} onChange={(e) => setHospitalInfo({...hospitalInfo, addressAr: e.target.value})} /></div>
+                <div><label className="block text-sm text-gray-400 mb-1">رقم الهاتف</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.phone} onChange={(e) => setHospitalInfo({...hospitalInfo, phone: e.target.value})} /></div>
+                <div><label className="block text-sm text-gray-400 mb-1">رقم الترخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={hospitalInfo.licenseNumber} onChange={(e) => setHospitalInfo({...hospitalInfo, licenseNumber: e.target.value})} /></div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={() => { saveHospitalInfo(hospitalInfo); setShowHospitalSettings(false); }} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg">حفظ</button>
+                <button onClick={() => setShowHospitalSettings(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg">إلغاء</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Prescription Modal */}
       {showPrescriptionModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">{selectedPrescription ? 'تعديل روشتة' : 'روشتة جديدة'}</h2><button onClick={() => setShowPrescriptionModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">{selectedPrescription ? 'تعديل روشتة' : 'روشتة جديدة'}</h2>
+              <button onClick={() => setShowPrescriptionModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
               <h3 className="col-span-2 font-bold text-white text-lg mb-2">بيانات المريض والطبيب</h3>
-              <div><label className="block text-sm text-gray-400 mb-1">المريض *</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientId} onChange={(e) => handleSelectPatient(e.target.value)}><option value="">اختر المريض</option>{patients.map(p => (<option key={p.id} value={p.id}>{currentLang === 'ar' ? p.nameAr : p.nameEn}</option>))}</select></div>
-              <div><label className="block text-sm text-gray-400 mb-1">الطبيب *</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.doctorId} onChange={(e) => handleSelectDoctor(e.target.value)}><option value="">اختر الطبيب</option>{doctors.map(d => (<option key={d.id} value={d.id}>{currentLang === 'ar' ? d.nameAr : d.nameEn}</option>))}</select></div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">المريض *</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientId} onChange={(e) => handleSelectPatient(e.target.value)}>
+                  <option value="">اختر المريض</option>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>{currentLang === 'ar' ? p.nameAr : p.nameEn}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">الطبيب *</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.doctorId} onChange={(e) => handleSelectDoctor(e.target.value)}>
+                  <option value="">اختر الطبيب</option>
+                  {doctors.map(d => (
+                    <option key={d.id} value={d.id}>{currentLang === 'ar' ? d.nameAr : d.nameEn}</option>
+                  ))}
+                </select>
+              </div>
               <div><label className="block text-sm text-gray-400 mb-1">العمر</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientAge} onChange={(e) => setFormData({...formData, patientAge: e.target.value})} /></div>
               <div><label className="block text-sm text-gray-400 mb-1">رقم الجوال</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientPhone} onChange={(e) => setFormData({...formData, patientPhone: e.target.value})} /></div>
               <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patientAddress} onChange={(e) => setFormData({...formData, patientAddress: e.target.value})} /></div>
@@ -546,7 +855,7 @@ export default function PrescriptionManager() {
               <div><label className="block text-sm text-gray-400 mb-1">تاريخ الصلاحية</label><input type="date" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} /></div>
             </div>
 
-            {/* التوقيعات - مع خيارات الإظهار/الإخفاء */}
+            {/* التوقيعات */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
               <h3 className="col-span-3 font-bold text-white text-lg mb-2 flex items-center justify-between">
                 <span>التوقيعات والأختام (اختيارية)</span>
@@ -617,13 +926,22 @@ export default function PrescriptionManager() {
               </div>
             </div>
 
-            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg"><label className="block text-sm text-gray-400 mb-1">التشخيص</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} placeholder="أدخل التشخيص الطبي..." /></div>
+            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <label className="block text-sm text-gray-400 mb-1">التشخيص</label>
+              <textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.diagnosis} onChange={(e) => setFormData({...formData, diagnosis: e.target.value})} placeholder="أدخل التشخيص الطبي..." />
+            </div>
 
             <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
-              <div className="flex justify-between items-center mb-3"><h3 className="font-bold text-white text-lg flex items-center gap-2"><Pill size={18} className="text-green-400" /> الأدوية الموصوفة</h3><button onClick={handleAddMedication} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Plus size={14} /> إضافة دواء</button></div>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-bold text-white text-lg flex items-center gap-2"><Pill size={18} className="text-green-400" /> الأدوية الموصوفة</h3>
+                <button onClick={handleAddMedication} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm flex items-center gap-1"><Plus size={14} /> إضافة دواء</button>
+              </div>
               {formData.medications.map((med, idx) => (
                 <div key={med.id} className="bg-gray-700/50 rounded-lg p-3 mb-3">
-                  <div className="flex justify-between items-center mb-2"><span className="text-sm text-gray-400">الدواء #{idx+1}</span>{idx > 0 && <button onClick={() => handleRemoveMedication(med.id)} className="text-red-400 hover:text-red-300"><Trash2 size={16} /></button>}</div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-400">الدواء #{idx+1}</span>
+                    {idx > 0 && <button onClick={() => handleRemoveMedication(med.id)} className="text-red-400 hover:text-red-300"><Trash2 size={16} /></button>}
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="md:col-span-2"><label className="block text-xs text-gray-400 mb-1">اسم الدواء *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: بروفين 500mg" value={med.name} onChange={(e) => handleMedicationChange(med.id, 'name', e.target.value)} /></div>
                     <div><label className="block text-xs text-gray-400 mb-1">الجرعة</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" placeholder="مثال: قرص واحد" value={med.dosage} onChange={(e) => handleMedicationChange(med.id, 'dosage', e.target.value)} /></div>
@@ -636,14 +954,35 @@ export default function PrescriptionManager() {
               ))}
             </div>
 
-            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg"><label className="block text-sm text-gray-400 mb-1">ملاحظات إضافية</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="ملاحظات إضافية عن الروشتة..." /></div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
-              <div><label className="block text-sm text-gray-400 mb-1">قابل لإعادة الصرف</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.isRefillable} onChange={(e) => setFormData({...formData, isRefillable: e.target.value === 'true'})}><option value="false">لا</option><option value="true">نعم</option></select></div>
-              {formData.isRefillable && <div><label className="block text-sm text-gray-400 mb-1">عدد مرات إعادة الصرف</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.refillCount} onChange={(e) => setFormData({...formData, refillCount: parseInt(e.target.value)})} min="0" max="10" /></div>}
+            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <label className="block text-sm text-gray-400 mb-1">ملاحظات إضافية</label>
+              <textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="2" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="ملاحظات إضافية عن الروشتة..." />
             </div>
 
-            <div className="flex gap-3 pt-4 border-t border-gray-700"><button onClick={handleSavePrescription} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30">حفظ الروشتة</button><button onClick={() => setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">إلغاء</button></div>
+            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">قابل لإعادة الصرف</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.isRefillable} onChange={(e) => setFormData({...formData, isRefillable: e.target.value === 'true'})}>
+                  <option value="false">لا</option>
+                  <option value="true">نعم</option>
+                </select>
+              </div>
+              {formData.isRefillable && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">عدد مرات إعادة الصرف</label>
+                  <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.refillCount} onChange={(e) => setFormData({...formData, refillCount: parseInt(e.target.value)})} min="0" max="10" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-700">
+              <button onClick={handleSavePrescription} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed">
+                {isSubmitting ? 'جاري الحفظ...' : 'حفظ الروشتة'}
+              </button>
+              <button onClick={() => setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500">
+                إلغاء
+              </button>
+            </div>
           </div>
         </div>
       )}
