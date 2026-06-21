@@ -114,6 +114,7 @@ export default function Register() {
       // ====== محاولة التسجيل عبر الخادم ======
       if (isOnline) {
         try {
+          // ✅ البيانات متطابقة مع الـ Backend
           const userData = {
             name: formData.name,
             nameEn: formData.nameEn || formData.name,
@@ -181,14 +182,13 @@ export default function Register() {
         joinDate: new Date().toISOString().split('T')[0],
         status: 'pending',
         requiresApproval: true,
-        _syncPending: true // علامة للمزامنة مع الخادم لاحقاً
+        _syncPending: true
       }
       
       // حفظ المستخدم
       existingUsers.push(newUser)
       localStorage.setItem('mcsos_registered_users', JSON.stringify(existingUsers))
       
-      // إذا كان متصلاً ولكن API فشل، نحاول المزامنة لاحقاً
       if (isOnline) {
         toast.warning(
           isRTL 
@@ -238,7 +238,6 @@ export default function Register() {
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             {isRTL ? 'سجل حسابك للبدء في استخدام النظام' : 'Register to start using the system'}
           </p>
-          {/* حالة الاتصال */}
           {!isOnline && (
             <span className="inline-block mt-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
               ⚡ غير متصل - وضع عدم الاتصال

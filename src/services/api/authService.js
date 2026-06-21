@@ -1,3 +1,5 @@
+// src/services/api/services/authService.js
+
 import { ENDPOINTS } from '../config'
 import { post, get, setToken, setUser } from '../client'
 
@@ -24,7 +26,16 @@ export const authService = {
   // تسجيل مستخدم جديد
   register: async (userData) => {
     try {
-      const response = await post(ENDPOINTS.AUTH.REGISTER, userData)
+      // ✅ تأكد من تطابق البيانات مع الـ Backend
+      const payload = {
+        name: userData.name || userData.nameAr,
+        email: userData.email,
+        password: userData.password,
+        phone: userData.phone || '',
+        role: userData.role || 'user',
+      }
+      
+      const response = await post(ENDPOINTS.AUTH.REGISTER, payload)
       return response
     } catch (error) {
       throw error

@@ -2,7 +2,8 @@
 
 // تكوين API
 export const API_CONFIG = {
-  BASE_URL: '/api',
+  // ✅ استخدم الرابط الكامل للـ Backend (Railway)
+  BASE_URL: 'https://medical-center-app-production.up.railway.app/api',
   TIMEOUT: 30000,
   RETRY_COUNT: 3,
   RETRY_DELAY: 1000,
