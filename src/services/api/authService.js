@@ -9,8 +9,9 @@ export const authService = {
     try {
       const response = await post(ENDPOINTS.AUTH.LOGIN, { email, password })
       
-      if (response.token) {
-        setToken(response.token)
+      const token = response.token || response.access_token
+      if (token) {
+        setToken(token)
       }
       
       if (response.user) {
@@ -88,8 +89,9 @@ export const authService = {
   refreshToken: async () => {
     try {
       const response = await post(ENDPOINTS.AUTH.REFRESH)
-      if (response.token) {
-        setToken(response.token)
+      const token = response.token || response.access_token
+      if (token) {
+        setToken(token)
       }
       return response
     } catch (error) {

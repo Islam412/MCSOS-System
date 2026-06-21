@@ -173,8 +173,9 @@ export default function Login() {
             const userData = response.user
             
             localStorage.setItem('mcsos_user', JSON.stringify(userData))
-            if (response.token) {
-              localStorage.setItem('mcsos_token', response.token)
+            const token = response.token || response.access_token
+            if (token) {
+              localStorage.setItem('mcsos_token', token)
             }
             
             if (rememberMe) {
