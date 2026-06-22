@@ -170,7 +170,14 @@ export default function Login() {
           const response = await authService.login(email, password)
           
           if (response && response.user) {
-            const userData = response.user
+            let userRole = response.user.role ? response.user.role.toLowerCase() : ''
+            if (userRole === 'receptionist') {
+              userRole = 'reception'
+            }
+            const userData = {
+              ...response.user,
+              role: userRole
+            }
             
             localStorage.setItem('mcsos_user', JSON.stringify(userData))
             const token = response.token || response.access_token

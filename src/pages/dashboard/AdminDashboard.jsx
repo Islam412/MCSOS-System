@@ -18,7 +18,7 @@ import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 // ========== استيراد الخدمات ==========
-import { usersService, doctorsService, patientsService, invoicesService } from '../../services/api'
+import { usersService, doctorsService, patientsService, invoicesService, get } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 
 export default function AdminDashboard() {

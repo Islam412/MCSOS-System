@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       const userData = localStorage.getItem('mcsos_user')
       const token = localStorage.getItem('mcsos_token')
       
@@ -19,22 +19,12 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
       }
 
       try {
-        const response = await authService.getMe()
-        if (response && response.user) {
-          setIsValid(true)
-          setUser(JSON.parse(userData))
-        } else {
-          setIsValid(false)
-        }
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        setIsValid(true)
       } catch (error) {
-        console.warn('Token validation failed, using local data:', error)
-        try {
-          const parsedUser = JSON.parse(userData)
-          setUser(parsedUser)
-          setIsValid(true)
-        } catch (parseError) {
-          setIsValid(false)
-        }
+        console.warn('Parsing local user data failed:', error)
+        setIsValid(false)
       } finally {
         setIsLoading(false)
       }
