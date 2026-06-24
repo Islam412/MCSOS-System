@@ -81,23 +81,54 @@ export default function AdminDashboard() {
     }
   }
 
+  // ✅ دالة مساعدة لاستخراج المصفوفة من الاستجابة
+  const extractArray = (response, fallback = []) => {
+    // إذا كانت الاستجابة مصفوفة مباشرة
+    if (Array.isArray(response)) return response
+    
+    // إذا كانت الاستجابة كائن يحتوي على خاصية data أو items أو users أو treatments
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response.data)) return response.data
+      if (Array.isArray(response.items)) return response.items
+      if (Array.isArray(response.users)) return response.users
+      if (Array.isArray(response.treatments)) return response.treatments
+      if (Array.isArray(response.results)) return response.results
+      if (Array.isArray(response.doctors)) return response.doctors
+      if (Array.isArray(response.patients)) return response.patients
+      
+      // محاولة العثور على أي خاصية تحتوي على مصفوفة
+      for (const key of Object.keys(response)) {
+        if (Array.isArray(response[key])) return response[key]
+      }
+    }
+    
+    return fallback
+  }
+
   // ========== تحميل بيانات الموظفين ==========
   const loadEmployees = async () => {
     try {
+      let data = []
+      
       if (isOnline) {
         const response = await executeWithOfflineSupport(
           () => usersService.getUsers(),
           'users',
           JSON.parse(localStorage.getItem('mcsos_users_v2') || '[]')
         )
-        const data = response?.users || response || []
         
-        // تصنيف الموظفين حسب الدور
+        // ✅ استخراج المصفوفة من الاستجابة
+        data = extractArray(response, [])
+        
+        // ✅ التأكد من أن data مصفوفة
+        if (!Array.isArray(data)) data = []
+        
+        // تصنيف الموظفين حسب الدور (مع دعم الأحرف الكبيرة والصغيرة)
         const grouped = {
-          doctors: data.filter(u => u.role === 'doctor'),
-          reception: data.filter(u => u.role === 'reception'),
-          finance: data.filter(u => u.role === 'finance'),
-          nurses: data.filter(u => u.role === 'nurse' || u.department?.includes('تمريض'))
+          doctors: data.filter(u => u.role?.toLowerCase() === 'doctor' || u.role === 'DOCTOR'),
+          reception: data.filter(u => u.role?.toLowerCase() === 'reception' || u.role === 'RECEPTIONIST' || u.role === 'receptionist'),
+          finance: data.filter(u => u.role?.toLowerCase() === 'finance' || u.role === 'FINANCE'),
+          nurses: data.filter(u => u.role?.toLowerCase() === 'nurse' || u.department?.includes('تمريض'))
         }
         setEmployees(grouped)
         localStorage.setItem('mcsos_users_v2', JSON.stringify(data))
@@ -105,36 +136,48 @@ export default function AdminDashboard() {
         // وضع غير متصل - استخدام البيانات المحلية
         const saved = localStorage.getItem('mcsos_users_v2')
         if (saved) {
-          const data = JSON.parse(saved)
-          const grouped = {
-            doctors: data.filter(u => u.role === 'doctor'),
-            reception: data.filter(u => u.role === 'reception'),
-            finance: data.filter(u => u.role === 'finance'),
-            nurses: data.filter(u => u.role === 'nurse' || u.department?.includes('تمريض'))
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) {
+            data = parsed
+            const grouped = {
+              doctors: data.filter(u => u.role?.toLowerCase() === 'doctor' || u.role === 'DOCTOR'),
+              reception: data.filter(u => u.role?.toLowerCase() === 'reception' || u.role === 'RECEPTIONIST' || u.role === 'receptionist'),
+              finance: data.filter(u => u.role?.toLowerCase() === 'finance' || u.role === 'FINANCE'),
+              nurses: data.filter(u => u.role?.toLowerCase() === 'nurse' || u.department?.includes('تمريض'))
+            }
+            setEmployees(grouped)
           }
-          setEmployees(grouped)
         }
       }
     } catch (error) {
       console.error('Error loading employees:', error)
+      // ✅ عدم عرض toast للمستخدم
     }
   }
 
   // ========== تحميل المواد الطبية ==========
   const loadMedicalSupplies = async () => {
     try {
+      let data = []
+      
       if (isOnline) {
         const response = await executeWithOfflineSupport(
           () => get('/inventory/items'),
           'inventory_items',
           JSON.parse(localStorage.getItem('mcsos_inventory_items') || '[]')
         )
-        const data = response?.items || response || []
+        
+        data = extractArray(response, [])
+        if (!Array.isArray(data)) data = []
+        
         setMedicalSupplies(data)
         localStorage.setItem('mcsos_inventory_items', JSON.stringify(data))
       } else {
         const saved = localStorage.getItem('mcsos_inventory_items')
-        if (saved) setMedicalSupplies(JSON.parse(saved))
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) setMedicalSupplies(parsed)
+        }
       }
     } catch (error) {
       console.error('Error loading medical supplies:', error)
@@ -144,18 +187,26 @@ export default function AdminDashboard() {
   // ========== تحميل أنواع العلاج ==========
   const loadTreatmentTypes = async () => {
     try {
+      let data = []
+      
       if (isOnline) {
         const response = await executeWithOfflineSupport(
           () => get('/treatments'),
           'treatments',
           JSON.parse(localStorage.getItem('mcsos_treatments') || '[]')
         )
-        const data = response?.treatments || response || []
+        
+        data = extractArray(response, [])
+        if (!Array.isArray(data)) data = []
+        
         setTreatmentTypes(data)
         localStorage.setItem('mcsos_treatments', JSON.stringify(data))
       } else {
         const saved = localStorage.getItem('mcsos_treatments')
-        if (saved) setTreatmentTypes(JSON.parse(saved))
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) setTreatmentTypes(parsed)
+        }
       }
     } catch (error) {
       console.error('Error loading treatments:', error)
@@ -171,11 +222,45 @@ export default function AdminDashboard() {
           'inventory_stats',
           JSON.parse(localStorage.getItem('mcsos_inventory_stats') || '{"totalItems":0,"totalValue":0,"lowStockItems":0,"criticalItems":0,"categories":[]}')
         )
-        setInventory(response)
-        localStorage.setItem('mcsos_inventory_stats', JSON.stringify(response))
+        
+        // ✅ التأكد من أن الاستجابة كائن وليس مصفوفة
+        if (response && typeof response === 'object' && !Array.isArray(response)) {
+          setInventory({
+            totalItems: response.totalItems || 0,
+            totalValue: response.totalValue || 0,
+            lowStockItems: response.lowStockItems || 0,
+            criticalItems: response.criticalItems || 0,
+            categories: Array.isArray(response.categories) ? response.categories : []
+          })
+          localStorage.setItem('mcsos_inventory_stats', JSON.stringify(response))
+        } else {
+          // استخدام القيم الافتراضية
+          setInventory({
+            totalItems: 0,
+            totalValue: 0,
+            lowStockItems: 0,
+            criticalItems: 0,
+            categories: []
+          })
+        }
       } else {
         const saved = localStorage.getItem('mcsos_inventory_stats')
-        if (saved) setInventory(JSON.parse(saved))
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              setInventory({
+                totalItems: parsed.totalItems || 0,
+                totalValue: parsed.totalValue || 0,
+                lowStockItems: parsed.lowStockItems || 0,
+                criticalItems: parsed.criticalItems || 0,
+                categories: Array.isArray(parsed.categories) ? parsed.categories : []
+              })
+            }
+          } catch (e) {
+            console.error('Error parsing inventory stats:', e)
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading inventory stats:', error)
@@ -184,26 +269,33 @@ export default function AdminDashboard() {
 
   // ========== دوال مساعدة ==========
   const getStatusBadge = (status) => {
-    switch(status) {
-      case 'present': return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ حاضر</span>
-      case 'absent': return <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">✗ غائب</span>
-      case 'late': return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⏰ متأخر</span>
-      default: return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status}</span>
+    switch(status?.toLowerCase()) {
+      case 'present': 
+      case 'active': 
+        return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ حاضر</span>
+      case 'absent': 
+        return <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">✗ غائب</span>
+      case 'late': 
+        return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⏰ متأخر</span>
+      default: 
+        return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status || 'غير محدد'}</span>
     }
   }
 
   const getStockStatusBadge = (quantity, lowStock) => {
-    if (quantity <= lowStock / 2) return <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">⚠️ حرج</span>
-    if (quantity <= lowStock) return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⚠️ منخفض</span>
+    const qty = Number(quantity) || 0
+    const low = Number(lowStock) || 10
+    if (qty <= low / 2) return <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">⚠️ حرج</span>
+    if (qty <= low) return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⚠️ منخفض</span>
     return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ متوفر</span>
   }
 
   // حساب إجمالي الموظفين
-  const totalEmployees = Object.values(employees).flat().length
-  const totalDoctors = employees.doctors.length
-  const totalReception = employees.reception.length
-  const totalNurses = employees.nurses.length
-  const totalFinance = employees.finance.length
+  const totalEmployees = Object.values(employees).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0)
+  const totalDoctors = Array.isArray(employees.doctors) ? employees.doctors.length : 0
+  const totalReception = Array.isArray(employees.reception) ? employees.reception.length : 0
+  const totalNurses = Array.isArray(employees.nurses) ? employees.nurses.length : 0
+  const totalFinance = Array.isArray(employees.finance) ? employees.finance.length : 0
 
   if (loading) {
     return (
@@ -241,7 +333,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tabs - نفس الكود الأصلي */}
+      {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-700 pb-2 overflow-x-auto">
         <button onClick={() => setActiveTab('overview')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>📊 نظرة عامة</button>
         <button onClick={() => setActiveTab('employees')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'employees' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>👥 الموظفين</button>
@@ -278,7 +370,7 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl p-5 border border-purple-500/30">
               <div className="flex items-center justify-between">
-                <div><p className="text-gray-400 text-sm">أنواع العلاج</p><p className="text-3xl font-bold text-white">{treatmentTypes.length}</p></div>
+                <div><p className="text-gray-400 text-sm">أنواع العلاج</p><p className="text-3xl font-bold text-white">{Array.isArray(treatmentTypes) ? treatmentTypes.length : 0}</p></div>
                 <div className="p-3 bg-purple-500/20 rounded-xl"><Syringe className="text-purple-400" size={28} /></div>
               </div>
             </div>
@@ -332,8 +424,6 @@ export default function AdminDashboard() {
         </>
       )}
 
-      {/* ========== باقي التبويبات (نفس الكود الأصلي مع استخدام البيانات من API) ========== */}
-      
       {/* ========== جميع الموظفين ========== */}
       {activeTab === 'employees' && (
         <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
@@ -350,7 +440,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50">
-                {employees.doctors.map(emp => (
+                {Array.isArray(employees.doctors) && employees.doctors.map(emp => (
                   <tr key={emp.id} className="hover:bg-gray-700/30">
                     <td className="px-4 py-3"><div className="font-semibold text-white">{emp.name}</div><div className="text-xs text-gray-500">{emp.specialty || emp.specialization}</div></td>
                     <td className="px-4 py-3">الأطباء</td>
@@ -359,7 +449,7 @@ export default function AdminDashboard() {
                     <td className="px-4 py-3">{getStatusBadge(emp.status || 'active')}</td>
                   </tr>
                 ))}
-                {employees.nurses.map(emp => (
+                {Array.isArray(employees.nurses) && employees.nurses.map(emp => (
                   <tr key={emp.id} className="hover:bg-gray-700/30">
                     <td className="px-4 py-3"><div className="font-semibold text-white">{emp.name}</div><div className="text-xs text-gray-500">{emp.department}</div></td>
                     <td className="px-4 py-3">التمريض</td>
@@ -368,7 +458,7 @@ export default function AdminDashboard() {
                     <td className="px-4 py-3">{getStatusBadge(emp.status || 'active')}</td>
                   </tr>
                 ))}
-                {employees.reception.map(emp => (
+                {Array.isArray(employees.reception) && employees.reception.map(emp => (
                   <tr key={emp.id} className="hover:bg-gray-700/30">
                     <td className="px-4 py-3"><div className="font-semibold text-white">{emp.name}</div><div className="text-xs text-gray-500">{emp.shift}</div></td>
                     <td className="px-4 py-3">الاستقبال</td>
@@ -377,7 +467,7 @@ export default function AdminDashboard() {
                     <td className="px-4 py-3">{getStatusBadge(emp.status || 'active')}</td>
                   </tr>
                 ))}
-                {employees.finance.map(emp => (
+                {Array.isArray(employees.finance) && employees.finance.map(emp => (
                   <tr key={emp.id} className="hover:bg-gray-700/30">
                     <td className="px-4 py-3"><div className="font-semibold text-white">{emp.name}</div><div className="text-xs text-gray-500">{emp.position}</div></td>
                     <td className="px-4 py-3">المالية</td>
@@ -395,7 +485,7 @@ export default function AdminDashboard() {
       {/* ========== الأطباء ========== */}
       {activeTab === 'doctors' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {employees.doctors.length === 0 ? (
+          {!Array.isArray(employees.doctors) || employees.doctors.length === 0 ? (
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             employees.doctors.map(doctor => (
@@ -419,7 +509,7 @@ export default function AdminDashboard() {
       {/* ========== الممرضات ========== */}
       {activeTab === 'nurses' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {employees.nurses.length === 0 ? (
+          {!Array.isArray(employees.nurses) || employees.nurses.length === 0 ? (
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             employees.nurses.map(nurse => (
@@ -442,7 +532,7 @@ export default function AdminDashboard() {
       {/* ========== موظفي الاستقبال ========== */}
       {activeTab === 'reception' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {employees.reception.length === 0 ? (
+          {!Array.isArray(employees.reception) || employees.reception.length === 0 ? (
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             employees.reception.map(emp => (
@@ -464,7 +554,7 @@ export default function AdminDashboard() {
       {/* ========== الموظفين الماليين ========== */}
       {activeTab === 'finance' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {employees.finance.length === 0 ? (
+          {!Array.isArray(employees.finance) || employees.finance.length === 0 ? (
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             employees.finance.map(emp => (
@@ -523,7 +613,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700/50">
-                  {medicalSupplies.length === 0 ? (
+                  {!Array.isArray(medicalSupplies) || medicalSupplies.length === 0 ? (
                     <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-400">لا توجد بيانات</td></tr>
                   ) : (
                     medicalSupplies.map(item => (
@@ -546,7 +636,7 @@ export default function AdminDashboard() {
       {/* ========== أنواع العلاج ========== */}
       {activeTab === 'treatments' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {treatmentTypes.length === 0 ? (
+          {!Array.isArray(treatmentTypes) || treatmentTypes.length === 0 ? (
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             treatmentTypes.map(treatment => (
