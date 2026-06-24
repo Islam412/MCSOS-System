@@ -18,7 +18,7 @@ import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 // ========== استيراد الخدمات ==========
-import { usersService, doctorsService, patientsService, invoicesService, get } from '../../services/api'
+import { usersService, doctorsService, patientsService, invoicesService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 
 export default function AdminDashboard() {
@@ -33,22 +33,17 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [apiError, setApiError] = useState(null)
 
-  // ========== بيانات الموظفين (من API) ==========
+  // ========== بيانات من API ==========
   const [employees, setEmployees] = useState({
     reception: [],
     doctors: [],
     nurses: [],
     finance: []
   })
-
-  // ========== بيانات المواد الطبية (من API) ==========
   const [medicalSupplies, setMedicalSupplies] = useState([])
-
-  // ========== بيانات أنواع العلاج (من API) ==========
   const [treatmentTypes, setTreatmentTypes] = useState([])
-
-  // ========== بيانات الخزنة (من API) ==========
   const [inventory, setInventory] = useState({
     totalItems: 0,
     totalValue: 0,
@@ -56,6 +51,41 @@ export default function AdminDashboard() {
     criticalItems: 0,
     categories: []
   })
+  const [dashboardStats, setDashboardStats] = useState({
+    totalPatients: 0,
+    totalDoctors: 0,
+    totalAppointments: 0,
+    totalRevenue: 0,
+    pendingRevenue: 0
+  })
+
+  // ========== بيانات افتراضية للمخزون ==========
+  const defaultSupplies = [
+    { id: 1, name: 'باراسيتامول 500mg', category: 'أدوية', quantity: 50, unit: 'قرص', lowStock: 10 },
+    { id: 2, name: 'ضمادات معقمة', category: 'مستلزمات', quantity: 20, unit: 'قطعة', lowStock: 5 },
+    { id: 3, name: 'محلول ملحي', category: 'محاليل', quantity: 30, unit: 'زجاجة', lowStock: 8 },
+    { id: 4, name: 'مضاد حيوي أموكسيسيلين', category: 'أدوية', quantity: 15, unit: 'علبة', lowStock: 5 },
+    { id: 5, name: 'قفازات طبية', category: 'مستلزمات', quantity: 100, unit: 'زوج', lowStock: 20 }
+  ]
+
+  const defaultInventoryStats = {
+    totalItems: 5,
+    totalValue: 25000,
+    lowStockItems: 2,
+    criticalItems: 1,
+    categories: [
+      { name: 'أدوية', count: 65 },
+      { name: 'مستلزمات', count: 120 },
+      { name: 'محاليل', count: 30 }
+    ]
+  }
+
+  const defaultTreatments = [
+    { id: 1, name: 'علاج طبيعي', nameEn: 'Physical Therapy', price: 250, sessions: 6, duration: '45 دقيقة' },
+    { id: 2, name: 'أشعة تشخيصية', nameEn: 'X-Ray', price: 350, sessions: 1, duration: '30 دقيقة' },
+    { id: 3, name: 'استشارة طبية', nameEn: 'Medical Consultation', price: 200, sessions: 1, duration: '20 دقيقة' },
+    { id: 4, name: 'علاج طبيعي مكثف', nameEn: 'Intensive PT', price: 400, sessions: 12, duration: '60 دقيقة' }
+  ]
 
   // ========== تحميل البيانات ==========
   useEffect(() => {
@@ -66,204 +96,217 @@ export default function AdminDashboard() {
 
   const loadAllData = async () => {
     setLoading(true)
+    setApiError(null)
     try {
       await Promise.all([
         loadEmployees(),
         loadMedicalSupplies(),
         loadTreatmentTypes(),
-        loadInventoryStats()
+        loadInventoryStats(),
+        loadDashboardStats()
       ])
     } catch (error) {
       console.error('Error loading dashboard data:', error)
-      toast.error('حدث خطأ في تحميل البيانات')
+      setApiError(error.message)
     } finally {
       setLoading(false)
     }
   }
 
-  // ✅ دالة مساعدة لاستخراج المصفوفة من الاستجابة
-  const extractArray = (response, fallback = []) => {
-    // إذا كانت الاستجابة مصفوفة مباشرة
-    if (Array.isArray(response)) return response
-    
-    // إذا كانت الاستجابة كائن يحتوي على خاصية data أو items أو users أو treatments
-    if (response && typeof response === 'object') {
-      if (Array.isArray(response.data)) return response.data
-      if (Array.isArray(response.items)) return response.items
-      if (Array.isArray(response.users)) return response.users
-      if (Array.isArray(response.treatments)) return response.treatments
-      if (Array.isArray(response.results)) return response.results
-      if (Array.isArray(response.doctors)) return response.doctors
-      if (Array.isArray(response.patients)) return response.patients
-      
-      // محاولة العثور على أي خاصية تحتوي على مصفوفة
-      for (const key of Object.keys(response)) {
-        if (Array.isArray(response[key])) return response[key]
-      }
-    }
-    
-    return fallback
-  }
-
-  // ========== تحميل بيانات الموظفين ==========
+  // ========== تحميل بيانات الموظفين من API ==========
   const loadEmployees = async () => {
     try {
-      let data = []
-      
-      if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => usersService.getUsers(),
-          'users',
-          JSON.parse(localStorage.getItem('mcsos_users_v2') || '[]')
-        )
-        
-        // ✅ استخراج المصفوفة من الاستجابة
-        data = extractArray(response, [])
-        
-        // ✅ التأكد من أن data مصفوفة
-        if (!Array.isArray(data)) data = []
-        
-        // تصنيف الموظفين حسب الدور (مع دعم الأحرف الكبيرة والصغيرة)
-        const grouped = {
-          doctors: data.filter(u => u.role?.toLowerCase() === 'doctor' || u.role === 'DOCTOR'),
-          reception: data.filter(u => u.role?.toLowerCase() === 'reception' || u.role === 'RECEPTIONIST' || u.role === 'receptionist'),
-          finance: data.filter(u => u.role?.toLowerCase() === 'finance' || u.role === 'FINANCE'),
-          nurses: data.filter(u => u.role?.toLowerCase() === 'nurse' || u.department?.includes('تمريض'))
-        }
-        setEmployees(grouped)
-        localStorage.setItem('mcsos_users_v2', JSON.stringify(data))
-      } else {
-        // وضع غير متصل - استخدام البيانات المحلية
-        const saved = localStorage.getItem('mcsos_users_v2')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (Array.isArray(parsed)) {
-            data = parsed
-            const grouped = {
-              doctors: data.filter(u => u.role?.toLowerCase() === 'doctor' || u.role === 'DOCTOR'),
-              reception: data.filter(u => u.role?.toLowerCase() === 'reception' || u.role === 'RECEPTIONIST' || u.role === 'receptionist'),
-              finance: data.filter(u => u.role?.toLowerCase() === 'finance' || u.role === 'FINANCE'),
-              nurses: data.filter(u => u.role?.toLowerCase() === 'nurse' || u.department?.includes('تمريض'))
-            }
-            setEmployees(grouped)
-          }
-        }
+      if (!isOnline) {
+        loadLocalEmployees()
+        return
       }
+
+      const response = await usersService.getUsers()
+      
+      let data = Array.isArray(response) ? response : []
+      
+      if (!Array.isArray(response) && response?.users) {
+        data = response.users
+      }
+      
+      const grouped = {
+        doctors: data.filter(u => u.role?.toLowerCase() === 'doctor' || u.role === 'DOCTOR'),
+        reception: data.filter(u => u.role?.toLowerCase() === 'reception' || u.role === 'RECEPTIONIST' || u.role === 'receptionist'),
+        finance: data.filter(u => u.role?.toLowerCase() === 'finance' || u.role === 'FINANCE'),
+        nurses: data.filter(u => u.role?.toLowerCase() === 'nurse' || u.department?.includes('تمريض'))
+      }
+      
+      setEmployees(grouped)
+      
+      setDashboardStats(prev => ({
+        ...prev,
+        totalDoctors: grouped.doctors.length
+      }))
+      
     } catch (error) {
-      console.error('Error loading employees:', error)
-      // ✅ عدم عرض toast للمستخدم
+      console.error('Error loading employees from API:', error)
+      loadLocalEmployees()
     }
   }
 
-  // ========== تحميل المواد الطبية ==========
-  const loadMedicalSupplies = async () => {
+  const loadLocalEmployees = () => {
     try {
-      let data = []
-      
-      if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => get('/inventory/items'),
-          'inventory_items',
-          JSON.parse(localStorage.getItem('mcsos_inventory_items') || '[]')
-        )
-        
-        data = extractArray(response, [])
-        if (!Array.isArray(data)) data = []
-        
-        setMedicalSupplies(data)
-        localStorage.setItem('mcsos_inventory_items', JSON.stringify(data))
-      } else {
-        const saved = localStorage.getItem('mcsos_inventory_items')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (Array.isArray(parsed)) setMedicalSupplies(parsed)
+      const saved = localStorage.getItem('mcsos_users_v2')
+      if (saved) {
+        const data = JSON.parse(saved)
+        if (Array.isArray(data)) {
+          const grouped = {
+            doctors: data.filter(u => u.role?.toLowerCase() === 'doctor'),
+            reception: data.filter(u => u.role?.toLowerCase() === 'reception'),
+            finance: data.filter(u => u.role?.toLowerCase() === 'finance'),
+            nurses: data.filter(u => u.role?.toLowerCase() === 'nurse')
+          }
+          setEmployees(grouped)
         }
       }
     } catch (error) {
+      console.error('Error loading local employees:', error)
+    }
+  }
+
+  // ========== تحميل المواد الطبية (محلياً) ==========
+  const loadMedicalSupplies = async () => {
+    try {
+      const saved = localStorage.getItem('mcsos_inventory_items')
+      if (saved) {
+        const data = JSON.parse(saved)
+        if (Array.isArray(data)) {
+          setMedicalSupplies(data)
+          return
+        }
+      }
+      // استخدام البيانات الافتراضية
+      setMedicalSupplies(defaultSupplies)
+      localStorage.setItem('mcsos_inventory_items', JSON.stringify(defaultSupplies))
+    } catch (error) {
       console.error('Error loading medical supplies:', error)
+      setMedicalSupplies(defaultSupplies)
     }
   }
 
   // ========== تحميل أنواع العلاج ==========
   const loadTreatmentTypes = async () => {
     try {
-      let data = []
-      
-      if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => get('/treatments'),
-          'treatments',
-          JSON.parse(localStorage.getItem('mcsos_treatments') || '[]')
-        )
-        
-        data = extractArray(response, [])
-        if (!Array.isArray(data)) data = []
-        
-        setTreatmentTypes(data)
-        localStorage.setItem('mcsos_treatments', JSON.stringify(data))
-      } else {
-        const saved = localStorage.getItem('mcsos_treatments')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (Array.isArray(parsed)) setTreatmentTypes(parsed)
-        }
+      if (!isOnline) {
+        loadLocalTreatmentTypes()
+        return
       }
+
+      const response = await fetch('https://medical-center-app-production.up.railway.app/api/v1/services', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      let items = []
+      if (Array.isArray(data)) {
+        items = data
+      } else if (data?.services && Array.isArray(data.services)) {
+        items = data.services
+      } else if (data?.data && Array.isArray(data.data)) {
+        items = data.data
+      }
+      
+      if (items.length > 0) {
+        setTreatmentTypes(items)
+        localStorage.setItem('mcsos_treatments', JSON.stringify(items))
+      } else {
+        loadLocalTreatmentTypes()
+      }
+      
     } catch (error) {
-      console.error('Error loading treatments:', error)
+      console.error('Error loading treatment types from API:', error)
+      loadLocalTreatmentTypes()
     }
   }
 
-  // ========== تحميل إحصائيات المخزون ==========
-  const loadInventoryStats = async () => {
+  const loadLocalTreatmentTypes = () => {
     try {
-      if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => get('/stats/inventory'),
-          'inventory_stats',
-          JSON.parse(localStorage.getItem('mcsos_inventory_stats') || '{"totalItems":0,"totalValue":0,"lowStockItems":0,"criticalItems":0,"categories":[]}')
-        )
-        
-        // ✅ التأكد من أن الاستجابة كائن وليس مصفوفة
-        if (response && typeof response === 'object' && !Array.isArray(response)) {
-          setInventory({
-            totalItems: response.totalItems || 0,
-            totalValue: response.totalValue || 0,
-            lowStockItems: response.lowStockItems || 0,
-            criticalItems: response.criticalItems || 0,
-            categories: Array.isArray(response.categories) ? response.categories : []
-          })
-          localStorage.setItem('mcsos_inventory_stats', JSON.stringify(response))
-        } else {
-          // استخدام القيم الافتراضية
-          setInventory({
-            totalItems: 0,
-            totalValue: 0,
-            lowStockItems: 0,
-            criticalItems: 0,
-            categories: []
-          })
-        }
-      } else {
-        const saved = localStorage.getItem('mcsos_inventory_stats')
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved)
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              setInventory({
-                totalItems: parsed.totalItems || 0,
-                totalValue: parsed.totalValue || 0,
-                lowStockItems: parsed.lowStockItems || 0,
-                criticalItems: parsed.criticalItems || 0,
-                categories: Array.isArray(parsed.categories) ? parsed.categories : []
-              })
-            }
-          } catch (e) {
-            console.error('Error parsing inventory stats:', e)
-          }
+      const saved = localStorage.getItem('mcsos_treatments')
+      if (saved) {
+        const data = JSON.parse(saved)
+        if (Array.isArray(data) && data.length > 0) {
+          setTreatmentTypes(data)
+          return
         }
       }
+      setTreatmentTypes(defaultTreatments)
+      localStorage.setItem('mcsos_treatments', JSON.stringify(defaultTreatments))
+    } catch (error) {
+      console.error('Error loading local treatment types:', error)
+      setTreatmentTypes(defaultTreatments)
+    }
+  }
+
+  // ========== تحميل إحصائيات المخزون (محلياً) ==========
+  const loadInventoryStats = async () => {
+    try {
+      const saved = localStorage.getItem('mcsos_inventory_stats')
+      if (saved) {
+        const data = JSON.parse(saved)
+        if (data && typeof data === 'object') {
+          setInventory({
+            totalItems: data.totalItems || 0,
+            totalValue: data.totalValue || 0,
+            lowStockItems: data.lowStockItems || 0,
+            criticalItems: data.criticalItems || 0,
+            categories: Array.isArray(data.categories) ? data.categories : []
+          })
+          return
+        }
+      }
+      setInventory(defaultInventoryStats)
+      localStorage.setItem('mcsos_inventory_stats', JSON.stringify(defaultInventoryStats))
     } catch (error) {
       console.error('Error loading inventory stats:', error)
+      setInventory(defaultInventoryStats)
+    }
+  }
+
+  // ========== تحميل إحصائيات لوحة التحكم من API ==========
+  const loadDashboardStats = async () => {
+    try {
+      if (!isOnline) return
+
+      // ✅ استخدام الـ Endpoints المتوفرة في الـ API
+      const endpoints = [
+        { key: 'operations', url: '/v1/stats/operations' },
+        { key: 'doctor', url: '/v1/stats/doctor' },
+        { key: 'finance', url: '/v1/stats/finance' }
+      ]
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint.url}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            console.log(`${endpoint.key} stats:`, data)
+          }
+        } catch (e) {
+          console.warn(`Error loading ${endpoint.key} stats:`, e)
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error)
     }
   }
 
@@ -285,6 +328,7 @@ export default function AdminDashboard() {
   const getStockStatusBadge = (quantity, lowStock) => {
     const qty = Number(quantity) || 0
     const low = Number(lowStock) || 10
+    if (qty <= 0) return <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">⚠️ نفذ</span>
     if (qty <= low / 2) return <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">⚠️ حرج</span>
     if (qty <= low) return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⚠️ منخفض</span>
     return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ متوفر</span>
@@ -318,7 +362,12 @@ export default function AdminDashboard() {
             مرحباً {user?.name || 'أحمد محمد'} | نظرة شاملة على المركز الطبي
             {!isOnline && (
               <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
-                ⚡ غير متصل
+                ⚡ غير متصل - بيانات محلية
+              </span>
+            )}
+            {apiError && (
+              <span className="inline-block mr-2 px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs">
+                ⚠️ خطأ في الخادم
               </span>
             )}
           </p>
