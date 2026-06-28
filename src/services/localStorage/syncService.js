@@ -1,10 +1,5 @@
-// src/services/localStorage/syncService.js
-
-// خدمة مزامنة البيانات بين API والتخزين المحلي
-// تستخدم كطبقة احتياطية عند فشل الاتصال بالخادم
-
 import { get, post, put, del } from '../api/client'
-import { API_CONFIG } from '../api/config'  // ✅ أضف هذا الاستيراد
+import { API_CONFIG } from '../api/config'
 
 // مفتاح التخزين المحلي
 const STORAGE_KEYS = {
@@ -48,7 +43,6 @@ export const syncFromServer = async (resource, endpoint, params = {}) => {
     const url = queryString ? `${endpoint}?${queryString}` : endpoint
     const response = await get(url)
     
-    // حفظ البيانات في localStorage
     const key = STORAGE_KEYS[resource.toUpperCase()]
     if (key && response[resource]) {
       saveLocalData(key, response[resource])
@@ -56,7 +50,6 @@ export const syncFromServer = async (resource, endpoint, params = {}) => {
     
     return response
   } catch (error) {
-    // في حالة فشل الاتصال، إرجاع البيانات المحلية
     const key = STORAGE_KEYS[resource.toUpperCase()]
     const localData = getLocalData(key)
     if (localData) {
@@ -71,10 +64,8 @@ export const pushToServer = async (resource, endpoint, data) => {
   try {
     const response = await post(endpoint, data)
     
-    // تحديث البيانات المحلية بعد الدفع الناجح
     const key = STORAGE_KEYS[resource.toUpperCase()]
     if (key) {
-      // دمج البيانات
       const existing = getLocalData(key) || []
       const updated = [...existing, response[resource]]
       saveLocalData(key, updated)
@@ -82,7 +73,6 @@ export const pushToServer = async (resource, endpoint, data) => {
     
     return response
   } catch (error) {
-    // في حالة فشل الدفع، حفظ البيانات محلياً
     const key = STORAGE_KEYS[resource.toUpperCase()]
     const existing = getLocalData(key) || []
     const newData = { ...data, id: Date.now(), _syncPending: true }
@@ -92,29 +82,34 @@ export const pushToServer = async (resource, endpoint, data) => {
   }
 }
 
-// دالة لمزامنة العناصر المعلقة
+// ✅ دالة لمزامنة العناصر المعلقة (مع التحقق من وجود item)
 export const syncPendingItems = async () => {
   const results = []
   
   // التحقق من جميع الموارد للعناصر المعلقة
   for (const [resource, key] of Object.entries(STORAGE_KEYS)) {
     const data = getLocalData(key) || []
-    const pending = data.filter(item => item._syncPending)
+    // ✅ التأكد من أن data مصفوفة وكل عنصر غير null
+    if (!Array.isArray(data)) continue
+    
+    const pending = data.filter(item => item && item._syncPending === true)
     
     for (const item of pending) {
+      // ✅ التحقق من وجود item
+      if (!item) continue
+      
       try {
-        // ✅ اصلح: استخدم المسار الكامل مع BASE_URL
         const endpoint = `/api/${resource.toLowerCase()}`
         const response = await post(endpoint, item)
         
         // إزالة علامة المعلقة
         const updated = data.map(d => 
-          d.id === item.id ? { ...d, _syncPending: false, _syncedAt: new Date().toISOString() } : d
+          d && d.id === item.id ? { ...d, _syncPending: false, _syncedAt: new Date().toISOString() } : d
         )
         saveLocalData(key, updated)
         results.push({ success: true, id: item.id, resource })
       } catch (error) {
-        results.push({ success: false, id: item.id, resource, error: error.message })
+        results.push({ success: false, id: item?.id || 'unknown', resource, error: error.message })
       }
     }
   }
