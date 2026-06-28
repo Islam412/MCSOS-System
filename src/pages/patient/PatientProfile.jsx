@@ -122,7 +122,8 @@ export default function PatientProfile() {
         })
         const saved = localStorage.getItem('mcsos_patients_v2')
         if (saved) {
-          setPatients(JSON.parse(saved))
+          const data = JSON.parse(saved)
+          setPatients(data)
         } else {
           setPatients([])
         }
@@ -130,8 +131,9 @@ export default function PatientProfile() {
       }
 
       const response = await patientsService.getPatients()
+      console.log('📥 Load patients response:', response)
       
-      // ✅ معالجة الاستجابة
+      // ✅ معالجة الاستجابة بشكل صحيح
       let data = []
       if (Array.isArray(response)) {
         data = response
@@ -139,15 +141,20 @@ export default function PatientProfile() {
         data = response.patients
       } else if (response?.data && Array.isArray(response.data)) {
         data = response.data
+      } else if (response?.message && response?.data) {
+        data = response.data
       }
       
-      if (data.length > 0) {
-        setPatients(data)
-        localStorage.setItem('mcsos_patients_v2', JSON.stringify(data))
-      } else {
-        setPatients([])
-        localStorage.setItem('mcsos_patients_v2', JSON.stringify([]))
+      // ✅ إذا كانت البيانات فارغة، نستخدم localStorage
+      if (data.length === 0) {
+        const saved = localStorage.getItem('mcsos_patients_v2')
+        if (saved) {
+          data = JSON.parse(saved)
+        }
       }
+      
+      setPatients(data)
+      localStorage.setItem('mcsos_patients_v2', JSON.stringify(data))
       
     } catch (error) {
       console.error('Error loading patients from API:', error)
@@ -275,15 +282,31 @@ export default function PatientProfile() {
       if (isOnline) {
         try {
           const response = await patientsService.createPatient(patientData)
-          console.log('✅ API Response:', response)
+          console.log('✅ Full API Response:', JSON.stringify(response, null, 2))
           
-          // ✅ معالجة الاستجابة بشكل صحيح
+          // ✅ معالجة جميع أشكال الاستجابة الممكنة
           if (response) {
-            newPatientData = response.patient || response.data || response
+            // حالة 1: response.patient
+            if (response.patient) {
+              newPatientData = response.patient
+            }
+            // حالة 2: response.data
+            else if (response.data) {
+              newPatientData = response.data
+            }
+            // حالة 3: response نفسه هو البيانات
+            else if (response.id || response._id) {
+              newPatientData = response
+            }
+            // حالة 4: response.message مع بيانات
+            else if (response.message && response.data) {
+              newPatientData = response.data
+            }
           }
           
-          // ✅ إذا كانت الاستجابة فارغة أو undefined، استخدم البيانات المرسلة
+          // ✅ إذا لم نجد بيانات، نستخدم البيانات المرسلة مع ID مؤقت
           if (!newPatientData) {
+            console.warn('⚠️ No patient data in response, using local data')
             newPatientData = { 
               ...patientData, 
               id: Date.now(), 
@@ -298,14 +321,16 @@ export default function PatientProfile() {
               progress: 0,
               completedSessions: 0
             }
-            toast('تم الحفظ محلياً (استجابة الخادم فارغة)', {
+            toast('تم الحفظ محلياً (استجابة الخادم غير متوقعة)', {
               icon: '⚠️',
               duration: 4000
             })
           }
         } catch (apiError) {
-          console.warn('❌ API create failed:', apiError)
-          // ✅ حفظ محلياً مع البيانات المحولة
+          console.error('❌ API create failed:', apiError)
+          console.error('❌ Error details:', apiError.message)
+          
+          // ✅ حفظ محلياً في حالة فشل API
           newPatientData = { 
             ...patientData, 
             id: Date.now(), 
@@ -326,6 +351,7 @@ export default function PatientProfile() {
           })
         }
       } else {
+        // ✅ وضع عدم الاتصال
         newPatientData = { 
           ...patientData, 
           id: Date.now(), 
@@ -351,6 +377,7 @@ export default function PatientProfile() {
         throw new Error('فشل في إنشاء بيانات المريض')
       }
 
+      // ✅ إضافة المريض للقائمة
       const updatedPatients = [newPatientData, ...patients]
       setPatients(updatedPatients)
       localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
@@ -368,6 +395,12 @@ export default function PatientProfile() {
         address: ''
       })
       toast.success('تم إضافة المريض بنجاح')
+      
+      // ✅ إعادة تحميل البيانات من الخادم لتحديث القائمة
+      setTimeout(() => {
+        loadPatients()
+      }, 500)
+      
     } catch (error) {
       console.error('❌ Add patient error:', error)
       toast.error(error.message || 'حدث خطأ في إضافة المريض')
