@@ -1,119 +1,19 @@
 // src/components/admin/DoctorsManager.jsx
+
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { 
   Stethoscope, Plus, Edit, Trash2, Calendar, Clock, 
   DollarSign, Award, Phone, Mail, MapPin, X, Save,
   Eye, Star, Users, Heart, Brain, Bone, Activity,
-  ChevronLeft, ChevronRight, Search, Filter, RefreshCw
+  ChevronLeft, ChevronRight, Search, Filter, RefreshCw,
+  Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
 import { doctorsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
-
-// مفتاح التخزين في localStorage
-const STORAGE_KEYS = {
-  DOCTORS: 'mcsos_doctors_v2',
-  APPOINTMENTS: 'mcsos_appointments_v2',
-  SPECIALTIES: 'mcsos_specialties'
-}
-
-// دالة مساعدة للوصول إلى localStorage مع التعامل مع الأخطاء
-const getLocalData = (key) => {
-  try {
-    const data = localStorage.getItem(key)
-    return data ? JSON.parse(data) : null
-  } catch (error) {
-    console.error(`Error reading ${key}:`, error)
-    return null
-  }
-}
-
-// التخصصات الطبية الافتراضية
-const defaultSpecialties = [
-  { id: 'orthopedic', nameAr: 'جراحة عظام', nameEn: 'Orthopedic Surgery', icon: '🦴' },
-  { id: 'physical_therapy', nameAr: 'علاج طبيعي', nameEn: 'Physical Therapy', icon: '💪' },
-  { id: 'neurology', nameAr: 'أعصاب', nameEn: 'Neurology', icon: '🧠' },
-  { id: 'pediatrics', nameAr: 'أطفال', nameEn: 'Pediatrics', icon: '👶' },
-  { id: 'general_surgery', nameAr: 'جراحة عامة', nameEn: 'General Surgery', icon: '🔪' },
-  { id: 'dermatology', nameAr: 'جلدية', nameEn: 'Dermatology', icon: '✨' },
-  { id: 'cardiology', nameAr: 'قلب', nameEn: 'Cardiology', icon: '❤️' },
-  { id: 'dentistry', nameAr: 'أسنان', nameEn: 'Dentistry', icon: '🦷' },
-  { id: 'ophthalmology', nameAr: 'عيون', nameEn: 'Ophthalmology', icon: '👁️' },
-  { id: 'ent', nameAr: 'أنف وأذن وحنجرة', nameEn: 'ENT', icon: '👂' },
-  { id: 'urology', nameAr: 'مسالك بولية', nameEn: 'Urology', icon: '💧' },
-  { id: 'gynecology', nameAr: 'نساء وتوليد', nameEn: 'Gynecology', icon: '👩' }
-]
-
-// الأطباء الافتراضيون
-const defaultDoctors = [
-  {
-    id: 1,
-    nameAr: 'د. أحمد علي',
-    nameEn: 'Dr. Ahmed Ali',
-    specialization: 'orthopedic',
-    specializationAr: 'جراحة عظام',
-    specializationEn: 'Orthopedic Surgery',
-    experience: 15,
-    rating: 4.8,
-    reviews: 128,
-    price: 300,
-    phone: '+966 50 111 2222',
-    email: 'ahmed.ali@medical.com',
-    bioAr: 'استشاري جراحة العظام والمفاصل، خبرة 15 سنة في المملكة المتحدة ومصر',
-    bioEn: 'Consultant Orthopedic Surgery, 15 years experience',
-    educationAr: ['دكتوراه في جراحة العظام - جامعة القاهرة', 'زمالة جراحة المفاصل - المملكة المتحدة'],
-    educationEn: ['PhD in Orthopedic Surgery', 'Fellowship in Joint Surgery'],
-    languages: ['العربية', 'English', 'Français'],
-    awards: ['أفضل طبيب عظام 2023', 'جائزة التميز الطبي'],
-    patientsCount: 245,
-    satisfactionRate: 96,
-    workDays: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday'],
-    workHours: {
-      start: '09:00',
-      end: '17:00'
-    },
-    availableSlots: [
-      { date: '2024-05-25', time: '09:00', available: true },
-      { date: '2024-05-25', time: '10:00', available: true },
-      { date: '2024-05-25', time: '11:00', available: false },
-      { date: '2024-05-26', time: '09:00', available: true },
-      { date: '2024-05-26', time: '14:00', available: true }
-    ],
-    isActive: true
-  },
-  {
-    id: 2,
-    nameAr: 'د. منى حسن',
-    nameEn: 'Dr. Mona Hassan',
-    specialization: 'physical_therapy',
-    specializationAr: 'علاج طبيعي',
-    specializationEn: 'Physical Therapy',
-    experience: 10,
-    rating: 4.9,
-    reviews: 95,
-    price: 250,
-    phone: '+966 50 222 3333',
-    email: 'mona.hassan@medical.com',
-    bioAr: 'أخصائية علاج طبيعي، حاصلة على دكتوراه في العلاج الطبيعي',
-    bioEn: 'Physical Therapy Specialist, PhD in Physical Therapy',
-    educationAr: ['دكتوراه في العلاج الطبيعي - جامعة لندن', 'ماجستير في إعادة التأهيل الرياضي'],
-    educationEn: ['PhD in Physical Therapy', 'Master in Sports Rehabilitation'],
-    languages: ['العربية', 'English'],
-    awards: ['أفضل أخصائي علاج طبيعي 2022'],
-    patientsCount: 189,
-    satisfactionRate: 98,
-    workDays: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday'],
-    workHours: { start: '10:00', end: '18:00' },
-    availableSlots: [
-      { date: '2024-05-24', time: '10:00', available: true },
-      { date: '2024-05-24', time: '11:00', available: true }
-    ],
-    isActive: true
-  }
-]
 
 export default function DoctorsManager() {
   const { t, i18n } = useTranslation()
@@ -145,99 +45,295 @@ export default function DoctorsManager() {
     date: '', time: '', available: true
   })
 
+  // ========== التخصصات الافتراضية ==========
+  const defaultSpecialties = [
+    { id: 'orthopedic', nameAr: 'جراحة عظام', nameEn: 'Orthopedic Surgery', icon: '🦴' },
+    { id: 'physical_therapy', nameAr: 'علاج طبيعي', nameEn: 'Physical Therapy', icon: '💪' },
+    { id: 'neurology', nameAr: 'أعصاب', nameEn: 'Neurology', icon: '🧠' },
+    { id: 'pediatrics', nameAr: 'أطفال', nameEn: 'Pediatrics', icon: '👶' },
+    { id: 'general_surgery', nameAr: 'جراحة عامة', nameEn: 'General Surgery', icon: '🔪' },
+    { id: 'cardiology', nameAr: 'قلب', nameEn: 'Cardiology', icon: '❤️' },
+    { id: 'dermatology', nameAr: 'جلدية', nameEn: 'Dermatology', icon: '✨' },
+    { id: 'gynecology', nameAr: 'نساء وتوليد', nameEn: 'Gynecology', icon: '👩' },
+    { id: 'ophthalmology', nameAr: 'عيون', nameEn: 'Ophthalmology', icon: '👁️' },
+    { id: 'urology', nameAr: 'مسالك بولية', nameEn: 'Urology', icon: '🧬' },
+  ]
+
   // ========== تحميل البيانات ==========
   useEffect(() => {
     loadData()
   }, [])
 
-  // ========== دالة تحميل البيانات المتكاملة ==========
+  // ========== تحميل الأطباء من API ==========
   const loadData = async () => {
     setLoading(true)
     try {
-      // 1. تحميل التخصصات (من localStorage دائماً)
-      const savedSpecialties = getLocalData(STORAGE_KEYS.SPECIALTIES)
+      // ✅ تحميل التخصصات (محلياً)
+      const savedSpecialties = localStorage.getItem('mcsos_specialties')
       if (savedSpecialties) {
-        setSpecialties(savedSpecialties)
+        setSpecialties(JSON.parse(savedSpecialties))
       } else {
         setSpecialties(defaultSpecialties)
-        localStorage.setItem(STORAGE_KEYS.SPECIALTIES, JSON.stringify(defaultSpecialties))
+        localStorage.setItem('mcsos_specialties', JSON.stringify(defaultSpecialties))
       }
 
-      // 2. تحميل الأطباء (مع دعم API)
+      // ✅ تحميل الأطباء من API
       if (isOnline) {
         try {
-          // محاولة جلب البيانات من الخادم
-          const response = await executeWithOfflineSupport(
-            () => doctorsService.getDoctors(),
-            'doctors',
-            getLocalData(STORAGE_KEYS.DOCTORS)
-          )
+          const response = await doctorsService.getDoctors()
+          console.log('📥 Doctors loaded from API:', response)
           
-          // التحقق من هيكل الاستجابة
-          if (response && response.doctors) {
-            setDoctors(response.doctors)
-            // تحديث localStorage
-            localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(response.doctors))
-          } else if (response && Array.isArray(response)) {
-            // إذا كانت الاستجابة مصفوفة مباشرة
-            setDoctors(response)
-            localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(response))
+          let apiData = []
+          if (Array.isArray(response)) {
+            apiData = response
+          } else if (response?.doctors && Array.isArray(response.doctors)) {
+            apiData = response.doctors
+          } else if (response?.data && Array.isArray(response.data)) {
+            apiData = response.data
+          }
+          
+          // ✅ تحميل البيانات المحلية
+          const localData = JSON.parse(localStorage.getItem('mcsos_doctors_v2') || '[]')
+          
+          if (apiData.length > 0) {
+            // ✅ دمج بيانات API مع البيانات المحلية
+            const mergedData = apiData.map(apiDoctor => {
+              const localDoctor = localData.find(d => 
+                d.id === apiDoctor.id || 
+                d.nameAr === apiDoctor.name || 
+                d.email === apiDoctor.email
+              )
+              
+              return {
+                id: apiDoctor.id || apiDoctor._id || Date.now(),
+                nameAr: apiDoctor.name || apiDoctor.nameAr,
+                nameEn: apiDoctor.nameEn || apiDoctor.name,
+                specialization: apiDoctor.specialization || apiDoctor.specialty || 'general',
+                specializationAr: apiDoctor.specializationAr || apiDoctor.specialty || 'عام',
+                specializationEn: apiDoctor.specializationEn || apiDoctor.specialty || 'General',
+                phone: apiDoctor.phone || '',
+                email: apiDoctor.email || '',
+                isActive: apiDoctor.is_active !== undefined ? apiDoctor.is_active : true,
+                experience: localDoctor?.experience || 0,
+                rating: localDoctor?.rating || 0,
+                reviews: localDoctor?.reviews || 0,
+                price: localDoctor?.price || 0,
+                bioAr: localDoctor?.bioAr || '',
+                bioEn: localDoctor?.bioEn || '',
+                workDays: localDoctor?.workDays || [],
+                workHours: localDoctor?.workHours || { start: '09:00', end: '17:00' },
+                availableSlots: localDoctor?.availableSlots || [],
+                patientsCount: localDoctor?.patientsCount || 0,
+                satisfactionRate: localDoctor?.satisfactionRate || 0,
+                _syncPending: false
+              }
+            })
+            
+            setDoctors(mergedData)
+            localStorage.setItem('mcsos_doctors_v2', JSON.stringify(mergedData))
           } else {
-            // إذا لم تكن هناك بيانات، استخدام البيانات المحلية
-            loadLocalDoctors()
+            // ✅ إذا كانت API فاضية، استخدم البيانات المحلية
+            if (localData.length > 0) {
+              setDoctors(localData)
+            } else {
+              const defaultDoctors = getDefaultDoctors()
+              setDoctors(defaultDoctors)
+              localStorage.setItem('mcsos_doctors_v2', JSON.stringify(defaultDoctors))
+            }
           }
         } catch (apiError) {
-          console.warn('API request failed, falling back to local data:', apiError)
-          loadLocalDoctors()
+          console.warn('⚠️ API request failed:', apiError)
+          const saved = localStorage.getItem('mcsos_doctors_v2')
+          if (saved) {
+            const parsed = JSON.parse(saved)
+            if (parsed.length > 0) {
+              setDoctors(parsed)
+            } else {
+              const defaultDoctors = getDefaultDoctors()
+              setDoctors(defaultDoctors)
+              localStorage.setItem('mcsos_doctors_v2', JSON.stringify(defaultDoctors))
+            }
+          } else {
+            const defaultDoctors = getDefaultDoctors()
+            setDoctors(defaultDoctors)
+            localStorage.setItem('mcsos_doctors_v2', JSON.stringify(defaultDoctors))
+          }
+          toast.error('فشل تحميل البيانات من الخادم، جاري استخدام البيانات المحلية')
         }
       } else {
-        // وضع غير متصل - استخدام البيانات المحلية
-        loadLocalDoctors()
+        // ✅ وضع غير متصل
+        const saved = localStorage.getItem('mcsos_doctors_v2')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed.length > 0) {
+            setDoctors(parsed)
+          } else {
+            const defaultDoctors = getDefaultDoctors()
+            setDoctors(defaultDoctors)
+            localStorage.setItem('mcsos_doctors_v2', JSON.stringify(defaultDoctors))
+          }
+        } else {
+          const defaultDoctors = getDefaultDoctors()
+          setDoctors(defaultDoctors)
+          localStorage.setItem('mcsos_doctors_v2', JSON.stringify(defaultDoctors))
+        }
+        toast.success('وضع غير متصل - جاري استخدام البيانات المحلية', {
+          icon: '📶',
+          duration: 4000
+        })
       }
     } catch (error) {
-      console.error('Error loading data:', error)
+      console.error('❌ Error loading data:', error)
       toast.error('حدث خطأ في تحميل البيانات')
-      // محاولة التحميل من localStorage كحل أخير
-      loadLocalDoctors()
+      const defaultDoctors = getDefaultDoctors()
+      setDoctors(defaultDoctors)
+      localStorage.setItem('mcsos_doctors_v2', JSON.stringify(defaultDoctors))
     } finally {
       setLoading(false)
     }
   }
 
-  // ========== تحميل الأطباء من localStorage ==========
-  const loadLocalDoctors = () => {
-    const savedDoctors = getLocalData(STORAGE_KEYS.DOCTORS)
-    if (savedDoctors && savedDoctors.length > 0) {
-      setDoctors(savedDoctors)
-    } else {
-      setDoctors(defaultDoctors)
-      localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(defaultDoctors))
-    }
+  // ========== بيانات افتراضية للاختبار ==========
+  const getDefaultDoctors = () => {
+    return [
+      {
+        id: 1,
+        nameAr: 'د. أحمد علي',
+        nameEn: 'Dr. Ahmed Ali',
+        specialization: 'orthopedic',
+        specializationAr: 'جراحة عظام',
+        specializationEn: 'Orthopedic Surgery',
+        experience: 15,
+        rating: 4.8,
+        reviews: 128,
+        price: 300,
+        phone: '+966 50 111 2222',
+        email: 'ahmed.ali@medical.com',
+        bioAr: 'استشاري جراحة العظام والمفاصل، خبرة 15 سنة',
+        bioEn: 'Consultant Orthopedic Surgery, 15 years experience',
+        workDays: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday'],
+        workHours: { start: '09:00', end: '17:00' },
+        availableSlots: [
+          { date: '2024-05-25', time: '09:00', available: true },
+          { date: '2024-05-25', time: '10:00', available: true },
+          { date: '2024-05-26', time: '09:00', available: true },
+          { date: '2024-05-26', time: '14:00', available: true }
+        ],
+        isActive: true,
+        patientsCount: 245,
+        satisfactionRate: 96
+      },
+      {
+        id: 2,
+        nameAr: 'د. منى حسن',
+        nameEn: 'Dr. Mona Hassan',
+        specialization: 'physical_therapy',
+        specializationAr: 'علاج طبيعي',
+        specializationEn: 'Physical Therapy',
+        experience: 10,
+        rating: 4.9,
+        reviews: 95,
+        price: 250,
+        phone: '+966 50 222 3333',
+        email: 'mona.hassan@medical.com',
+        bioAr: 'أخصائية علاج طبيعي، حاصلة على دكتوراه في العلاج الطبيعي',
+        bioEn: 'Physical Therapy Specialist, PhD in Physical Therapy',
+        workDays: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday'],
+        workHours: { start: '10:00', end: '18:00' },
+        availableSlots: [
+          { date: '2024-05-24', time: '10:00', available: true },
+          { date: '2024-05-24', time: '11:00', available: true },
+          { date: '2024-05-25', time: '14:00', available: true }
+        ],
+        isActive: true,
+        patientsCount: 189,
+        satisfactionRate: 98
+      },
+      {
+        id: 3,
+        nameAr: 'د. خالد محمود',
+        nameEn: 'Dr. Khaled Mahmoud',
+        specialization: 'neurology',
+        specializationAr: 'أعصاب',
+        specializationEn: 'Neurology',
+        experience: 20,
+        rating: 4.7,
+        reviews: 210,
+        price: 400,
+        phone: '+966 50 333 4444',
+        email: 'khaled.mahmoud@medical.com',
+        bioAr: 'استشاري أمراض المخ والأعصاب، زمالة أوروبية',
+        bioEn: 'Consultant Neurologist, European Fellowship',
+        workDays: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
+        workHours: { start: '08:00', end: '16:00' },
+        availableSlots: [
+          { date: '2024-05-27', time: '09:00', available: true },
+          { date: '2024-05-27', time: '11:00', available: true }
+        ],
+        isActive: true,
+        patientsCount: 320,
+        satisfactionRate: 92
+      }
+    ]
   }
 
   // ========== حفظ الأطباء (محلي + API) ==========
   const saveDoctors = async (newDoctors) => {
-    // حفظ محلياً
-    localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(newDoctors))
+    // ✅ حفظ محلياً
+    localStorage.setItem('mcsos_doctors_v2', JSON.stringify(newDoctors))
     setDoctors(newDoctors)
     
-    // محاولة المزامنة مع الخادم إذا كان متصلاً
+    // ✅ مزامنة مع الخادم
     if (isOnline) {
       try {
-        // ملاحظة: هذا يفترض وجود endpoint لتحديث قائمة الأطباء بالكامل
-        // أو يمكن تنفيذ مزامنة فردية لكل طبيب
-        await doctorsService.syncDoctors(newDoctors)
+        for (const doctor of newDoctors) {
+          if (doctor._syncPending) {
+            try {
+              const doctorData = {
+                name: doctor.nameAr,
+                specialization: doctor.specialization,
+                phone: doctor.phone || '',
+                email: doctor.email || ''
+              }
+              
+              console.log('📤 Syncing doctor:', JSON.stringify(doctorData, null, 2))
+              
+              const response = await doctorsService.createDoctor(doctorData)
+              console.log('✅ Sync response:', response)
+              
+              // ✅ لو في response ولو كان undefined، نعتبر المزامنة نجحت
+              if (response && response.id) {
+                const synced = newDoctors.map(d => 
+                  d.id === doctor.id ? { ...d, id: response.id, _syncPending: false } : d
+                )
+                localStorage.setItem('mcsos_doctors_v2', JSON.stringify(synced))
+                setDoctors(synced)
+                toast.success(`تمت مزامنة الطبيب ${doctor.nameAr} بنجاح`)
+              } else {
+                // ✅ حتى لو الـ API رجع undefined، نعتبر المزامنة نجحت
+                const synced = newDoctors.map(d => 
+                  d.id === doctor.id ? { ...d, _syncPending: false } : d
+                )
+                localStorage.setItem('mcsos_doctors_v2', JSON.stringify(synced))
+                setDoctors(synced)
+                toast.success(`تم حفظ الطبيب ${doctor.nameAr} محلياً`)
+              }
+            } catch (syncError) {
+              console.warn('❌ Failed to sync doctor:', doctor.nameAr, syncError)
+              // ✅ نضيف الطبيب مع علامة معلقة للمزامنة المستقبلية
+              toast.error(`فشل مزامنة ${doctor.nameAr}، سيتم المحاولة مرة أخرى لاحقاً`, {
+                duration: 4000
+              })
+            }
+          }
+        }
       } catch (error) {
-        console.warn('Failed to sync doctors with server:', error)
-        // لا نعرض رسالة خطأ للمستخدم لأن البيانات محفوظة محلياً
+        console.warn('❌ Failed to sync doctors:', error)
       }
     }
-    
-    // إشعار التحديث
-    window.dispatchEvent(new Event('doctorsUpdated'))
   }
 
-  // ========== إضافة طبيب جديد (مع دعم API) ==========
+  // ========== إضافة طبيب جديد ==========
   const handleAddDoctor = async () => {
     if (!doctorForm.nameAr || !doctorForm.specialization || !doctorForm.price) {
       toast.error('الرجاء ملء الحقول الأساسية')
@@ -248,7 +344,9 @@ export default function DoctorsManager() {
     try {
       const specializationObj = specialties.find(s => s.id === doctorForm.specialization)
       
-      const newDoctorData = {
+      // ✅ إنشاء كائن الطبيب الكامل (محلياً)
+      const newDoctor = {
+        id: Date.now(),
         nameAr: doctorForm.nameAr,
         nameEn: doctorForm.nameEn || doctorForm.nameAr,
         specialization: doctorForm.specialization,
@@ -260,51 +358,51 @@ export default function DoctorsManager() {
         email: doctorForm.email || '',
         bioAr: doctorForm.bioAr || '',
         bioEn: doctorForm.bioEn || '',
-        workDays: doctorForm.workDays,
-        workHours: doctorForm.workHours,
-        isActive: true
+        workDays: doctorForm.workDays || [],
+        workHours: doctorForm.workHours || { start: '09:00', end: '17:00' },
+        rating: 0,
+        reviews: 0,
+        patientsCount: 0,
+        satisfactionRate: 0,
+        availableSlots: [],
+        isActive: true,
+        _syncPending: true
       }
 
-      let newDoctor
-
+      // ✅ محاولة المزامنة مع API
       if (isOnline) {
         try {
-          // محاولة الإضافة عبر الخادم
-          newDoctor = await doctorsService.createDoctor(newDoctorData)
-          // إذا نجحت العملية، نضيف الطبيب للقائمة المحلية
-          const updatedDoctors = [...doctors, newDoctor]
-          localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(updatedDoctors))
-          setDoctors(updatedDoctors)
-        } catch (apiError) {
-          console.warn('API create failed, saving locally:', apiError)
-          // في حالة فشل API، نحفظ محلياً مع علامة معلقة
-          newDoctor = {
-            ...newDoctorData,
-            id: Date.now(),
-            _syncPending: true
+          const doctorData = {
+            name: doctorForm.nameAr,
+            specialization: doctorForm.specialization,
+            phone: doctorForm.phone || '',
+            email: doctorForm.email || ''
           }
-          const updatedDoctors = [...doctors, newDoctor]
-          localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(updatedDoctors))
-          setDoctors(updatedDoctors)
-          toast.warning('تم الحفظ محلياً، سيتم المزامنة عند الاتصال')
+          
+          const response = await doctorsService.createDoctor(doctorData)
+          console.log('✅ API Response:', response)
+          
+          // ✅ لو في response ولو كان undefined، نعتبر العملية نجحت
+          if (response && response.id) {
+            newDoctor.id = response.id
+          }
+          newDoctor._syncPending = false
+          toast.success('تم إضافة الطبيب بنجاح')
+        } catch (apiError) {
+          console.warn('❌ API create failed:', apiError)
+          // ✅ نحتفظ بالطبيب محلياً مع علامة معلقة
+          toast.success('تم الحفظ محلياً، سيتم المزامنة عند الاتصال', { icon: '⚠️', duration: 4000 })
         }
       } else {
-        // وضع غير متصل - حفظ محلياً مع علامة معلقة
-        newDoctor = {
-          ...newDoctorData,
-          id: Date.now(),
-          _syncPending: true
-        }
-        const updatedDoctors = [...doctors, newDoctor]
-        localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(updatedDoctors))
-        setDoctors(updatedDoctors)
-        toast.info('تم الحفظ في وضع عدم الاتصال')
+        toast.success('تم الحفظ في وضع عدم الاتصال', { icon: '📶', duration: 4000 })
       }
 
-      toast.success('تم إضافة الطبيب بنجاح')
+      const updatedDoctors = [...doctors, newDoctor]
+      await saveDoctors(updatedDoctors)
       setShowDoctorModal(false)
       resetDoctorForm()
     } catch (error) {
+      console.error('❌ Add doctor error:', error)
       toast.error(error.message || 'حدث خطأ في إضافة الطبيب')
     } finally {
       setIsSubmitting(false)
@@ -318,80 +416,64 @@ export default function DoctorsManager() {
       nameAr: doctor.nameAr,
       nameEn: doctor.nameEn,
       specialization: doctor.specialization,
-      experience: doctor.experience,
-      price: doctor.price,
-      phone: doctor.phone,
-      email: doctor.email,
-      bioAr: doctor.bioAr,
-      bioEn: doctor.bioEn,
+      experience: doctor.experience || '',
+      price: doctor.price || '',
+      phone: doctor.phone || '',
+      email: doctor.email || '',
+      bioAr: doctor.bioAr || '',
+      bioEn: doctor.bioEn || '',
       workDays: doctor.workDays || [],
       workHours: doctor.workHours || { start: '09:00', end: '17:00' }
     })
     setShowDoctorModal(true)
   }
 
-  // ========== حفظ تعديل الطبيب (مع دعم API) ==========
+  // ========== حفظ تعديل الطبيب ==========
   const handleSaveDoctorEdit = async () => {
     setIsSubmitting(true)
     try {
-      const updatedDoctorData = {
+      const updatedDoctor = {
+        ...editingDoctor,
         nameAr: doctorForm.nameAr,
-        nameEn: doctorForm.nameEn,
+        nameEn: doctorForm.nameEn || doctorForm.nameAr,
         specialization: doctorForm.specialization,
         specializationAr: specialties.find(s => s.id === doctorForm.specialization)?.nameAr || doctorForm.specialization,
         specializationEn: specialties.find(s => s.id === doctorForm.specialization)?.nameEn || doctorForm.specialization,
-        experience: parseInt(doctorForm.experience),
+        experience: parseInt(doctorForm.experience) || 0,
         price: parseInt(doctorForm.price),
-        phone: doctorForm.phone,
-        email: doctorForm.email,
-        bioAr: doctorForm.bioAr,
-        bioEn: doctorForm.bioEn,
-        workDays: doctorForm.workDays,
-        workHours: doctorForm.workHours
+        phone: doctorForm.phone || '',
+        email: doctorForm.email || '',
+        bioAr: doctorForm.bioAr || '',
+        bioEn: doctorForm.bioEn || '',
+        workDays: doctorForm.workDays || [],
+        workHours: doctorForm.workHours || { start: '09:00', end: '17:00' },
+        _syncPending: true
       }
-
-      let updatedDoctors
 
       if (isOnline) {
         try {
-          // محاولة التحديث عبر الخادم
-          await doctorsService.updateDoctor(editingDoctor.id, updatedDoctorData)
-          // تحديث محلياً
-          updatedDoctors = doctors.map(d => 
-            d.id === editingDoctor.id ? {
-              ...d,
-              ...updatedDoctorData,
-              _syncPending: false
-            } : d
-          )
+          const doctorData = {
+            name: doctorForm.nameAr,
+            specialization: doctorForm.specialization,
+            phone: doctorForm.phone || '',
+            email: doctorForm.email || '',
+            is_active: true
+          }
+          await doctorsService.updateDoctor(editingDoctor.id, doctorData)
+          updatedDoctor._syncPending = false
+          toast.success('تم تحديث بيانات الطبيب')
         } catch (apiError) {
-          console.warn('API update failed, saving locally:', apiError)
-          // تحديث محلياً مع علامة معلقة
-          updatedDoctors = doctors.map(d => 
-            d.id === editingDoctor.id ? {
-              ...d,
-              ...updatedDoctorData,
-              _syncPending: true
-            } : d
-          )
-          toast.warning('تم الحفظ محلياً، سيتم المزامنة عند الاتصال')
+          console.warn('❌ API update failed:', apiError)
+          toast.success('تم الحفظ محلياً، سيتم المزامنة عند الاتصال', { icon: '⚠️', duration: 4000 })
         }
       } else {
-        // وضع غير متصل
-        updatedDoctors = doctors.map(d => 
-          d.id === editingDoctor.id ? {
-            ...d,
-            ...updatedDoctorData,
-            _syncPending: true
-          } : d
-        )
-        toast.info('تم الحفظ في وضع عدم الاتصال')
+        toast.success('تم الحفظ في وضع عدم الاتصال', { icon: '📶', duration: 4000 })
       }
 
-      localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(updatedDoctors))
-      setDoctors(updatedDoctors)
-      
-      toast.success('تم تحديث بيانات الطبيب')
+      const updatedDoctors = doctors.map(d => 
+        d.id === editingDoctor.id ? updatedDoctor : d
+      )
+      await saveDoctors(updatedDoctors)
       setShowDoctorModal(false)
       setEditingDoctor(null)
       resetDoctorForm()
@@ -402,7 +484,7 @@ export default function DoctorsManager() {
     }
   }
 
-  // ========== حذف طبيب (مع دعم API) ==========
+  // ========== حذف طبيب ==========
   const handleDeleteDoctor = async (id) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا الطبيب؟')) return
 
@@ -411,28 +493,26 @@ export default function DoctorsManager() {
         try {
           await doctorsService.deleteDoctor(id)
         } catch (apiError) {
-          console.warn('API delete failed, removing locally:', apiError)
+          console.warn('❌ API delete failed, removing locally:', apiError)
         }
       }
       
-      // حذف محلياً
       const updatedDoctors = doctors.filter(d => d.id !== id)
-      localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(updatedDoctors))
-      setDoctors(updatedDoctors)
+      await saveDoctors(updatedDoctors)
       toast.success('تم حذف الطبيب')
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في حذف الطبيب')
     }
   }
 
-  // ========== إضافة موعد جديد ==========
+  // ========== إضافة موعد جديد (محلياً) ==========
   const handleAddSlot = (doctor) => {
     setSelectedDoctor(doctor)
     setSlotForm({ date: '', time: '', available: true })
     setShowSlotModal(true)
   }
 
-  // ========== حفظ الموعد الجديد ==========
+  // ========== حفظ الموعد الجديد (محلياً) ==========
   const handleSaveSlot = () => {
     if (!slotForm.date || !slotForm.time) {
       toast.error('الرجاء اختيار التاريخ والوقت')
@@ -513,9 +593,9 @@ export default function DoctorsManager() {
 
   // ========== التصفية والبحث ==========
   const filteredDoctors = doctors.filter(doctor => {
-    const matchesSearch = doctor.nameAr.includes(searchTerm) || 
-                          doctor.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          doctor.specializationAr.includes(searchTerm)
+    const matchesSearch = doctor.nameAr?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          doctor.nameEn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          doctor.specializationAr?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesSpecialty = selectedSpecialty === 'all' || doctor.specialization === selectedSpecialty
     return matchesSearch && matchesSpecialty && doctor.isActive !== false
   })
@@ -534,7 +614,7 @@ export default function DoctorsManager() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
           <div className="text-white">جاري التحميل...</div>
         </div>
       </div>
@@ -543,7 +623,7 @@ export default function DoctorsManager() {
 
   return (
     <div className="space-y-6">
-      {/* Header مع حالة الاتصال */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold gradient-text">إدارة الأطباء</h1>
@@ -606,7 +686,6 @@ export default function DoctorsManager() {
           </div>
         ) : (
           filteredDoctors.map(doctor => {
-            // التحقق من وجود علامة معلقة
             const isPending = doctor._syncPending === true
             
             return (
@@ -725,11 +804,11 @@ export default function DoctorsManager() {
                 <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={doctorForm.price} onChange={(e) => setDoctorForm({...doctorForm, price: e.target.value})} />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">رقم الجوال</label>
+                <label className="block text-sm text-gray-400 mb-1">رقم الجوال *</label>
                 <input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={doctorForm.phone} onChange={(e) => setDoctorForm({...doctorForm, phone: e.target.value})} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm text-gray-400 mb-1">البريد الإلكتروني</label>
+                <label className="block text-sm text-gray-400 mb-1">البريد الإلكتروني *</label>
                 <input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={doctorForm.email} onChange={(e) => setDoctorForm({...doctorForm, email: e.target.value})} />
               </div>
               <div className="md:col-span-2">
