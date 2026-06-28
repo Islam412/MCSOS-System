@@ -340,26 +340,28 @@ export default function DoctorsManager() {
         _syncPending: true
       }
 
+      // ✅ محاولة تحديث API
       if (isOnline) {
         try {
           const doctorData = {
             name: doctorForm.nameAr,
             specialization: doctorForm.specialization,
             phone: doctorForm.phone || '',
-            email: doctorForm.email || '',
-            is_active: true
+            email: doctorForm.email || ''
           }
           await doctorsService.updateDoctor(editingDoctor.id, doctorData)
           updatedDoctor._syncPending = false
           toast.success('تم تحديث بيانات الطبيب')
         } catch (apiError) {
           console.warn('❌ API update failed:', apiError)
-          toast.success('تم الحفظ محلياً، سيتم المزامنة عند الاتصال', { icon: '⚠️', duration: 4000 })
+          // ✅ حفظ محلياً فقط في حالة فشل API
+          toast.success('تم الحفظ محلياً (الخادم غير متاح)', { icon: '⚠️', duration: 4000 })
         }
       } else {
         toast.success('تم الحفظ في وضع عدم الاتصال', { icon: '📶', duration: 4000 })
       }
 
+      // ✅ تحديث القائمة المحلية
       const updatedDoctors = doctors.map(d => 
         d.id === editingDoctor.id ? updatedDoctor : d
       )
