@@ -223,9 +223,9 @@ export default function PatientProfile() {
   // ========== دوال مساعدة ==========
   const getPatientName = (patient) => {
     if (!patient) return ''
-    if (currentLang === 'ar') return patient.nameAr || patient.name
-    if (currentLang === 'fr') return patient.nameFr || patient.name
-    return patient.nameEn || patient.name
+    // ✅ جرب كل الاحتمالات الممكنة للاسم
+    const name = patient.nameAr || patient.name || patient.first_name || patient.nameEn || patient.fullName || ''
+    return name
   }
 
   const getSeverityText = (severity) => {
@@ -906,10 +906,13 @@ export default function PatientProfile() {
   }
 
   // ========== تصفية المرضى ==========
-  const filteredPatients = patients.filter(p => 
-    p && getPatientName(p).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p && p.phone && p.phone.includes(searchTerm))
-  )
+  const filteredPatients = patients.filter(p => {
+    if (!p) return false
+    const name = getPatientName(p) || ''
+    const phone = p.phone || ''
+    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           phone.includes(searchTerm)
+  })
 
   if (loading) {
     return (
