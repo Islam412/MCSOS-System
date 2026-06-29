@@ -12,7 +12,7 @@ import {
 import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
-import { patientsService, prescriptionsService, appointmentsService } from '../../services/api'
+import { patientsService, prescriptionsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 
 export default function PatientProfile() {
@@ -21,7 +21,7 @@ export default function PatientProfile() {
   const currentLang = i18n.language
 
   // ========== استخدام خدمات API ==========
-  const { isOnline, executeWithOfflineSupport } = useServices()
+  const { isOnline } = useServices()
 
   const [patients, setPatients] = useState([])
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -90,57 +90,6 @@ export default function PatientProfile() {
     address: ''
   })
 
-  // ========== بيانات تجريبية للاختبار ==========
-  const getDemoPatients = () => {
-    return [
-      {
-        id: 'demo-1',
-        nameAr: 'أحمد محمد',
-        nameEn: 'Ahmed Mohamed',
-        age: 35,
-        phone: '0501234567',
-        email: 'ahmed@example.com',
-        diagnosis: 'تمزق في الرباط الصليبي',
-        severity: 'moderate',
-        status: 'active',
-        progress: 25,
-        totalSessions: 12,
-        completedSessions: 3,
-        registerDate: new Date().toISOString().split('T')[0]
-      },
-      {
-        id: 'demo-2',
-        nameAr: 'سارة حسن',
-        nameEn: 'Sara Hassan',
-        age: 28,
-        phone: '0507654321',
-        email: 'sara@example.com',
-        diagnosis: 'التهاب المفاصل الروماتويدي',
-        severity: 'moderate',
-        status: 'active',
-        progress: 60,
-        totalSessions: 10,
-        completedSessions: 6,
-        registerDate: new Date().toISOString().split('T')[0]
-      },
-      {
-        id: 'demo-3',
-        nameAr: 'محمود علي',
-        nameEn: 'Mahmoud Ali',
-        age: 42,
-        phone: '0509876543',
-        email: 'mahmoud@example.com',
-        diagnosis: 'انزلاق غضروفي',
-        severity: 'severe',
-        status: 'active',
-        progress: 15,
-        totalSessions: 15,
-        completedSessions: 2,
-        registerDate: new Date().toISOString().split('T')[0]
-      }
-    ]
-  }
-
   // ========== تحميل البيانات ==========
   useEffect(() => {
     loadAllData()
@@ -163,150 +112,78 @@ export default function PatientProfile() {
     }
   }
 
-  // ========== تحميل المرضى (مدمج مع localStorage) ==========
+  // ========== تحميل المرضى من API فقط ==========
   const loadPatients = async () => {
     try {
-      // ✅ الخطوة 1: جلب البيانات من localStorage أولاً
-      let localPatients = []
-      const saved = localStorage.getItem('mcsos_patients_v2')
-      if (saved) {
-        try {
-          localPatients = JSON.parse(saved)
-          if (Array.isArray(localPatients) && localPatients.length > 0) {
-            console.log('📥 Loaded from localStorage:', localPatients.length, 'patients')
-          }
-        } catch (e) {
-          console.warn('Error parsing local patients:', e)
-        }
-      }
-
-      // ✅ الخطوة 2: إذا كان هناك بيانات محلية، اعرضها فوراً
-      if (localPatients.length > 0) {
-        setPatients(localPatients)
-      } else {
-        // ✅ في حالة عدم وجود بيانات محلية، استخدم بيانات تجريبية
-        const demoPatients = getDemoPatients()
-        setPatients(demoPatients)
-        localStorage.setItem('mcsos_patients_v2', JSON.stringify(demoPatients))
-        localPatients = demoPatients
-      }
-
-      // ✅ الخطوة 3: محاولة جلب البيانات من API (في الخلفية)
-      if (isOnline) {
-        try {
-          console.log('📥 Fetching patients from API...')
-          const response = await patientsService.getPatients()
-          console.log('📥 API response:', response)
-          
-          let apiPatients = []
-          if (Array.isArray(response)) {
-            apiPatients = response
-          } else if (response?.patients) {
-            apiPatients = response.patients
-          } else if (response?.data) {
-            apiPatients = response.data
-          }
-          
-          // ✅ تصفية المرضى النشطين فقط (تجاهل PENDING_ASSESSMENT)
-          const activeApiPatients = apiPatients.filter(p => 
-            p.status !== 'PENDING_ASSESSMENT' && 
-            p.status !== 'pending_assessment'
-          )
-          
-          console.log('📥 Active API patients:', activeApiPatients.length)
-          
-          // ✅ دمج البيانات (API + Local) مع تجنب التكرار
-          let mergedPatients = [...localPatients]
-          
-          activeApiPatients.forEach(apiPatient => {
-            // ✅ التأكد من عدم التكرار
-            const exists = mergedPatients.some(p => 
-              p.id === apiPatient.id || 
-              p.email === apiPatient.email ||
-              p.phone === apiPatient.phone
-            )
-            
-            if (!exists) {
-              // ✅ تحويل بيانات API إلى نفس هيكل البيانات المحلية
-              mergedPatients.push({
-                id: apiPatient.id || 'P' + Date.now(),
-                nameAr: apiPatient.first_name || apiPatient.name || apiPatient.nameAr || 'مريض',
-                nameEn: apiPatient.last_name || apiPatient.nameEn || apiPatient.name || '',
-                age: apiPatient.age || 0,
-                phone: apiPatient.phone || '',
-                email: apiPatient.email || '',
-                diagnosis: apiPatient.diagnosis || 'قيد التشخيص',
-                severity: apiPatient.severity || 'moderate',
-                status: apiPatient.status?.toLowerCase() === 'pending_assessment' ? 'active' : (apiPatient.status?.toLowerCase() || 'active'),
-                progress: apiPatient.progress || 0,
-                totalSessions: apiPatient.totalSessions || 6,
-                completedSessions: apiPatient.completedSessions || 0,
-                registerDate: apiPatient.registration_date || apiPatient.created_at || new Date().toISOString().split('T')[0],
-                _fromAPI: true,
-                _syncPending: false,
-                notes: apiPatient.notes || '',
-                gender: apiPatient.gender || 'male',
-                address: apiPatient.address || '',
-                images: apiPatient.images || [],
-                xrays: apiPatient.xrays || [],
-                reports: apiPatient.reports || [],
-                ...apiPatient
-              })
-            }
-          })
-          
-          // ✅ تحديث القائمة وعرضها
-          setPatients(mergedPatients)
-          localStorage.setItem('mcsos_patients_v2', JSON.stringify(mergedPatients))
-          console.log('📥 Total patients after merge:', mergedPatients.length)
-          
-        } catch (apiError) {
-          console.warn('⚠️ API failed, using local data:', apiError.message)
-          // ✅ في حالة فشل API، استخدم البيانات المحلية الموجودة
-          if (localPatients.length === 0) {
-            const demoPatients = getDemoPatients()
-            setPatients(demoPatients)
-            localStorage.setItem('mcsos_patients_v2', JSON.stringify(demoPatients))
-          }
-        }
-      } else {
-        // ✅ وضع غير متصل
-        toast('غير متصل بالإنترنت - جاري استخدام البيانات المحلية', {
+      if (!isOnline) {
+        toast.error('غير متصل بالإنترنت - لا يمكن تحميل بيانات المرضى', {
           icon: '⚠️',
           duration: 3000
         })
-        if (localPatients.length === 0) {
-          const demoPatients = getDemoPatients()
-          setPatients(demoPatients)
-          localStorage.setItem('mcsos_patients_v2', JSON.stringify(demoPatients))
-        }
+        setPatients([])
+        return
+      }
+
+      console.log('📥 Fetching patients from API...')
+      const response = await patientsService.getPatients()
+      console.log('📥 API response:', response)
+      
+      let apiPatients = []
+      if (Array.isArray(response)) {
+        apiPatients = response
+      } else if (response?.patients) {
+        apiPatients = response.patients
+      } else if (response?.data) {
+        apiPatients = response.data
+      }
+      
+      console.log('📥 All API patients:', apiPatients.length)
+      
+      if (apiPatients.length > 0) {
+        const formattedPatients = apiPatients.map(patient => ({
+          id: patient.id || 'P' + Date.now(),
+          nameAr: patient.first_name || patient.name || patient.nameAr || 'مريض',
+          nameEn: patient.last_name || patient.nameEn || patient.name || '',
+          age: patient.age || 0,
+          phone: patient.phone || '',
+          email: patient.email || '',
+          diagnosis: patient.diagnosis || 'قيد التشخيص',
+          severity: patient.severity || 'moderate',
+          status: patient.status?.toLowerCase() || 'pending',
+          progress: patient.progress || 0,
+          totalSessions: patient.totalSessions || 6,
+          completedSessions: patient.completedSessions || 0,
+          registerDate: patient.registration_date || patient.created_at || new Date().toISOString().split('T')[0],
+          _fromAPI: true,
+          _syncPending: false,
+          notes: patient.notes || '',
+          gender: patient.gender || 'male',
+          address: patient.address || '',
+          images: patient.images || [],
+          xrays: patient.xrays || [],
+          reports: patient.reports || [],
+          ...patient
+        }))
+        
+        setPatients(formattedPatients)
+        console.log('📥 Total patients from API:', formattedPatients.length)
+      } else {
+        setPatients([])
+        toast('لا يوجد مرضى مسجلين في النظام', {
+          icon: 'ℹ️',
+          duration: 3000
+        })
       }
       
     } catch (error) {
-      console.error('❌ Error loading patients:', error)
+      console.error('❌ Error loading patients from API:', error)
       setApiError(error.message)
-      // ✅ استخدام localStorage أو البيانات التجريبية كاحتياطي
-      const saved = localStorage.getItem('mcsos_patients_v2')
-      if (saved) {
-        try {
-          const data = JSON.parse(saved)
-          if (data.length > 0) {
-            setPatients(data)
-          } else {
-            setPatients(getDemoPatients())
-          }
-        } catch (e) {
-          setPatients(getDemoPatients())
-        }
-      } else {
-        const demoPatients = getDemoPatients()
-        setPatients(demoPatients)
-        localStorage.setItem('mcsos_patients_v2', JSON.stringify(demoPatients))
-      }
+      toast.error('فشل تحميل المرضى من الخادم')
+      setPatients([])
     }
   }
 
-  // ========== تحميل الروشتات (محلياً) ==========
+  // ========== تحميل الروشتات ==========
   const loadPrescriptions = async () => {
     try {
       const saved = localStorage.getItem('mcsos_prescriptions')
@@ -394,78 +271,29 @@ export default function PatientProfile() {
 
     setIsSubmitting(true)
     try {
-      // ✅ حفظ محلياً أولاً (لضمان ظهور المريض فوراً)
-      const newPatientData = {
-        id: 'P' + Date.now(),
-        nameAr: newPatient.nameAr,
-        nameEn: newPatient.nameEn || newPatient.nameAr,
-        age: parseInt(newPatient.age),
-        phone: newPatient.phone || '',
-        email: newPatient.email || '',
-        diagnosis: newPatient.diagnosis || 'قيد التشخيص',
-        severity: newPatient.severity,
-        totalSessions: parseInt(newPatient.totalSessions) || 6,
-        completedSessions: 0,
-        status: 'active',
-        progress: 0,
-        registerDate: new Date().toISOString().split('T')[0],
-        notes: newPatient.notes || '',
+      const patientData = {
+        first_name: newPatient.nameAr.split(' ')[0] || newPatient.nameAr,
+        last_name: newPatient.nameAr.split(' ').slice(1).join(' ') || newPatient.nameAr,
         gender: newPatient.gender || 'male',
-        address: newPatient.address || '',
-        images: [],
-        xrays: [],
-        reports: [],
-        _syncPending: true,
-        _fromAPI: false
+        date_of_birth: new Date(new Date().getFullYear() - parseInt(newPatient.age), 0, 1).toISOString().split('T')[0],
+        address: newPatient.address || 'غير محدد',
+        phone: newPatient.phone || '0500000000',
+        whatsapp_number: newPatient.phone || '0500000000',
+        emergency_contact: '0500000000',
+        email: newPatient.email || 'patient@example.com',
+        notes: `التشخيص: ${newPatient.diagnosis || 'قيد التشخيص'} | درجة الحالة: ${newPatient.severity} | عدد الجلسات: ${newPatient.totalSessions || 6}`
       }
 
-      // ✅ تحديث القائمة المحلية
-      const updatedPatients = [newPatientData, ...patients]
-      setPatients(updatedPatients)
-      localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
+      console.log('📤 Sending patient data:', patientData)
 
-      // ✅ محاولة المزامنة مع الخادم (في الخلفية)
-      if (isOnline) {
-        try {
-          const patientData = {
-            first_name: newPatient.nameAr.split(' ')[0] || newPatient.nameAr,
-            last_name: newPatient.nameAr.split(' ').slice(1).join(' ') || newPatient.nameAr,
-            gender: newPatient.gender || 'male',
-            date_of_birth: new Date(new Date().getFullYear() - parseInt(newPatient.age), 0, 1).toISOString().split('T')[0],
-            address: newPatient.address || 'غير محدد',
-            phone: newPatient.phone || '0500000000',
-            whatsapp_number: newPatient.phone || '0500000000',
-            emergency_contact: '0500000000',
-            email: newPatient.email || 'patient@example.com',
-            notes: `التشخيص: ${newPatient.diagnosis || 'قيد التشخيص'} | درجة الحالة: ${newPatient.severity} | عدد الجلسات: ${newPatient.totalSessions || 6}`
-          }
-
-          const response = await patientsService.createPatient(patientData)
-          console.log('✅ Patient synced to API:', response)
-          
-          // ✅ تحديث الـ ID من API
-          if (response && response.id) {
-            const syncedPatients = updatedPatients.map(p => 
-              p.id === newPatientData.id ? { 
-                ...p, 
-                id: response.id, 
-                _syncPending: false,
-                _fromAPI: true,
-                ...response 
-              } : p
-            )
-            setPatients(syncedPatients)
-            localStorage.setItem('mcsos_patients_v2', JSON.stringify(syncedPatients))
-          }
-          
-          toast.success('تم إضافة المريض والمزامنة مع الخادم')
-        } catch (apiError) {
-          console.warn('⚠️ API sync failed, patient saved locally:', apiError.message)
-          toast.success('تم إضافة المريض محلياً (سيتم المزامنة عند الاتصال)')
-        }
-      } else {
-        toast.success('تم إضافة المريض في وضع عدم الاتصال')
-      }
+      const response = await patientsService.createPatient(patientData)
+      console.log('✅ Patient created:', response)
+      
+      toast.success('تم إضافة المريض بنجاح')
+      
+      setTimeout(async () => {
+        await loadPatients()
+      }, 500)
 
       setShowAddPatientModal(false)
       setNewPatient({
@@ -507,36 +335,16 @@ export default function PatientProfile() {
         notes: editPatient.notes || ''
       }
 
-      if (isOnline && !editPatient._fromAPI) {
-        try {
-          await patientsService.updatePatient(editPatient.id, patientData)
-        } catch (apiError) {
-          console.warn('API update failed, saving locally:', apiError)
-        }
-      }
+      await patientsService.updatePatient(editPatient.id, patientData)
 
-      const updatedPatients = patients.map(p => 
-        p.id === editPatient.id ? {
-          ...p,
-          nameAr: editPatient.nameAr,
-          nameEn: editPatient.nameEn || editPatient.nameAr,
-          age: parseInt(editPatient.age),
-          diagnosis: editPatient.diagnosis,
-          severity: editPatient.severity,
-          totalSessions: parseInt(editPatient.totalSessions),
-          notes: editPatient.notes || '',
-          gender: editPatient.gender,
-          address: editPatient.address,
-          _syncPending: !isOnline
-        } : p
-      )
-      setPatients(updatedPatients)
-      localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
-      if (selectedPatient && selectedPatient.id === editPatient.id) {
-        setSelectedPatient(updatedPatients.find(p => p.id === editPatient.id))
-      }
-      setShowEditPatientModal(false)
       toast.success('تم تحديث بيانات المريض بنجاح')
+      
+      setTimeout(async () => {
+        await loadPatients()
+      }, 500)
+      
+      setShowEditPatientModal(false)
+      
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في تحديث المريض')
     } finally {
@@ -548,25 +356,14 @@ export default function PatientProfile() {
     if (!confirm('هل أنت متأكد من حذف هذا المريض؟')) return
 
     try {
-      // ✅ إذا كان المريض من API، حاول الحذف من الخادم
-      const patient = patients.find(p => p.id === patientId)
-      if (isOnline && patient && patient._fromAPI) {
-        try {
-          await patientsService.deletePatient(patientId)
-        } catch (apiError) {
-          console.warn('API delete failed, removing locally:', apiError)
-        }
-      }
+      await patientsService.deletePatient(patientId)
       
-      const updatedPatients = patients.filter(p => p.id !== patientId)
-      setPatients(updatedPatients)
-      localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
-      
-      if (selectedPatient && selectedPatient.id === patientId) {
-        setShowPatientModal(false)
-        setSelectedPatient(null)
-      }
       toast.success('تم حذف المريض بنجاح')
+      
+      setTimeout(async () => {
+        await loadPatients()
+      }, 500)
+      
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في حذف المريض')
     }
@@ -575,7 +372,6 @@ export default function PatientProfile() {
   const updatePatient = (updatedPatient) => {
     const updatedPatients = patients.map(p => p.id === updatedPatient.id ? updatedPatient : p)
     setPatients(updatedPatients)
-    localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
     setSelectedPatient(updatedPatient)
   }
 
@@ -861,7 +657,7 @@ export default function PatientProfile() {
     }
   }
 
-  // ========== دوال الروشتات (محلياً) ==========
+  // ========== دوال الروشتات ==========
   const handleAddPrescription = async () => {
     const validMedications = prescriptionForm.medications.filter(m => m.name.trim())
     if (validMedications.length === 0) {
@@ -1021,7 +817,7 @@ export default function PatientProfile() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-white">جاري تحميل بيانات المرضى...</div>
+          <div className="text-white">جاري تحميل بيانات المرضى من الخادم...</div>
         </div>
       </div>
     )
@@ -1033,10 +829,10 @@ export default function PatientProfile() {
         <div>
           <h1 className="text-3xl font-bold gradient-text">ملف المريض</h1>
           <p className="text-gray-400 mt-1">
-            إدارة بيانات المرضى ومتابعة الحالة العلاجية
+            إدارة بيانات المرضى ومتابعة الحالة العلاجية - بيانات من الخادم
             {!isOnline && (
               <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
-                ⚡ غير متصل - بيانات محلية
+                ⚡ غير متصل - يرجى الاتصال بالإنترنت
               </span>
             )}
             {apiError && (
@@ -1048,7 +844,7 @@ export default function PatientProfile() {
         </div>
         <div className="flex gap-2">
           <button onClick={refreshData} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30">
-            <RefreshCw size={18} /> تحديث
+            <RefreshCw size={18} /> تحديث من الخادم
           </button>
           <button onClick={() => setShowAddPatientModal(true)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30">
             <UserPlus size={18} /> إضافة مريض جديد
@@ -1083,23 +879,16 @@ export default function PatientProfile() {
             <tbody className="divide-y divide-gray-700/50">
               {filteredPatients.length === 0 ? (
                 <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-400">
-                  لا يوجد مرضى
+                  {isOnline ? 'لا يوجد مرضى مسجلين في النظام' : 'غير متصل بالإنترنت'}
                 </td></tr>
               ) : (
                 filteredPatients.map((patient) => {
                   if (!patient) return null
-                  const isPending = patient._syncPending === true
-                  const isFromAPI = patient._fromAPI === true
                   return (
                     <tr key={patient.id || Date.now()} className="hover:bg-gray-700/30">
                       <td className="px-4 py-3 font-semibold text-white cursor-pointer flex items-center gap-2" onClick={() => { setSelectedPatient(patient); setShowPatientModal(true); }}>
                         {getPatientName(patient) || 'غير معروف'}
-                        {isPending && (
-                          <span className="text-xs text-yellow-400">⏳ مزامنة</span>
-                        )}
-                        {isFromAPI && (
-                          <span className="text-xs text-green-400">✓ خادم</span>
-                        )}
+                        <span className="text-xs text-green-400">✓ خادم</span>
                       </td>
                       <td className="px-4 py-3 text-gray-300">{patient.age || '-'}</td>
                       <td className="px-4 py-3 text-gray-300">{patient.diagnosis || '-'}</td>
@@ -1110,8 +899,18 @@ export default function PatientProfile() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${patient.status === 'completed' ? 'bg-gray-500/20 text-gray-400' : 'bg-green-500/20 text-green-400'}`}>
-                          {patient.status === 'completed' ? 'مكتمل' : 'نشط'}
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          patient.status === 'pending' || patient.status === 'pending_assessment' 
+                            ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' 
+                            : patient.status === 'completed' 
+                              ? 'bg-gray-500/20 text-gray-400' 
+                              : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {patient.status === 'pending' || patient.status === 'pending_assessment' 
+                            ? '⏳ قيد المراجعة' 
+                            : patient.status === 'completed' 
+                              ? 'مكتمل' 
+                              : 'نشط'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -1130,7 +929,9 @@ export default function PatientProfile() {
         </div>
       </div>
 
-      {/* باقي المودالات - كما هي (لم تتغير) */}
+      {/* ============================================================ */}
+      {/* مودال إضافة مريض جديد */}
+      {/* ============================================================ */}
       {showAddPatientModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1139,23 +940,55 @@ export default function PatientProfile() {
               <button onClick={() => setShowAddPatientModal(false)}><X size={20} className="text-gray-400" /></button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label>الاسم الأول *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.nameAr} onChange={(e) => setNewPatient({...newPatient, nameAr: e.target.value})} /></div>
-              <div><label>اسم العائلة</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.nameEn} onChange={(e) => setNewPatient({...newPatient, nameEn: e.target.value})} /></div>
-              <div><label>العمر *</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.age} onChange={(e) => setNewPatient({...newPatient, age: e.target.value})} /></div>
-              <div><label>رقم الجوال</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.phone} onChange={(e) => setNewPatient({...newPatient, phone: e.target.value})} /></div>
-              <div><label>عدد الجلسات</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.totalSessions} onChange={(e) => setNewPatient({...newPatient, totalSessions: e.target.value})} /></div>
-              <div><label>النوع</label>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">الاسم الأول *</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.nameAr} onChange={(e) => setNewPatient({...newPatient, nameAr: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">اسم العائلة</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.nameEn} onChange={(e) => setNewPatient({...newPatient, nameEn: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">العمر *</label>
+                <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.age} onChange={(e) => setNewPatient({...newPatient, age: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">رقم الجوال</label>
+                <input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.phone} onChange={(e) => setNewPatient({...newPatient, phone: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">عدد الجلسات</label>
+                <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.totalSessions} onChange={(e) => setNewPatient({...newPatient, totalSessions: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">النوع</label>
                 <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.gender} onChange={(e) => setNewPatient({...newPatient, gender: e.target.value})}>
                   <option value="male">ذكر</option>
                   <option value="female">أنثى</option>
                 </select>
               </div>
-              <div><label>العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.address} onChange={(e) => setNewPatient({...newPatient, address: e.target.value})} /></div>
-              <div className="md:col-span-2"><label>التشخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.diagnosis} onChange={(e) => setNewPatient({...newPatient, diagnosis: e.target.value})} /></div>
-              <div><label>درجة الحالة</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.severity} onChange={(e) => setNewPatient({...newPatient, severity: e.target.value})}><option value="mild">بسيط</option><option value="moderate">متوسط</option><option value="severe">شديد</option></select></div>
-              <div className="md:col-span-2"><label>البريد الإلكتروني</label><input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.email} onChange={(e) => setNewPatient({...newPatient, email: e.target.value})} /></div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">العنوان</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.address} onChange={(e) => setNewPatient({...newPatient, address: e.target.value})} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">التشخيص</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.diagnosis} onChange={(e) => setNewPatient({...newPatient, diagnosis: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">درجة الحالة</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.severity} onChange={(e) => setNewPatient({...newPatient, severity: e.target.value})}>
+                  <option value="mild">بسيط</option>
+                  <option value="moderate">متوسط</option>
+                  <option value="severe">شديد</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">البريد الإلكتروني</label>
+                <input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.email} onChange={(e) => setNewPatient({...newPatient, email: e.target.value})} />
+              </div>
             </div>
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-4 mt-4 border-t border-gray-700">
               <button onClick={handleAddPatient} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50">
                 {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : null}
                 {isSubmitting ? 'جاري الإضافة...' : 'إضافة'}
@@ -1166,7 +999,9 @@ export default function PatientProfile() {
         </div>
       )}
 
-      {/* باقي المودالات - نفس الكود الأصلي (محذوف للاختصار) */}
+      {/* ============================================================ */}
+      {/* مودال تعديل مريض */}
+      {/* ============================================================ */}
       {showEditPatientModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1175,23 +1010,55 @@ export default function PatientProfile() {
               <button onClick={() => setShowEditPatientModal(false)}><X size={20} className="text-gray-400" /></button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label>الاسم الأول *</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.nameAr} onChange={(e) => setEditPatient({...editPatient, nameAr: e.target.value})} /></div>
-              <div><label>اسم العائلة</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.nameEn} onChange={(e) => setEditPatient({...editPatient, nameEn: e.target.value})} /></div>
-              <div><label>العمر *</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.age} onChange={(e) => setEditPatient({...editPatient, age: e.target.value})} /></div>
-              <div><label>رقم الجوال</label><input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.phone} onChange={(e) => setEditPatient({...editPatient, phone: e.target.value})} /></div>
-              <div><label>عدد الجلسات</label><input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.totalSessions} onChange={(e) => setEditPatient({...editPatient, totalSessions: e.target.value})} /></div>
-              <div><label>النوع</label>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">الاسم الأول *</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.nameAr} onChange={(e) => setEditPatient({...editPatient, nameAr: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">اسم العائلة</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.nameEn} onChange={(e) => setEditPatient({...editPatient, nameEn: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">العمر *</label>
+                <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.age} onChange={(e) => setEditPatient({...editPatient, age: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">رقم الجوال</label>
+                <input type="tel" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.phone} onChange={(e) => setEditPatient({...editPatient, phone: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">عدد الجلسات</label>
+                <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.totalSessions} onChange={(e) => setEditPatient({...editPatient, totalSessions: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">النوع</label>
                 <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.gender} onChange={(e) => setEditPatient({...editPatient, gender: e.target.value})}>
                   <option value="male">ذكر</option>
                   <option value="female">أنثى</option>
                 </select>
               </div>
-              <div><label>العنوان</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.address} onChange={(e) => setEditPatient({...editPatient, address: e.target.value})} /></div>
-              <div className="md:col-span-2"><label>التشخيص</label><input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.diagnosis} onChange={(e) => setEditPatient({...editPatient, diagnosis: e.target.value})} /></div>
-              <div><label>درجة الحالة</label><select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.severity} onChange={(e) => setEditPatient({...editPatient, severity: e.target.value})}><option value="mild">بسيط</option><option value="moderate">متوسط</option><option value="severe">شديد</option></select></div>
-              <div className="md:col-span-2"><label>البريد الإلكتروني</label><input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.email} onChange={(e) => setEditPatient({...editPatient, email: e.target.value})} /></div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">العنوان</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.address} onChange={(e) => setEditPatient({...editPatient, address: e.target.value})} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">التشخيص</label>
+                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.diagnosis} onChange={(e) => setEditPatient({...editPatient, diagnosis: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">درجة الحالة</label>
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.severity} onChange={(e) => setEditPatient({...editPatient, severity: e.target.value})}>
+                  <option value="mild">بسيط</option>
+                  <option value="moderate">متوسط</option>
+                  <option value="severe">شديد</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">البريد الإلكتروني</label>
+                <input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.email} onChange={(e) => setEditPatient({...editPatient, email: e.target.value})} />
+              </div>
             </div>
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-4 mt-4 border-t border-gray-700">
               <button onClick={handleEditPatient} disabled={isSubmitting} className="flex-1 bg-blue-500/20 text-blue-400 py-2 rounded-lg hover:bg-blue-500/30 transition disabled:opacity-50">
                 {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : null}
                 {isSubmitting ? 'جاري الحفظ...' : 'حفظ'}
@@ -1202,15 +1069,15 @@ export default function PatientProfile() {
         </div>
       )}
 
+      {/* ============================================================ */}
+      {/* مودال عرض تفاصيل المريض */}
+      {/* ============================================================ */}
       {showPatientModal && selectedPatient && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                 {getPatientName(selectedPatient)}
-                {selectedPatient._syncPending && (
-                  <span className="text-sm text-yellow-400">⏳ مزامنة</span>
-                )}
               </h2>
               <div className="flex gap-2 flex-wrap">
                 <button onClick={() => { setEditPatient({ ...selectedPatient }); setShowEditPatientModal(true); setShowPatientModal(false); }} className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-lg text-sm"><Edit size={16} /> تعديل</button>
@@ -1236,8 +1103,33 @@ export default function PatientProfile() {
             {/* تبويب المعلومات */}
             {activeTab === 'info' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-gray-700/30 rounded-lg p-4"><h3 className="font-bold text-white mb-3">المعلومات الشخصية</h3><div>الاسم: {getPatientName(selectedPatient)}</div><div>العمر: {selectedPatient.age} سنة</div><div>الجوال: {selectedPatient.phone || '-'}</div></div>
-                <div className="bg-gray-700/30 rounded-lg p-4"><h3 className="font-bold text-white mb-3">المعلومات الطبية</h3><div>التشخيص: {selectedPatient.diagnosis || '-'}</div><div>درجة الحالة: {getSeverityText(selectedPatient.severity)}</div><div>ملاحظات: {selectedPatient.notes || '-'}</div></div>
+                <div className="bg-gray-700/30 rounded-lg p-4">
+                  <h3 className="font-bold text-white mb-3">المعلومات الشخصية</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-400">الاسم: </span><span className="text-white">{getPatientName(selectedPatient)}</span></div>
+                    <div><span className="text-gray-400">العمر: </span><span className="text-white">{selectedPatient.age} سنة</span></div>
+                    <div><span className="text-gray-400">الجوال: </span><span className="text-white">{selectedPatient.phone || '-'}</span></div>
+                    <div><span className="text-gray-400">البريد الإلكتروني: </span><span className="text-white">{selectedPatient.email || '-'}</span></div>
+                    <div><span className="text-gray-400">العنوان: </span><span className="text-white">{selectedPatient.address || '-'}</span></div>
+                    <div><span className="text-gray-400">تاريخ التسجيل: </span><span className="text-white">{selectedPatient.registerDate || '-'}</span></div>
+                  </div>
+                </div>
+                <div className="bg-gray-700/30 rounded-lg p-4">
+                  <h3 className="font-bold text-white mb-3">المعلومات الطبية</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-400">التشخيص: </span><span className="text-white">{selectedPatient.diagnosis || '-'}</span></div>
+                    <div><span className="text-gray-400">درجة الحالة: </span><span className={getSeverityColor(selectedPatient.severity)}>{getSeverityText(selectedPatient.severity)}</span></div>
+                    <div><span className="text-gray-400">الحالة: </span><span className="text-white">
+                      {selectedPatient.status === 'pending' || selectedPatient.status === 'pending_assessment' 
+                        ? '⏳ قيد المراجعة' 
+                        : selectedPatient.status === 'completed' 
+                          ? 'مكتمل' 
+                          : 'نشط'}
+                    </span></div>
+                    <div><span className="text-gray-400">الطبيب المعالج: </span><span className="text-white">{selectedPatient.doctorName || '-'}</span></div>
+                    <div><span className="text-gray-400">ملاحظات: </span><span className="text-white">{selectedPatient.notes || '-'}</span></div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1246,15 +1138,28 @@ export default function PatientProfile() {
               <div>
                 <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl p-6 text-center">
                   <div className="text-5xl font-bold text-white">{Math.round(selectedPatient.progress || 0)}%</div>
-                  <div className="progress-bar mt-4"><div className="progress-fill" style={{width:`${selectedPatient.progress||0}%`}}>{Math.round(selectedPatient.progress||0)}%</div></div>
+                  <div className="text-gray-400 text-sm mt-2">نسبة التقدم</div>
+                  <div className="w-full bg-gray-700 rounded-full h-3 mt-4">
+                    <div className="bg-blue-500 h-3 rounded-full" style={{ width: `${selectedPatient.progress || 0}%` }}></div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="bg-gray-700/30 rounded-lg p-4 text-center"><div className="text-2xl font-bold text-white">{selectedPatient.totalSessions || 0}</div><div>إجمالي الجلسات</div></div>
-                  <div className="bg-gray-700/30 rounded-lg p-4 text-center"><div className="text-2xl font-bold text-green-400">{selectedPatient.completedSessions || 0}</div><div>الجلسات المكتملة</div></div>
+                  <div className="bg-gray-700/30 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-white">{selectedPatient.totalSessions || 0}</div>
+                    <div className="text-sm text-gray-400">إجمالي الجلسات</div>
+                  </div>
+                  <div className="bg-gray-700/30 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-green-400">{selectedPatient.completedSessions || 0}</div>
+                    <div className="text-sm text-gray-400">الجلسات المكتملة</div>
+                  </div>
                 </div>
                 <div className="flex gap-4 justify-center mt-4">
-                  <button onClick={()=>handleUpdateSessionProgress(true)} disabled={isSubmitting} className="bg-green-500/20 text-green-400 px-6 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50">تسجيل حضور +1</button>
-                  <button onClick={()=>handleUpdateSessionProgress(false)} disabled={isSubmitting} className="bg-red-500/20 text-red-400 px-6 py-2 rounded-lg hover:bg-red-500/30 transition disabled:opacity-50">تعديل -1</button>
+                  <button onClick={()=>handleUpdateSessionProgress(true)} disabled={isSubmitting} className="bg-green-500/20 text-green-400 px-6 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50">
+                    تسجيل حضور +1
+                  </button>
+                  <button onClick={()=>handleUpdateSessionProgress(false)} disabled={isSubmitting} className="bg-red-500/20 text-red-400 px-6 py-2 rounded-lg hover:bg-red-500/30 transition disabled:opacity-50">
+                    تعديل -1
+                  </button>
                 </div>
               </div>
             )}
@@ -1276,7 +1181,6 @@ export default function PatientProfile() {
                           </div>
                           {xray.description && <p className="text-sm text-gray-400 mt-2">{xray.description}</p>}
                           {xray.report && <div className="mt-2 p-2 bg-gray-700 rounded-lg"><p className="text-xs text-gray-300"><span className="font-semibold">تقرير الأشعة:</span> {xray.report}</p></div>}
-                          {xray._syncPending && <span className="text-xs text-yellow-400">⏳ مزامنة</span>}
                         </div>
                       </div>
                     ))
@@ -1293,9 +1197,17 @@ export default function PatientProfile() {
                   prescriptions.filter(p=>p.patientId===selectedPatient.id).map(p=>(
                     <div key={p.id} className="bg-gray-700/30 rounded-lg p-4 mb-2">
                       <p className="font-bold">{p.prescriptionNumber}</p>
-                      <p>{new Date(p.prescriptionDate).toLocaleDateString()}</p>
-                      <div>{p.medications.map((m,i)=><div key={i} className="bg-gray-800 rounded-lg p-2 mt-1"><strong>{m.name}</strong> - {m.dosage} - {m.frequency}</div>)}</div>
-                      {p._syncPending && <span className="text-xs text-yellow-400">⏳ مزامنة</span>}
+                      <p className="text-sm text-gray-400">{new Date(p.prescriptionDate).toLocaleDateString()}</p>
+                      <div className="mt-2 space-y-2">
+                        {p.medications.map((m,i)=>(
+                          <div key={i} className="bg-gray-800 rounded-lg p-2">
+                            <strong className="text-white">{m.name}</strong>
+                            <span className="text-gray-400 text-sm ml-2">- {m.dosage}</span>
+                            <span className="text-gray-400 text-sm ml-2">- {m.frequency}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {p.notes && <p className="text-xs text-gray-400 mt-2">📋 {p.notes}</p>}
                     </div>
                   ))
                 )}
@@ -1310,15 +1222,22 @@ export default function PatientProfile() {
                   selectedPatient.reports.map(r=>(
                     <div key={r.id} className="bg-gray-700/30 rounded-lg p-4 mb-2">
                       <div className="flex justify-between">
-                        <div><p className="font-bold">{r.title}</p><p className="text-sm">{new Date(r.date).toLocaleDateString()}</p></div>
-                        <div className="flex gap-2"><button onClick={()=>handleEditReport(r)} className="text-yellow-400"><Edit size={14}/></button><button onClick={()=>handleDeleteReport(r.id)} className="text-red-400"><Trash2 size={14}/></button></div>
+                        <div>
+                          <p className="font-bold text-white">{r.title}</p>
+                          <p className="text-sm text-gray-400">{new Date(r.date).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={()=>handleEditReport(r)} className="text-yellow-400 hover:bg-yellow-500/20 p-1 rounded"><Edit size={14}/></button>
+                          <button onClick={()=>handleDeleteReport(r.id)} className="text-red-400 hover:bg-red-500/20 p-1 rounded"><Trash2 size={14}/></button>
+                        </div>
                       </div>
-                      <p>{r.content}</p>
-                      {r._syncPending && <span className="text-xs text-yellow-400">⏳ مزامنة</span>}
+                      <p className="text-gray-300 text-sm mt-2">{r.content}</p>
                     </div>
                   ))
                 )}
-                <button onClick={()=>setShowReportModal(true)} className="w-full bg-blue-500/20 text-blue-400 py-2 rounded-lg mt-2"><Plus size={16}/> إضافة تقرير</button>
+                <button onClick={()=>setShowReportModal(true)} className="w-full bg-blue-500/20 text-blue-400 py-2 rounded-lg mt-2">
+                  <Plus size={16}/> إضافة تقرير
+                </button>
               </div>
             )}
 
@@ -1326,17 +1245,22 @@ export default function PatientProfile() {
               <div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {selectedPatient.images?.map((img,idx)=>(
-                    <div key={img.id} className="bg-gray-700/50 rounded-lg overflow-hidden cursor-pointer" onClick={()=>handleViewImage(selectedPatient.images,idx)}>
+                    <div key={img.id} className="bg-gray-700/50 rounded-lg overflow-hidden cursor-pointer hover:border-blue-500/50 border border-transparent transition" onClick={()=>handleViewImage(selectedPatient.images,idx)}>
                       <img src={img.data} className="w-full h-32 object-cover"/>
-                      <div className="p-2"><p className="text-sm truncate">{img.title}</p><button onClick={(e)=>{e.stopPropagation();handleDeleteImage(img.id)}} className="text-red-400 text-xs">حذف</button>{img._syncPending && <span className="text-xs text-yellow-400">⏳ مزامنة</span>}</div>
+                      <div className="p-2">
+                        <p className="text-sm truncate text-white">{img.title}</p>
+                        <button onClick={(e)=>{e.stopPropagation();handleDeleteImage(img.id)}} className="text-red-400 text-xs hover:text-red-300">حذف</button>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <button onClick={()=>setShowImageUpload(true)} className="w-full bg-orange-500/20 text-orange-400 py-2 rounded-lg mt-4"><Upload size={16}/> رفع صورة</button>
+                <button onClick={()=>setShowImageUpload(true)} className="w-full bg-orange-500/20 text-orange-400 py-2 rounded-lg mt-4">
+                  <Upload size={16}/> رفع صورة
+                </button>
               </div>
             )}
 
-            {/* المودالات الفرعية - نفس الكود الأصلي (محذوف للاختصار) */}
+            {/* المودالات الفرعية */}
             {showXrayModal && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                 <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1470,7 +1394,9 @@ export default function PatientProfile() {
             {showImageViewer && (
               <div className="fixed inset-0 bg-black/95 backdrop-blur-lg z-50 flex items-center justify-center">
                 <button onClick={()=>setShowImageViewer(false)} className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-full"><X size={24}/></button>
-                <div className="relative max-w-[90vw] max-h-[90vh]"><img src={viewerImages[0]?.data} alt="" className="max-w-full max-h-full object-contain"/></div>
+                <div className="relative max-w-[90vw] max-h-[90vh]">
+                  <img src={viewerImages[0]?.data} alt="" className="max-w-full max-h-full object-contain"/>
+                </div>
               </div>
             )}
           </div>
