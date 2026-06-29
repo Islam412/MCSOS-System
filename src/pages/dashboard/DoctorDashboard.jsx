@@ -14,6 +14,9 @@ import toast from 'react-hot-toast'
 import { appointmentsService, patientsService, prescriptionsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 
+// ✅ عنوان الـ API
+const API_BASE = 'https://medical-center-app-production.up.railway.app/api/v1'
+
 export default function DoctorDashboard() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -78,18 +81,69 @@ export default function DoctorDashboard() {
     }
   }
 
+  // ========== دالة مساعدة للـ GET ==========
+  const get = async (endpoint) => {
+    const token = localStorage.getItem('mcsos_token')
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`)
+    }
+    
+    return response.json()
+  }
+
+  // ========== دالة مساعدة للـ POST ==========
+  const post = async (endpoint, data) => {
+    const token = localStorage.getItem('mcsos_token')
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`)
+    }
+    
+    return response.json()
+  }
+
+  // ========== دالة مساعدة للـ PUT ==========
+  const put = async (endpoint, data) => {
+    const token = localStorage.getItem('mcsos_token')
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`)
+    }
+    
+    return response.json()
+  }
+
   // ========== تحميل إحصائيات الطبيب ==========
   const loadStats = async () => {
     try {
       if (isOnline) {
         // ✅ استخدام الـ API الجديد /sessions بدلاً من /stats/doctor
-        const response = await executeWithOfflineSupport(
-          () => get(`/v1/sessions?doctorId=${user?.id}`),
-          'doctor_sessions',
-          JSON.parse(localStorage.getItem('mcsos_doctor_sessions') || '[]')
-        )
+        const response = await get(`/sessions?doctorId=${user?.id}`)
         
-        const sessions = response || []
+        const sessions = response?.sessions || response || []
         const today = new Date().toISOString().split('T')[0]
         
         // حساب الإحصائيات من البيانات
@@ -130,6 +184,12 @@ export default function DoctorDashboard() {
       }
     } catch (error) {
       console.error('Error loading stats:', error)
+      // ✅ في حالة الخطأ، نحاول استخدام localStorage
+      const saved = localStorage.getItem('mcsos_doctor_stats')
+      if (saved) {
+        const data = JSON.parse(saved)
+        setStats(data)
+      }
     }
   }
 
@@ -139,13 +199,9 @@ export default function DoctorDashboard() {
       if (isOnline) {
         const today = new Date().toISOString().split('T')[0]
         // ✅ استخدام الـ API الجديد /sessions مع فلتر التاريخ والدكتور
-        const response = await executeWithOfflineSupport(
-          () => get(`/v1/sessions?doctorId=${user?.id}&date=${today}`),
-          'today_sessions',
-          JSON.parse(localStorage.getItem('mcsos_today_sessions') || '[]')
-        )
+        const response = await get(`/sessions?doctorId=${user?.id}&date=${today}`)
         
-        const sessions = response || []
+        const sessions = response?.sessions || response || []
         
         // تحويل البيانات إلى شكل متوافق مع الواجهة
         const formattedSessions = sessions.map(s => ({
@@ -167,6 +223,11 @@ export default function DoctorDashboard() {
       }
     } catch (error) {
       console.error('Error loading today schedule:', error)
+      // ✅ استخدام localStorage كاحتياطي
+      const saved = localStorage.getItem('mcsos_today_appointments')
+      if (saved) {
+        setTodaySchedule(JSON.parse(saved))
+      }
     }
   }
 
@@ -175,13 +236,9 @@ export default function DoctorDashboard() {
     try {
       if (isOnline) {
         // ✅ جلب المرضى من الـ API
-        const response = await executeWithOfflineSupport(
-          () => get('/v1/patients'),
-          'all_patients',
-          JSON.parse(localStorage.getItem('mcsos_all_patients') || '[]')
-        )
+        const response = await get('/patients')
         
-        const patients = response || []
+        const patients = response?.patients || response || []
         
         // فلتر مرضى هذا الدكتور
         const myPatients = patients.filter(p => p.doctorId === user?.id || p.assignedDoctor === user?.id)
@@ -227,24 +284,12 @@ export default function DoctorDashboard() {
       }
     } catch (error) {
       console.error('Error loading recent patients:', error)
-    }
-  }
-
-  // ========== دالة مساعدة للـ GET ==========
-  const get = async (endpoint) => {
-    const token = localStorage.getItem('mcsos_token')
-    const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+      // ✅ استخدام localStorage كاحتياطي
+      const saved = localStorage.getItem('mcsos_recent_patients')
+      if (saved) {
+        setRecentPatients(JSON.parse(saved))
       }
-    })
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`)
     }
-    
-    return response.json()
   }
 
   // ========== حالة الموعد ==========
@@ -285,7 +330,7 @@ export default function DoctorDashboard() {
     try {
       if (isOnline) {
         // ✅ استخدام الـ API الجديد /sessions/{id}/attendance
-        await post(`/v1/sessions/${selectedPatientForCheckIn.id}/attendance`, { status: 'attended' })
+        await post(`/sessions/${selectedPatientForCheckIn.id}/attendance`, { status: 'attended' })
       }
       
       setTodaySchedule(todaySchedule.map(app => 
@@ -306,25 +351,6 @@ export default function DoctorDashboard() {
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  // ========== دالة مساعدة للـ POST ==========
-  const post = async (endpoint, data) => {
-    const token = localStorage.getItem('mcsos_token')
-    const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    })
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`)
-    }
-    
-    return response.json()
   }
 
   // ========== دالة تحديث البيانات ==========

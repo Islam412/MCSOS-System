@@ -133,24 +133,17 @@ export default function PatientProfile() {
       const response = await patientsService.getPatients()
       console.log('📥 Load patients response:', response)
       
+      // ✅ معالجة الاستجابة بشكل صحيح
       let data = []
       if (Array.isArray(response)) {
         data = response
-      } else if (response?.patients && Array.isArray(response.patients)) {
+      } else if (response?.patients) {
         data = response.patients
-      } else if (response?.data && Array.isArray(response.data)) {
-        data = response.data
-      } else if (response?.message && response?.data) {
+      } else if (response?.data) {
         data = response.data
       }
       
-      if (data.length === 0) {
-        const saved = localStorage.getItem('mcsos_patients_v2')
-        if (saved) {
-          data = JSON.parse(saved)
-        }
-      }
-      
+      // ✅ تحديث الحالة حتى لو كانت البيانات فاضية
       setPatients(data)
       localStorage.setItem('mcsos_patients_v2', JSON.stringify(data))
       
@@ -158,6 +151,7 @@ export default function PatientProfile() {
       console.error('Error loading patients from API:', error)
       setApiError(error.message)
       toast.error('فشل تحميل المرضى من الخادم')
+      // ✅ استخدام localStorage كاحتياطي
       const saved = localStorage.getItem('mcsos_patients_v2')
       if (saved) {
         setPatients(JSON.parse(saved))
@@ -361,6 +355,7 @@ export default function PatientProfile() {
         throw new Error('فشل في إنشاء بيانات المريض')
       }
 
+      // ✅ تحديث القائمة المحلية
       const updatedPatients = [newPatientData, ...patients]
       setPatients(updatedPatients)
       localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
@@ -378,8 +373,9 @@ export default function PatientProfile() {
       })
       toast.success('تم إضافة المريض بنجاح')
       
-      setTimeout(() => {
-        loadPatients()
+      // ✅ إعادة تحميل البيانات من الخادم لتحديث القائمة
+      setTimeout(async () => {
+        await loadPatients()
       }, 500)
       
     } catch (error) {
