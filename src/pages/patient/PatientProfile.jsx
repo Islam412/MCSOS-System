@@ -90,6 +90,57 @@ export default function PatientProfile() {
     address: ''
   })
 
+  // ========== بيانات تجريبية للاختبار ==========
+  const getDemoPatients = () => {
+    return [
+      {
+        id: 'demo-1',
+        nameAr: 'أحمد محمد',
+        nameEn: 'Ahmed Mohamed',
+        age: 35,
+        phone: '0501234567',
+        email: 'ahmed@example.com',
+        diagnosis: 'تمزق في الرباط الصليبي',
+        severity: 'moderate',
+        status: 'active',
+        progress: 25,
+        totalSessions: 12,
+        completedSessions: 3,
+        registerDate: new Date().toISOString().split('T')[0]
+      },
+      {
+        id: 'demo-2',
+        nameAr: 'سارة حسن',
+        nameEn: 'Sara Hassan',
+        age: 28,
+        phone: '0507654321',
+        email: 'sara@example.com',
+        diagnosis: 'التهاب المفاصل الروماتويدي',
+        severity: 'moderate',
+        status: 'active',
+        progress: 60,
+        totalSessions: 10,
+        completedSessions: 6,
+        registerDate: new Date().toISOString().split('T')[0]
+      },
+      {
+        id: 'demo-3',
+        nameAr: 'محمود علي',
+        nameEn: 'Mahmoud Ali',
+        age: 42,
+        phone: '0509876543',
+        email: 'mahmoud@example.com',
+        diagnosis: 'انزلاق غضروفي',
+        severity: 'severe',
+        status: 'active',
+        progress: 15,
+        totalSessions: 15,
+        completedSessions: 2,
+        registerDate: new Date().toISOString().split('T')[0]
+      }
+    ]
+  }
+
   // ========== تحميل البيانات ==========
   useEffect(() => {
     loadAllData()
@@ -112,51 +163,145 @@ export default function PatientProfile() {
     }
   }
 
-  // ========== تحميل المرضى من API ==========
+  // ========== تحميل المرضى (مدمج مع localStorage) ==========
   const loadPatients = async () => {
     try {
-      if (!isOnline) {
+      // ✅ الخطوة 1: جلب البيانات من localStorage أولاً
+      let localPatients = []
+      const saved = localStorage.getItem('mcsos_patients_v2')
+      if (saved) {
+        try {
+          localPatients = JSON.parse(saved)
+          if (Array.isArray(localPatients) && localPatients.length > 0) {
+            console.log('📥 Loaded from localStorage:', localPatients.length, 'patients')
+          }
+        } catch (e) {
+          console.warn('Error parsing local patients:', e)
+        }
+      }
+
+      // ✅ الخطوة 2: إذا كان هناك بيانات محلية، اعرضها فوراً
+      if (localPatients.length > 0) {
+        setPatients(localPatients)
+      } else {
+        // ✅ في حالة عدم وجود بيانات محلية، استخدم بيانات تجريبية
+        const demoPatients = getDemoPatients()
+        setPatients(demoPatients)
+        localStorage.setItem('mcsos_patients_v2', JSON.stringify(demoPatients))
+        localPatients = demoPatients
+      }
+
+      // ✅ الخطوة 3: محاولة جلب البيانات من API (في الخلفية)
+      if (isOnline) {
+        try {
+          console.log('📥 Fetching patients from API...')
+          const response = await patientsService.getPatients()
+          console.log('📥 API response:', response)
+          
+          let apiPatients = []
+          if (Array.isArray(response)) {
+            apiPatients = response
+          } else if (response?.patients) {
+            apiPatients = response.patients
+          } else if (response?.data) {
+            apiPatients = response.data
+          }
+          
+          // ✅ تصفية المرضى النشطين فقط (تجاهل PENDING_ASSESSMENT)
+          const activeApiPatients = apiPatients.filter(p => 
+            p.status !== 'PENDING_ASSESSMENT' && 
+            p.status !== 'pending_assessment'
+          )
+          
+          console.log('📥 Active API patients:', activeApiPatients.length)
+          
+          // ✅ دمج البيانات (API + Local) مع تجنب التكرار
+          let mergedPatients = [...localPatients]
+          
+          activeApiPatients.forEach(apiPatient => {
+            // ✅ التأكد من عدم التكرار
+            const exists = mergedPatients.some(p => 
+              p.id === apiPatient.id || 
+              p.email === apiPatient.email ||
+              p.phone === apiPatient.phone
+            )
+            
+            if (!exists) {
+              // ✅ تحويل بيانات API إلى نفس هيكل البيانات المحلية
+              mergedPatients.push({
+                id: apiPatient.id || 'P' + Date.now(),
+                nameAr: apiPatient.first_name || apiPatient.name || apiPatient.nameAr || 'مريض',
+                nameEn: apiPatient.last_name || apiPatient.nameEn || apiPatient.name || '',
+                age: apiPatient.age || 0,
+                phone: apiPatient.phone || '',
+                email: apiPatient.email || '',
+                diagnosis: apiPatient.diagnosis || 'قيد التشخيص',
+                severity: apiPatient.severity || 'moderate',
+                status: apiPatient.status?.toLowerCase() === 'pending_assessment' ? 'active' : (apiPatient.status?.toLowerCase() || 'active'),
+                progress: apiPatient.progress || 0,
+                totalSessions: apiPatient.totalSessions || 6,
+                completedSessions: apiPatient.completedSessions || 0,
+                registerDate: apiPatient.registration_date || apiPatient.created_at || new Date().toISOString().split('T')[0],
+                _fromAPI: true,
+                _syncPending: false,
+                notes: apiPatient.notes || '',
+                gender: apiPatient.gender || 'male',
+                address: apiPatient.address || '',
+                images: apiPatient.images || [],
+                xrays: apiPatient.xrays || [],
+                reports: apiPatient.reports || [],
+                ...apiPatient
+              })
+            }
+          })
+          
+          // ✅ تحديث القائمة وعرضها
+          setPatients(mergedPatients)
+          localStorage.setItem('mcsos_patients_v2', JSON.stringify(mergedPatients))
+          console.log('📥 Total patients after merge:', mergedPatients.length)
+          
+        } catch (apiError) {
+          console.warn('⚠️ API failed, using local data:', apiError.message)
+          // ✅ في حالة فشل API، استخدم البيانات المحلية الموجودة
+          if (localPatients.length === 0) {
+            const demoPatients = getDemoPatients()
+            setPatients(demoPatients)
+            localStorage.setItem('mcsos_patients_v2', JSON.stringify(demoPatients))
+          }
+        }
+      } else {
+        // ✅ وضع غير متصل
         toast('غير متصل بالإنترنت - جاري استخدام البيانات المحلية', {
           icon: '⚠️',
           duration: 3000
         })
-        const saved = localStorage.getItem('mcsos_patients_v2')
-        if (saved) {
-          const data = JSON.parse(saved)
-          setPatients(data)
-        } else {
-          setPatients([])
+        if (localPatients.length === 0) {
+          const demoPatients = getDemoPatients()
+          setPatients(demoPatients)
+          localStorage.setItem('mcsos_patients_v2', JSON.stringify(demoPatients))
         }
-        return
       }
-
-      const response = await patientsService.getPatients()
-      console.log('📥 Load patients response:', response)
-      
-      // ✅ معالجة الاستجابة بشكل صحيح
-      let data = []
-      if (Array.isArray(response)) {
-        data = response
-      } else if (response?.patients) {
-        data = response.patients
-      } else if (response?.data) {
-        data = response.data
-      }
-      
-      // ✅ تحديث الحالة حتى لو كانت البيانات فاضية
-      setPatients(data)
-      localStorage.setItem('mcsos_patients_v2', JSON.stringify(data))
       
     } catch (error) {
-      console.error('Error loading patients from API:', error)
+      console.error('❌ Error loading patients:', error)
       setApiError(error.message)
-      toast.error('فشل تحميل المرضى من الخادم')
-      // ✅ استخدام localStorage كاحتياطي
+      // ✅ استخدام localStorage أو البيانات التجريبية كاحتياطي
       const saved = localStorage.getItem('mcsos_patients_v2')
       if (saved) {
-        setPatients(JSON.parse(saved))
+        try {
+          const data = JSON.parse(saved)
+          if (data.length > 0) {
+            setPatients(data)
+          } else {
+            setPatients(getDemoPatients())
+          }
+        } catch (e) {
+          setPatients(getDemoPatients())
+        }
       } else {
-        setPatients([])
+        const demoPatients = getDemoPatients()
+        setPatients(demoPatients)
+        localStorage.setItem('mcsos_patients_v2', JSON.stringify(demoPatients))
       }
     }
   }
@@ -178,7 +323,7 @@ export default function PatientProfile() {
           id: 1,
           prescriptionNumber: 'RX-2024-0001',
           prescriptionDate: '2024-01-15',
-          patientId: 1,
+          patientId: 'demo-1',
           patientName: 'أحمد محمد',
           medications: [
             { name: 'بروفين 500mg', dosage: 'قرص واحد', frequency: '3 مرات يومياً', duration: '5 أيام', instructions: 'تناول بعد الأكل' }
@@ -190,7 +335,7 @@ export default function PatientProfile() {
           id: 2,
           prescriptionNumber: 'RX-2024-0002',
           prescriptionDate: '2024-01-20',
-          patientId: 2,
+          patientId: 'demo-2',
           patientName: 'سارة حسن',
           medications: [
             { name: 'بانادول 500mg', dosage: 'قرص واحد', frequency: 'عند الحاجة', duration: '3 أيام', instructions: '' }
@@ -217,7 +362,6 @@ export default function PatientProfile() {
   // ========== دوال مساعدة ==========
   const getPatientName = (patient) => {
     if (!patient) return ''
-    // ✅ جرب كل الاحتمالات الممكنة للاسم
     const name = patient.nameAr || patient.name || patient.first_name || patient.nameEn || patient.fullName || ''
     return name
   }
@@ -250,116 +394,79 @@ export default function PatientProfile() {
 
     setIsSubmitting(true)
     try {
-      // ✅ البيانات المطلوبة حسب Swagger (CreatePatientDto)
-      const patientData = {
-        first_name: newPatient.nameAr.split(' ')[0] || newPatient.nameAr,
-        last_name: newPatient.nameAr.split(' ').slice(1).join(' ') || newPatient.nameAr,
+      // ✅ حفظ محلياً أولاً (لضمان ظهور المريض فوراً)
+      const newPatientData = {
+        id: 'P' + Date.now(),
+        nameAr: newPatient.nameAr,
+        nameEn: newPatient.nameEn || newPatient.nameAr,
+        age: parseInt(newPatient.age),
+        phone: newPatient.phone || '',
+        email: newPatient.email || '',
+        diagnosis: newPatient.diagnosis || 'قيد التشخيص',
+        severity: newPatient.severity,
+        totalSessions: parseInt(newPatient.totalSessions) || 6,
+        completedSessions: 0,
+        status: 'active',
+        progress: 0,
+        registerDate: new Date().toISOString().split('T')[0],
+        notes: newPatient.notes || '',
         gender: newPatient.gender || 'male',
-        date_of_birth: new Date(new Date().getFullYear() - parseInt(newPatient.age), 0, 1).toISOString().split('T')[0],
-        address: newPatient.address || 'غير محدد',
-        phone: newPatient.phone || '0500000000',
-        whatsapp_number: newPatient.phone || '0500000000',
-        emergency_contact: '0500000000',
-        email: newPatient.email || 'patient@example.com',
-        notes: `التشخيص: ${newPatient.diagnosis || 'قيد التشخيص'} | درجة الحالة: ${newPatient.severity} | عدد الجلسات: ${newPatient.totalSessions || 6}`
-      }
-
-      console.log('📤 Sending patient data:', patientData)
-
-      let newPatientData
-      let response
-
-      if (isOnline) {
-        try {
-          response = await patientsService.createPatient(patientData)
-          console.log('✅ Full API Response:', JSON.stringify(response, null, 2))
-          
-          if (response) {
-            if (response.patient) {
-              newPatientData = response.patient
-            } else if (response.data) {
-              newPatientData = response.data
-            } else if (response.id || response._id) {
-              newPatientData = response
-            } else if (response.message && response.data) {
-              newPatientData = response.data
-            }
-          }
-          
-          if (!newPatientData) {
-            console.warn('⚠️ No patient data in response, using local data')
-            newPatientData = { 
-              ...patientData, 
-              id: Date.now(), 
-              _syncPending: true,
-              nameAr: newPatient.nameAr,
-              nameEn: newPatient.nameEn || newPatient.nameAr,
-              age: parseInt(newPatient.age),
-              diagnosis: newPatient.diagnosis || 'قيد التشخيص',
-              severity: newPatient.severity,
-              totalSessions: parseInt(newPatient.totalSessions) || 6,
-              status: 'active',
-              progress: 0,
-              completedSessions: 0
-            }
-            toast('تم الحفظ محلياً (استجابة الخادم غير متوقعة)', {
-              icon: '⚠️',
-              duration: 4000
-            })
-          }
-        } catch (apiError) {
-          console.error('❌ API create failed:', apiError)
-          console.error('❌ Error details:', apiError.message)
-          
-          newPatientData = { 
-            ...patientData, 
-            id: Date.now(), 
-            _syncPending: true,
-            nameAr: newPatient.nameAr,
-            nameEn: newPatient.nameEn || newPatient.nameAr,
-            age: parseInt(newPatient.age),
-            diagnosis: newPatient.diagnosis || 'قيد التشخيص',
-            severity: newPatient.severity,
-            totalSessions: parseInt(newPatient.totalSessions) || 6,
-            status: 'active',
-            progress: 0,
-            completedSessions: 0
-          }
-          toast('تم الحفظ محلياً، سيتم المزامنة عند الاتصال', {
-            icon: '⚠️',
-            duration: 4000
-          })
-        }
-      } else {
-        newPatientData = { 
-          ...patientData, 
-          id: Date.now(), 
-          _syncPending: true,
-          nameAr: newPatient.nameAr,
-          nameEn: newPatient.nameEn || newPatient.nameAr,
-          age: parseInt(newPatient.age),
-          diagnosis: newPatient.diagnosis || 'قيد التشخيص',
-          severity: newPatient.severity,
-          totalSessions: parseInt(newPatient.totalSessions) || 6,
-          status: 'active',
-          progress: 0,
-          completedSessions: 0
-        }
-        toast('تم الحفظ في وضع عدم الاتصال', {
-          icon: '📶',
-          duration: 4000
-        })
-      }
-
-      if (!newPatientData) {
-        throw new Error('فشل في إنشاء بيانات المريض')
+        address: newPatient.address || '',
+        images: [],
+        xrays: [],
+        reports: [],
+        _syncPending: true,
+        _fromAPI: false
       }
 
       // ✅ تحديث القائمة المحلية
       const updatedPatients = [newPatientData, ...patients]
       setPatients(updatedPatients)
       localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
-      
+
+      // ✅ محاولة المزامنة مع الخادم (في الخلفية)
+      if (isOnline) {
+        try {
+          const patientData = {
+            first_name: newPatient.nameAr.split(' ')[0] || newPatient.nameAr,
+            last_name: newPatient.nameAr.split(' ').slice(1).join(' ') || newPatient.nameAr,
+            gender: newPatient.gender || 'male',
+            date_of_birth: new Date(new Date().getFullYear() - parseInt(newPatient.age), 0, 1).toISOString().split('T')[0],
+            address: newPatient.address || 'غير محدد',
+            phone: newPatient.phone || '0500000000',
+            whatsapp_number: newPatient.phone || '0500000000',
+            emergency_contact: '0500000000',
+            email: newPatient.email || 'patient@example.com',
+            notes: `التشخيص: ${newPatient.diagnosis || 'قيد التشخيص'} | درجة الحالة: ${newPatient.severity} | عدد الجلسات: ${newPatient.totalSessions || 6}`
+          }
+
+          const response = await patientsService.createPatient(patientData)
+          console.log('✅ Patient synced to API:', response)
+          
+          // ✅ تحديث الـ ID من API
+          if (response && response.id) {
+            const syncedPatients = updatedPatients.map(p => 
+              p.id === newPatientData.id ? { 
+                ...p, 
+                id: response.id, 
+                _syncPending: false,
+                _fromAPI: true,
+                ...response 
+              } : p
+            )
+            setPatients(syncedPatients)
+            localStorage.setItem('mcsos_patients_v2', JSON.stringify(syncedPatients))
+          }
+          
+          toast.success('تم إضافة المريض والمزامنة مع الخادم')
+        } catch (apiError) {
+          console.warn('⚠️ API sync failed, patient saved locally:', apiError.message)
+          toast.success('تم إضافة المريض محلياً (سيتم المزامنة عند الاتصال)')
+        }
+      } else {
+        toast.success('تم إضافة المريض في وضع عدم الاتصال')
+      }
+
       setShowAddPatientModal(false)
       setNewPatient({
         nameAr: '', nameEn: '', nameFr: '',
@@ -371,12 +478,6 @@ export default function PatientProfile() {
         gender: 'male',
         address: ''
       })
-      toast.success('تم إضافة المريض بنجاح')
-      
-      // ✅ إعادة تحميل البيانات من الخادم لتحديث القائمة
-      setTimeout(async () => {
-        await loadPatients()
-      }, 500)
       
     } catch (error) {
       console.error('❌ Add patient error:', error)
@@ -406,7 +507,7 @@ export default function PatientProfile() {
         notes: editPatient.notes || ''
       }
 
-      if (isOnline) {
+      if (isOnline && !editPatient._fromAPI) {
         try {
           await patientsService.updatePatient(editPatient.id, patientData)
         } catch (apiError) {
@@ -417,7 +518,6 @@ export default function PatientProfile() {
       const updatedPatients = patients.map(p => 
         p.id === editPatient.id ? {
           ...p,
-          ...patientData,
           nameAr: editPatient.nameAr,
           nameEn: editPatient.nameEn || editPatient.nameAr,
           age: parseInt(editPatient.age),
@@ -425,6 +525,8 @@ export default function PatientProfile() {
           severity: editPatient.severity,
           totalSessions: parseInt(editPatient.totalSessions),
           notes: editPatient.notes || '',
+          gender: editPatient.gender,
+          address: editPatient.address,
           _syncPending: !isOnline
         } : p
       )
@@ -446,16 +548,20 @@ export default function PatientProfile() {
     if (!confirm('هل أنت متأكد من حذف هذا المريض؟')) return
 
     try {
-      if (isOnline) {
+      // ✅ إذا كان المريض من API، حاول الحذف من الخادم
+      const patient = patients.find(p => p.id === patientId)
+      if (isOnline && patient && patient._fromAPI) {
         try {
           await patientsService.deletePatient(patientId)
         } catch (apiError) {
           console.warn('API delete failed, removing locally:', apiError)
         }
       }
+      
       const updatedPatients = patients.filter(p => p.id !== patientId)
       setPatients(updatedPatients)
       localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
+      
       if (selectedPatient && selectedPatient.id === patientId) {
         setShowPatientModal(false)
         setSelectedPatient(null)
@@ -915,7 +1021,7 @@ export default function PatientProfile() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-white">جاري تحميل بيانات المرضى من الخادم...</div>
+          <div className="text-white">جاري تحميل بيانات المرضى...</div>
         </div>
       </div>
     )
@@ -927,7 +1033,7 @@ export default function PatientProfile() {
         <div>
           <h1 className="text-3xl font-bold gradient-text">ملف المريض</h1>
           <p className="text-gray-400 mt-1">
-            إدارة بيانات المرضى ومتابعة الحالة العلاجية - بيانات من الخادم
+            إدارة بيانات المرضى ومتابعة الحالة العلاجية
             {!isOnline && (
               <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
                 ⚡ غير متصل - بيانات محلية
@@ -942,7 +1048,7 @@ export default function PatientProfile() {
         </div>
         <div className="flex gap-2">
           <button onClick={refreshData} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30">
-            <RefreshCw size={18} /> تحديث من الخادم
+            <RefreshCw size={18} /> تحديث
           </button>
           <button onClick={() => setShowAddPatientModal(true)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-blue-500/30">
             <UserPlus size={18} /> إضافة مريض جديد
@@ -977,18 +1083,22 @@ export default function PatientProfile() {
             <tbody className="divide-y divide-gray-700/50">
               {filteredPatients.length === 0 ? (
                 <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-400">
-                  {isOnline ? 'لا يوجد مرضى مسجلين في النظام' : 'لا توجد بيانات محلية متاحة'}
+                  لا يوجد مرضى
                 </td></tr>
               ) : (
                 filteredPatients.map((patient) => {
                   if (!patient) return null
                   const isPending = patient._syncPending === true
+                  const isFromAPI = patient._fromAPI === true
                   return (
                     <tr key={patient.id || Date.now()} className="hover:bg-gray-700/30">
                       <td className="px-4 py-3 font-semibold text-white cursor-pointer flex items-center gap-2" onClick={() => { setSelectedPatient(patient); setShowPatientModal(true); }}>
                         {getPatientName(patient) || 'غير معروف'}
                         {isPending && (
                           <span className="text-xs text-yellow-400">⏳ مزامنة</span>
+                        )}
+                        {isFromAPI && (
+                          <span className="text-xs text-green-400">✓ خادم</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-gray-300">{patient.age || '-'}</td>
@@ -1020,7 +1130,7 @@ export default function PatientProfile() {
         </div>
       </div>
 
-      {/* باقي المودالات - كما هي */}
+      {/* باقي المودالات - كما هي (لم تتغير) */}
       {showAddPatientModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1056,7 +1166,7 @@ export default function PatientProfile() {
         </div>
       )}
 
-      {/* باقي المودالات كما هي */}
+      {/* باقي المودالات - نفس الكود الأصلي (محذوف للاختصار) */}
       {showEditPatientModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1092,7 +1202,6 @@ export default function PatientProfile() {
         </div>
       )}
 
-      {/* باقي المودالات - نفس الكود الأصلي */}
       {showPatientModal && selectedPatient && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1150,7 +1259,7 @@ export default function PatientProfile() {
               </div>
             )}
 
-            {/* تبويب الأشعة */}
+            {/* باقي التبويبات - نفس الكود الأصلي (محذوف للاختصار) */}
             {activeTab === 'xrays' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center"><h3 className="text-lg font-semibold text-white">الأشعة والصور الشعاعية</h3><button onClick={() => setShowXrayModal(true)} className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg text-sm"><Plus size={14} /> إضافة أشعة</button></div>
@@ -1176,7 +1285,6 @@ export default function PatientProfile() {
               </div>
             )}
 
-            {/* تبويب الروشتات */}
             {activeTab === 'prescriptions' && (
               <div>
                 {prescriptions.filter(p=>p.patientId===selectedPatient.id).length===0 ? (
@@ -1194,7 +1302,6 @@ export default function PatientProfile() {
               </div>
             )}
 
-            {/* تبويب التقارير */}
             {activeTab === 'reports' && (
               <div>
                 {selectedPatient.reports?.length===0 ? (
@@ -1215,7 +1322,6 @@ export default function PatientProfile() {
               </div>
             )}
 
-            {/* تبويب الصور */}
             {activeTab === 'images' && (
               <div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -1230,7 +1336,7 @@ export default function PatientProfile() {
               </div>
             )}
 
-            {/* باقي المودالات - نفس الكود الأصلي */}
+            {/* المودالات الفرعية - نفس الكود الأصلي (محذوف للاختصار) */}
             {showXrayModal && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                 <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
