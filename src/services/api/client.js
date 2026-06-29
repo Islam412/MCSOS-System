@@ -34,13 +34,23 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
   const token = getToken()
   const user = getCurrentUser()
 
+  // ✅ بناء الـ URL بشكل صحيح
+  let fullUrl = url
+  if (!url.startsWith('http')) {
+    const baseUrl = API_CONFIG.BASE_URL.replace(/\/+$/, '')
+    const cleanUrl = url.replace(/^\/+/, '')
+    fullUrl = `${baseUrl}/${cleanUrl}`
+  }
+
+  console.log('🌐 API Request URL:', fullUrl)
+
   const defaultOptions = {
     headers: {
-      ...API_CONFIG.headers,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(user ? { 'X-User-Role': user.role } : {}),
     },
-    // ✅ إضافة mode و credentials لحل مشكلة CORS
     mode: 'cors',
     credentials: 'include',
   }
@@ -60,46 +70,28 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
   mergedOptions.signal = controller.signal
 
   try {
-    const response = await fetch(url, mergedOptions)
+    const response = await fetch(fullUrl, mergedOptions)
     clearTimeout(timeoutId)
 
-    // ✅ معالجة CORS بشكل أفضل
-    if (response.type === 'opaque') {
-      throw new Error('CORS error: Unable to access resource')
+    // ✅ معالجة الاستجابة الفارغة
+    const text = await response.text()
+    
+    if (response.status === 204 || !text) {
+      return { success: true }
     }
 
-    // معالجة حالة 401 (غير مصرح)
-    if (response.status === 401) {
-      const errorData = await response.json().catch(() => ({}))
-      if (errorData.code === 'TOKEN_EXPIRED') {
-        throw new Error(ERROR_MESSAGES.UNAUTHORIZED)
-      }
-      throw new Error(ERROR_MESSAGES.UNAUTHORIZED)
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = { success: true, raw: text }
     }
 
-    // معالجة حالة 403 (ممنوع)
-    if (response.status === 403) {
-      throw new Error(ERROR_MESSAGES.FORBIDDEN)
+    if (!response.ok) {
+      const errorMessage = data?.message || data?.error || ERROR_MESSAGES.SERVER_ERROR
+      throw new Error(errorMessage)
     }
 
-    // معالجة حالة 404 (غير موجود)
-    if (response.status === 404) {
-      throw new Error(ERROR_MESSAGES.NOT_FOUND)
-    }
-
-    // معالجة حالة 422 (خطأ في التحقق)
-    if (response.status === 422) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || ERROR_MESSAGES.VALIDATION_ERROR)
-    }
-
-    // معالجة حالة 500 (خطأ في الخادم)
-    if (response.status >= 500) {
-      throw new Error(ERROR_MESSAGES.SERVER_ERROR)
-    }
-
-    // محاولة تحويل الاستجابة إلى JSON
-    const data = await response.json().catch(() => ({}))
     return data
 
   } catch (error) {
@@ -119,23 +111,21 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
       throw new Error(ERROR_MESSAGES.NETWORK_ERROR)
     }
 
-    // ✅ معالجة CORS بشكل أفضل
     if (error.message === 'CORS error: Unable to access resource') {
       throw new Error('CORS policy blocked the request. Please check server CORS configuration.')
     }
 
-    // إعادة الخطأ الأصلي
     throw error
   }
 }
 
 // دوال مساعدة
 export const get = (endpoint, options = {}) => {
-  return apiRequest(`${API_CONFIG.BASE_URL}${endpoint}`, { ...options, method: 'GET' })
+  return apiRequest(endpoint, { ...options, method: 'GET' })
 }
 
 export const post = (endpoint, data, options = {}) => {
-  return apiRequest(`${API_CONFIG.BASE_URL}${endpoint}`, {
+  return apiRequest(endpoint, {
     ...options,
     method: 'POST',
     body: JSON.stringify(data),
@@ -143,7 +133,7 @@ export const post = (endpoint, data, options = {}) => {
 }
 
 export const put = (endpoint, data, options = {}) => {
-  return apiRequest(`${API_CONFIG.BASE_URL}${endpoint}`, {
+  return apiRequest(endpoint, {
     ...options,
     method: 'PUT',
     body: JSON.stringify(data),
@@ -151,7 +141,7 @@ export const put = (endpoint, data, options = {}) => {
 }
 
 export const patch = (endpoint, data, options = {}) => {
-  return apiRequest(`${API_CONFIG.BASE_URL}${endpoint}`, {
+  return apiRequest(endpoint, {
     ...options,
     method: 'PATCH',
     body: JSON.stringify(data),
@@ -159,7 +149,7 @@ export const patch = (endpoint, data, options = {}) => {
 }
 
 export const del = (endpoint, options = {}) => {
-  return apiRequest(`${API_CONFIG.BASE_URL}${endpoint}`, { ...options, method: 'DELETE' })
+  return apiRequest(endpoint, { ...options, method: 'DELETE' })
 }
 
 // تحميل ملفات (multipart/form-data)
@@ -172,20 +162,41 @@ export const uploadFile = async (endpoint, file, additionalData = {}) => {
   })
 
   const token = getToken()
-  const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+  
+  // ✅ بناء الـ URL بشكل صحيح
+  let fullUrl = endpoint
+  if (!endpoint.startsWith('http')) {
+    const baseUrl = API_CONFIG.BASE_URL.replace(/\/+$/, '')
+    const cleanUrl = endpoint.replace(/^\/+/, '')
+    fullUrl = `${baseUrl}/${cleanUrl}`
+  }
+
+  console.log('📤 Uploading file to:', fullUrl)
+
+  const response = await fetch(fullUrl, {
     method: 'POST',
-    mode: 'cors',        // ✅ إضافة mode
-    credentials: 'include', // ✅ إضافة credentials
+    mode: 'cors',
+    credentials: 'include',
     headers: {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     },
     body: formData,
   })
 
+  const text = await response.text()
+  
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.message || 'فشل رفع الملف')
+    try {
+      const error = JSON.parse(text)
+      throw new Error(error.message || 'فشل رفع الملف')
+    } catch {
+      throw new Error(text || 'فشل رفع الملف')
+    }
   }
 
-  return response.json()
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { success: true, raw: text }
+  }
 }

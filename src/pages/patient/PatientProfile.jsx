@@ -133,7 +133,6 @@ export default function PatientProfile() {
       const response = await patientsService.getPatients()
       console.log('📥 Load patients response:', response)
       
-      // ✅ معالجة الاستجابة بشكل صحيح
       let data = []
       if (Array.isArray(response)) {
         data = response
@@ -145,7 +144,6 @@ export default function PatientProfile() {
         data = response.data
       }
       
-      // ✅ إذا كانت البيانات فارغة، نستخدم localStorage
       if (data.length === 0) {
         const saved = localStorage.getItem('mcsos_patients_v2')
         if (saved) {
@@ -160,7 +158,6 @@ export default function PatientProfile() {
       console.error('Error loading patients from API:', error)
       setApiError(error.message)
       toast.error('فشل تحميل المرضى من الخادم')
-      // ✅ استخدام localStorage كاحتياطي
       const saved = localStorage.getItem('mcsos_patients_v2')
       if (saved) {
         setPatients(JSON.parse(saved))
@@ -173,7 +170,6 @@ export default function PatientProfile() {
   // ========== تحميل الروشتات (محلياً) ==========
   const loadPrescriptions = async () => {
     try {
-      // ✅ استخدام localStorage فقط لأن الـ Endpoint غير موجود في API
       const saved = localStorage.getItem('mcsos_prescriptions')
       if (saved) {
         const data = JSON.parse(saved)
@@ -183,7 +179,6 @@ export default function PatientProfile() {
         }
       }
       
-      // ✅ بيانات افتراضية للروشتات (تظهر فقط في حالة عدم وجود بيانات)
       const defaultPrescriptions = [
         {
           id: 1,
@@ -254,7 +249,6 @@ export default function PatientProfile() {
 
   // ========== دوال إدارة المرضى ==========
   const handleAddPatient = async () => {
-    // ✅ التحقق من الحقول المطلوبة
     if (!newPatient.nameAr || !newPatient.age) {
       toast.error('الرجاء إدخال الاسم والعمر')
       return
@@ -262,7 +256,7 @@ export default function PatientProfile() {
 
     setIsSubmitting(true)
     try {
-      // ✅ إرسال جميع الحقول المطلوبة من الـ API
+      // ✅ البيانات المطلوبة حسب Swagger (CreatePatientDto)
       const patientData = {
         first_name: newPatient.nameAr.split(' ')[0] || newPatient.nameAr,
         last_name: newPatient.nameAr.split(' ').slice(1).join(' ') || newPatient.nameAr,
@@ -279,32 +273,25 @@ export default function PatientProfile() {
       console.log('📤 Sending patient data:', patientData)
 
       let newPatientData
+      let response
+
       if (isOnline) {
         try {
-          const response = await patientsService.createPatient(patientData)
+          response = await patientsService.createPatient(patientData)
           console.log('✅ Full API Response:', JSON.stringify(response, null, 2))
           
-          // ✅ معالجة جميع أشكال الاستجابة الممكنة
           if (response) {
-            // حالة 1: response.patient
             if (response.patient) {
               newPatientData = response.patient
-            }
-            // حالة 2: response.data
-            else if (response.data) {
+            } else if (response.data) {
               newPatientData = response.data
-            }
-            // حالة 3: response نفسه هو البيانات
-            else if (response.id || response._id) {
+            } else if (response.id || response._id) {
               newPatientData = response
-            }
-            // حالة 4: response.message مع بيانات
-            else if (response.message && response.data) {
+            } else if (response.message && response.data) {
               newPatientData = response.data
             }
           }
           
-          // ✅ إذا لم نجد بيانات، نستخدم البيانات المرسلة مع ID مؤقت
           if (!newPatientData) {
             console.warn('⚠️ No patient data in response, using local data')
             newPatientData = { 
@@ -330,7 +317,6 @@ export default function PatientProfile() {
           console.error('❌ API create failed:', apiError)
           console.error('❌ Error details:', apiError.message)
           
-          // ✅ حفظ محلياً في حالة فشل API
           newPatientData = { 
             ...patientData, 
             id: Date.now(), 
@@ -351,7 +337,6 @@ export default function PatientProfile() {
           })
         }
       } else {
-        // ✅ وضع عدم الاتصال
         newPatientData = { 
           ...patientData, 
           id: Date.now(), 
@@ -372,17 +357,14 @@ export default function PatientProfile() {
         })
       }
 
-      // ✅ التأكد من وجود بيانات قبل الإضافة
       if (!newPatientData) {
         throw new Error('فشل في إنشاء بيانات المريض')
       }
 
-      // ✅ إضافة المريض للقائمة
       const updatedPatients = [newPatientData, ...patients]
       setPatients(updatedPatients)
       localStorage.setItem('mcsos_patients_v2', JSON.stringify(updatedPatients))
       
-      // ✅ إعادة تعيين النموذج
       setShowAddPatientModal(false)
       setNewPatient({
         nameAr: '', nameEn: '', nameFr: '',
@@ -396,7 +378,6 @@ export default function PatientProfile() {
       })
       toast.success('تم إضافة المريض بنجاح')
       
-      // ✅ إعادة تحميل البيانات من الخادم لتحديث القائمة
       setTimeout(() => {
         loadPatients()
       }, 500)
@@ -799,7 +780,6 @@ export default function PatientProfile() {
         doctorName: selectedPatient.doctorName || 'الطبيب المعالج'
       }
 
-      // ✅ حفظ محلياً فقط (لأن الـ Endpoint غير موجود في API)
       const updatedPrescriptions = [newPrescription, ...prescriptions]
       setPrescriptions(updatedPrescriptions)
       localStorage.setItem('mcsos_prescriptions', JSON.stringify(updatedPrescriptions))
@@ -1002,7 +982,6 @@ export default function PatientProfile() {
                 </td></tr>
               ) : (
                 filteredPatients.map((patient) => {
-                  // ✅ التحقق من وجود patient قبل الوصول للخصائص
                   if (!patient) return null
                   const isPending = patient._syncPending === true
                   return (
@@ -1042,7 +1021,7 @@ export default function PatientProfile() {
         </div>
       </div>
 
-      {/* ========== باقي المودالات ========== */}
+      {/* باقي المودالات - كما هي */}
       {showAddPatientModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1078,6 +1057,7 @@ export default function PatientProfile() {
         </div>
       )}
 
+      {/* باقي المودالات كما هي */}
       {showEditPatientModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1113,6 +1093,7 @@ export default function PatientProfile() {
         </div>
       )}
 
+      {/* باقي المودالات - نفس الكود الأصلي */}
       {showPatientModal && selectedPatient && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
@@ -1250,7 +1231,7 @@ export default function PatientProfile() {
               </div>
             )}
 
-            {/* باقي المودالات */}
+            {/* باقي المودالات - نفس الكود الأصلي */}
             {showXrayModal && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                 <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">

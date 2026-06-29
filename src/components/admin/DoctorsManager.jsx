@@ -45,7 +45,7 @@ export default function DoctorsManager() {
     date: '', time: '', available: true
   })
 
-  // ========== التخصصات الافتراضية ==========
+  // ========== التخصصات ==========
   const defaultSpecialties = [
     { id: 'orthopedic', nameAr: 'جراحة عظام', nameEn: 'Orthopedic Surgery', icon: '🦴' },
     { id: 'physical_therapy', nameAr: 'علاج طبيعي', nameEn: 'Physical Therapy', icon: '💪' },
@@ -64,10 +64,11 @@ export default function DoctorsManager() {
     loadData()
   }, [])
 
-  // ========== تحميل الأطباء من API ==========
+  // ========== تحميل الأطباء ==========
   const loadData = async () => {
     setLoading(true)
     try {
+      // ✅ تحميل التخصصات من localStorage
       const savedSpecialties = localStorage.getItem('mcsos_specialties')
       if (savedSpecialties) {
         setSpecialties(JSON.parse(savedSpecialties))
@@ -76,10 +77,19 @@ export default function DoctorsManager() {
         localStorage.setItem('mcsos_specialties', JSON.stringify(defaultSpecialties))
       }
 
+      // ✅ تحميل الأطباء من localStorage أولاً
+      const localData = JSON.parse(localStorage.getItem('mcsos_doctors_v2') || '[]')
+      
+      if (localData.length > 0) {
+        setDoctors(localData)
+        console.log('📥 Loaded from localStorage:', localData.length, 'doctors')
+      }
+
+      // ✅ محاولة جلب من API (للمزامنة)
       if (isOnline) {
         try {
           const response = await doctorsService.getDoctors()
-          console.log('📥 Doctors loaded from API:', response)
+          console.log('📥 API Response:', response)
           
           let apiData = []
           if (Array.isArray(response)) {
@@ -90,93 +100,62 @@ export default function DoctorsManager() {
             apiData = response.data
           }
           
-          const localData = JSON.parse(localStorage.getItem('mcsos_doctors_v2') || '[]')
-          
           if (apiData.length > 0) {
-            const mergedData = apiData.map(apiDoctor => {
-              const localDoctor = localData.find(d => 
+            // ✅ دمج بيانات API مع البيانات المحلية
+            const mergedData = [...localData]
+            
+            apiData.forEach(apiDoctor => {
+              const exists = mergedData.some(d => 
                 d.id === apiDoctor.id || 
-                d.nameAr === apiDoctor.name || 
-                d.email === apiDoctor.email
+                d.email === apiDoctor.email ||
+                d.nameAr === apiDoctor.name
               )
               
-              return {
-                id: apiDoctor.id || apiDoctor._id || Date.now(),
-                nameAr: apiDoctor.name || apiDoctor.nameAr,
-                nameEn: apiDoctor.nameEn || apiDoctor.name,
-                specialization: apiDoctor.specialization || apiDoctor.specialty || 'general',
-                specializationAr: apiDoctor.specializationAr || apiDoctor.specialty || 'عام',
-                specializationEn: apiDoctor.specializationEn || apiDoctor.specialty || 'General',
-                phone: apiDoctor.phone || '',
-                email: apiDoctor.email || '',
-                isActive: apiDoctor.is_active !== undefined ? apiDoctor.is_active : true,
-                experience: localDoctor?.experience || 0,
-                rating: localDoctor?.rating || 0,
-                reviews: localDoctor?.reviews || 0,
-                price: localDoctor?.price || 0,
-                bioAr: localDoctor?.bioAr || '',
-                bioEn: localDoctor?.bioEn || '',
-                workDays: localDoctor?.workDays || [],
-                workHours: localDoctor?.workHours || { start: '09:00', end: '17:00' },
-                availableSlots: localDoctor?.availableSlots || [],
-                patientsCount: localDoctor?.patientsCount || 0,
-                satisfactionRate: localDoctor?.satisfactionRate || 0,
-                _syncPending: false
+              if (!exists) {
+                mergedData.push({
+                  id: apiDoctor.id || apiDoctor._id || Date.now(),
+                  nameAr: apiDoctor.name || apiDoctor.nameAr,
+                  nameEn: apiDoctor.nameEn || apiDoctor.name,
+                  specialization: apiDoctor.specialization || apiDoctor.specialty || 'general',
+                  specializationAr: apiDoctor.specializationAr || apiDoctor.specialty || 'عام',
+                  specializationEn: apiDoctor.specializationEn || apiDoctor.specialty || 'General',
+                  phone: apiDoctor.phone || '',
+                  email: apiDoctor.email || '',
+                  isActive: apiDoctor.is_active !== undefined ? apiDoctor.is_active : true,
+                  experience: apiDoctor.experience || 0,
+                  rating: apiDoctor.rating || 0,
+                  reviews: apiDoctor.reviews || 0,
+                  price: apiDoctor.price || apiDoctor.consultationFee || 0,
+                  bioAr: apiDoctor.bioAr || apiDoctor.bio || '',
+                  bioEn: apiDoctor.bioEn || '',
+                  workDays: apiDoctor.workDays || apiDoctor.workingDays || [],
+                  workHours: apiDoctor.workHours || apiDoctor.workingHours || { start: '09:00', end: '17:00' },
+                  availableSlots: apiDoctor.availableSlots || [],
+                  patientsCount: apiDoctor.patientsCount || 0,
+                  satisfactionRate: apiDoctor.satisfactionRate || 0,
+                  _syncPending: false,
+                  _fromAPI: true
+                })
               }
             })
             
             setDoctors(mergedData)
             localStorage.setItem('mcsos_doctors_v2', JSON.stringify(mergedData))
-          } else {
-            if (localData.length > 0) {
-              setDoctors(localData)
-            } else {
-              setDoctors([])
-              localStorage.setItem('mcsos_doctors_v2', JSON.stringify([]))
-            }
+            console.log('📥 Merged:', mergedData.length, 'doctors total')
           }
         } catch (apiError) {
           console.warn('⚠️ API request failed:', apiError)
-          const saved = localStorage.getItem('mcsos_doctors_v2')
-          if (saved) {
-            const parsed = JSON.parse(saved)
-            if (parsed.length > 0) {
-              setDoctors(parsed)
-            } else {
-              setDoctors([])
-            }
-          } else {
-            setDoctors([])
-          }
-          toast.error('فشل تحميل البيانات من الخادم، جاري استخدام البيانات المحلية')
         }
-      } else {
-        const saved = localStorage.getItem('mcsos_doctors_v2')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (parsed.length > 0) {
-            setDoctors(parsed)
-          } else {
-            setDoctors([])
-          }
-        } else {
-          setDoctors([])
-        }
-        toast.success('وضع غير متصل - جاري استخدام البيانات المحلية', {
-          icon: '📶',
-          duration: 4000
-        })
       }
     } catch (error) {
       console.error('❌ Error loading data:', error)
       toast.error('حدث خطأ في تحميل البيانات')
-      setDoctors([])
     } finally {
       setLoading(false)
     }
   }
 
-  // ========== حفظ الأطباء (محلي + API) ==========
+  // ========== حفظ الأطباء ==========
   const saveDoctors = async (newDoctors) => {
     localStorage.setItem('mcsos_doctors_v2', JSON.stringify(newDoctors))
     setDoctors(newDoctors)
@@ -184,8 +163,9 @@ export default function DoctorsManager() {
     if (isOnline) {
       try {
         for (const doctor of newDoctors) {
-          if (doctor._syncPending) {
+          if (doctor._syncPending && !doctor._fromAPI) {
             try {
+              // ✅ البيانات المطلوبة حسب Swagger (CreateDoctorDto)
               const doctorData = {
                 name: doctor.nameAr,
                 specialization: doctor.specialization,
@@ -200,24 +180,14 @@ export default function DoctorsManager() {
               
               if (response && response.id) {
                 const synced = newDoctors.map(d => 
-                  d.id === doctor.id ? { ...d, id: response.id, _syncPending: false } : d
+                  d.id === doctor.id ? { ...d, id: response.id, _syncPending: false, _fromAPI: true } : d
                 )
                 localStorage.setItem('mcsos_doctors_v2', JSON.stringify(synced))
                 setDoctors(synced)
                 toast.success(`تمت مزامنة الطبيب ${doctor.nameAr} بنجاح`)
-              } else {
-                const synced = newDoctors.map(d => 
-                  d.id === doctor.id ? { ...d, _syncPending: false } : d
-                )
-                localStorage.setItem('mcsos_doctors_v2', JSON.stringify(synced))
-                setDoctors(synced)
-                toast.success(`تم حفظ الطبيب ${doctor.nameAr} محلياً`)
               }
             } catch (syncError) {
               console.warn('❌ Failed to sync doctor:', doctor.nameAr, syncError)
-              toast.error(`فشل مزامنة ${doctor.nameAr}، سيتم المحاولة مرة أخرى لاحقاً`, {
-                duration: 4000
-              })
             }
           }
         }
@@ -238,6 +208,7 @@ export default function DoctorsManager() {
     try {
       const specializationObj = specialties.find(s => s.id === doctorForm.specialization)
       
+      // ✅ إنشاء الطبيب محلياً مع كل البيانات
       const newDoctor = {
         id: Date.now(),
         nameAr: doctorForm.nameAr,
@@ -259,11 +230,19 @@ export default function DoctorsManager() {
         satisfactionRate: 0,
         availableSlots: [],
         isActive: true,
-        _syncPending: true
+        _syncPending: true,
+        _fromAPI: false
       }
 
+      // ✅ حفظ في localStorage أولاً
+      const updatedDoctors = [...doctors, newDoctor]
+      localStorage.setItem('mcsos_doctors_v2', JSON.stringify(updatedDoctors))
+      setDoctors(updatedDoctors)
+      
+      // ✅ محاولة المزامنة مع API
       if (isOnline) {
         try {
+          // ✅ البيانات المطلوبة حسب Swagger (CreateDoctorDto)
           const doctorData = {
             name: doctorForm.nameAr,
             specialization: doctorForm.specialization,
@@ -271,24 +250,30 @@ export default function DoctorsManager() {
             email: doctorForm.email || ''
           }
           
+          console.log('📤 Sending doctor data:', JSON.stringify(doctorData, null, 2))
+          
           const response = await doctorsService.createDoctor(doctorData)
           console.log('✅ API Response:', response)
           
           if (response && response.id) {
-            newDoctor.id = response.id
+            // ✅ تحديث الـ ID من API
+            const syncedDoctors = updatedDoctors.map(d => 
+              d.id === newDoctor.id ? { ...d, id: response.id, _syncPending: false, _fromAPI: true } : d
+            )
+            localStorage.setItem('mcsos_doctors_v2', JSON.stringify(syncedDoctors))
+            setDoctors(syncedDoctors)
+            toast.success('تم إضافة الطبيب والمزامنة مع الخادم')
+          } else {
+            toast.success('تم إضافة الطبيب محلياً (الخادم لم يستجب)', { icon: 'ℹ️' })
           }
-          newDoctor._syncPending = false
-          toast.success('تم إضافة الطبيب بنجاح')
         } catch (apiError) {
           console.warn('❌ API create failed:', apiError)
-          toast.success('تم الحفظ محلياً، سيتم المزامنة عند الاتصال', { icon: '⚠️', duration: 4000 })
+          toast.success('تم إضافة الطبيب محلياً (غير متصل بالخادم)', { icon: 'ℹ️' })
         }
       } else {
-        toast.success('تم الحفظ في وضع عدم الاتصال', { icon: '📶', duration: 4000 })
+        toast.success('تم إضافة الطبيب في وضع عدم الاتصال', { icon: '📶' })
       }
 
-      const updatedDoctors = [...doctors, newDoctor]
-      await saveDoctors(updatedDoctors)
       setShowDoctorModal(false)
       resetDoctorForm()
     } catch (error) {
@@ -340,28 +325,27 @@ export default function DoctorsManager() {
         _syncPending: true
       }
 
-      // ✅ محاولة تحديث API
       if (isOnline) {
         try {
+          // ✅ البيانات المطلوبة حسب Swagger (UpdateDoctorDto)
           const doctorData = {
             name: doctorForm.nameAr,
             specialization: doctorForm.specialization,
             phone: doctorForm.phone || '',
-            email: doctorForm.email || ''
+            email: doctorForm.email || '',
+            is_active: true
           }
           await doctorsService.updateDoctor(editingDoctor.id, doctorData)
           updatedDoctor._syncPending = false
           toast.success('تم تحديث بيانات الطبيب')
         } catch (apiError) {
           console.warn('❌ API update failed:', apiError)
-          // ✅ حفظ محلياً فقط في حالة فشل API
           toast.success('تم الحفظ محلياً (الخادم غير متاح)', { icon: '⚠️', duration: 4000 })
         }
       } else {
         toast.success('تم الحفظ في وضع عدم الاتصال', { icon: '📶', duration: 4000 })
       }
 
-      // ✅ تحديث القائمة المحلية
       const updatedDoctors = doctors.map(d => 
         d.id === editingDoctor.id ? updatedDoctor : d
       )

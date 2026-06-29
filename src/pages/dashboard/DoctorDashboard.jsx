@@ -82,25 +82,50 @@ export default function DoctorDashboard() {
   const loadStats = async () => {
     try {
       if (isOnline) {
+        // ✅ استخدام الـ API الجديد /sessions بدلاً من /stats/doctor
         const response = await executeWithOfflineSupport(
-          () => get('/stats/doctor'),
-          'doctor_stats',
-          JSON.parse(localStorage.getItem('mcsos_doctor_stats') || '{}')
+          () => get(`/v1/sessions?doctorId=${user?.id}`),
+          'doctor_sessions',
+          JSON.parse(localStorage.getItem('mcsos_doctor_sessions') || '[]')
         )
+        
+        const sessions = response || []
+        const today = new Date().toISOString().split('T')[0]
+        
+        // حساب الإحصائيات من البيانات
+        const totalPatients = [...new Set(sessions.map(s => s.patientId))].filter(Boolean).length
+        const completedSessions = sessions.filter(s => s.status === 'completed' || s.status === 'attended').length
+        const pendingSessions = sessions.filter(s => s.status === 'scheduled' || s.status === 'pending').length
+        const todayPatients = sessions.filter(s => s.date === today).length
+        
         setStats({
-          todayPatients: response.todayPatients || 0,
-          totalPatients: response.totalPatients || 0,
-          completedSessions: response.completedSessions || 0,
-          pendingSessions: response.pendingSessions || 0,
-          upcomingAppointments: response.upcomingAppointments || 0,
-          averageRating: response.averageRating || 0
+          todayPatients: todayPatients,
+          totalPatients: totalPatients,
+          completedSessions: completedSessions,
+          pendingSessions: pendingSessions,
+          upcomingAppointments: pendingSessions,
+          averageRating: 4.5 // يمكن جلبها من تقييمات المرضى لو موجودة
         })
-        localStorage.setItem('mcsos_doctor_stats', JSON.stringify(response))
+        
+        localStorage.setItem('mcsos_doctor_sessions', JSON.stringify(sessions))
       } else {
-        const saved = localStorage.getItem('mcsos_doctor_stats')
+        const saved = localStorage.getItem('mcsos_doctor_sessions')
         if (saved) {
-          const data = JSON.parse(saved)
-          setStats(data)
+          const sessions = JSON.parse(saved)
+          const today = new Date().toISOString().split('T')[0]
+          const totalPatients = [...new Set(sessions.map(s => s.patientId))].filter(Boolean).length
+          const completedSessions = sessions.filter(s => s.status === 'completed' || s.status === 'attended').length
+          const pendingSessions = sessions.filter(s => s.status === 'scheduled' || s.status === 'pending').length
+          const todayPatients = sessions.filter(s => s.date === today).length
+          
+          setStats({
+            todayPatients: todayPatients,
+            totalPatients: totalPatients,
+            completedSessions: completedSessions,
+            pendingSessions: pendingSessions,
+            upcomingAppointments: pendingSessions,
+            averageRating: 4.5
+          })
         }
       }
     } catch (error) {
@@ -112,16 +137,32 @@ export default function DoctorDashboard() {
   const loadTodaySchedule = async () => {
     try {
       if (isOnline) {
+        const today = new Date().toISOString().split('T')[0]
+        // ✅ استخدام الـ API الجديد /sessions مع فلتر التاريخ والدكتور
         const response = await executeWithOfflineSupport(
-          () => appointmentsService.getTodayAppointments(),
-          'today_appointments',
-          JSON.parse(localStorage.getItem('mcsos_today_appointments') || '[]')
+          () => get(`/v1/sessions?doctorId=${user?.id}&date=${today}`),
+          'today_sessions',
+          JSON.parse(localStorage.getItem('mcsos_today_sessions') || '[]')
         )
-        const data = response || []
-        setTodaySchedule(data)
-        localStorage.setItem('mcsos_today_appointments', JSON.stringify(data))
+        
+        const sessions = response || []
+        
+        // تحويل البيانات إلى شكل متوافق مع الواجهة
+        const formattedSessions = sessions.map(s => ({
+          id: s.id,
+          time: s.time || s.startTime || '09:00',
+          patient: s.patientName || s.patient || 'مريض',
+          patientId: s.patientId,
+          age: s.patientAge || s.age || 30,
+          type: s.type || s.sessionType || 'كشف',
+          status: s.status || 'scheduled',
+          date: s.date
+        }))
+        
+        setTodaySchedule(formattedSessions)
+        localStorage.setItem('mcsos_today_sessions', JSON.stringify(formattedSessions))
       } else {
-        const saved = localStorage.getItem('mcsos_today_appointments')
+        const saved = localStorage.getItem('mcsos_today_sessions')
         if (saved) setTodaySchedule(JSON.parse(saved))
       }
     } catch (error) {
@@ -133,49 +174,101 @@ export default function DoctorDashboard() {
   const loadRecentPatients = async () => {
     try {
       if (isOnline) {
+        // ✅ جلب المرضى من الـ API
         const response = await executeWithOfflineSupport(
-          () => patientsService.getPatients({ limit: 5, recent: true }),
-          'recent_patients',
-          JSON.parse(localStorage.getItem('mcsos_recent_patients') || '[]')
+          () => get('/v1/patients'),
+          'all_patients',
+          JSON.parse(localStorage.getItem('mcsos_all_patients') || '[]')
         )
-        const data = response || []
-        setRecentPatients(data)
-        localStorage.setItem('mcsos_recent_patients', JSON.stringify(data))
+        
+        const patients = response || []
+        
+        // فلتر مرضى هذا الدكتور
+        const myPatients = patients.filter(p => p.doctorId === user?.id || p.assignedDoctor === user?.id)
+        
+        // ترتيب حسب آخر زيارة
+        const sorted = myPatients.sort((a, b) => {
+          const dateA = new Date(a.lastVisit || a.updatedAt || 0)
+          const dateB = new Date(b.lastVisit || b.updatedAt || 0)
+          return dateB - dateA
+        })
+        
+        const formattedPatients = sorted.slice(0, 5).map(p => ({
+          id: p.id,
+          name: p.nameAr || p.name || 'مريض',
+          age: p.age || 0,
+          lastVisit: p.lastVisit || p.updatedAt?.split('T')[0] || 'اليوم',
+          diagnosis: p.diagnosis || p.notes || 'قيد التشخيص',
+          progress: p.progress || 0
+        }))
+        
+        setRecentPatients(formattedPatients)
+        localStorage.setItem('mcsos_all_patients', JSON.stringify(patients))
       } else {
-        const saved = localStorage.getItem('mcsos_recent_patients')
-        if (saved) setRecentPatients(JSON.parse(saved))
+        const saved = localStorage.getItem('mcsos_all_patients')
+        if (saved) {
+          const patients = JSON.parse(saved)
+          const myPatients = patients.filter(p => p.doctorId === user?.id || p.assignedDoctor === user?.id)
+          const sorted = myPatients.sort((a, b) => {
+            const dateA = new Date(a.lastVisit || a.updatedAt || 0)
+            const dateB = new Date(b.lastVisit || b.updatedAt || 0)
+            return dateB - dateA
+          })
+          const formattedPatients = sorted.slice(0, 5).map(p => ({
+            id: p.id,
+            name: p.nameAr || p.name || 'مريض',
+            age: p.age || 0,
+            lastVisit: p.lastVisit || p.updatedAt?.split('T')[0] || 'اليوم',
+            diagnosis: p.diagnosis || p.notes || 'قيد التشخيص',
+            progress: p.progress || 0
+          }))
+          setRecentPatients(formattedPatients)
+        }
       }
     } catch (error) {
       console.error('Error loading recent patients:', error)
     }
   }
 
-  // ========== دالة مساعدة للحصول على دالة GET ==========
+  // ========== دالة مساعدة للـ GET ==========
   const get = async (endpoint) => {
+    const token = localStorage.getItem('mcsos_token')
     const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`)
+    }
+    
     return response.json()
   }
 
   // ========== حالة الموعد ==========
   const getStatusBadge = (status) => {
     switch(status) {
-      case 'completed': return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ مكتمل</span>
-      case 'in-progress': return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⏳ جاري</span>
-      case 'scheduled': return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">📅 مجدول</span>
-      default: return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status}</span>
+      case 'completed':
+      case 'attended': 
+        return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ مكتمل</span>
+      case 'in-progress': 
+        return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⏳ جاري</span>
+      case 'scheduled':
+      case 'pending':
+      case 'upcoming': 
+        return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">📅 مجدول</span>
+      default: 
+        return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status}</span>
     }
   }
 
   // ========== دالة فتح نافذة تسجيل الحضور ==========
   const handleOpenCheckIn = () => {
-    const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled' || app.status === 'upcoming')
+    const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled' || app.status === 'upcoming' || app.status === 'pending')
     if (scheduledPatients.length === 0) {
-      toast.info('لا توجد مواعيد قادمة لتسجيل الحضور')
+      toast.success('لا توجد مواعيد قادمة لتسجيل الحضور', { icon: 'ℹ️' })
       return
     }
     setShowCheckInModal(true)
@@ -191,7 +284,8 @@ export default function DoctorDashboard() {
     setIsSubmitting(true)
     try {
       if (isOnline) {
-        await appointmentsService.checkInAppointment(selectedPatientForCheckIn.id)
+        // ✅ استخدام الـ API الجديد /sessions/{id}/attendance
+        await post(`/v1/sessions/${selectedPatientForCheckIn.id}/attendance`, { status: 'attended' })
       }
       
       setTodaySchedule(todaySchedule.map(app => 
@@ -200,7 +294,8 @@ export default function DoctorDashboard() {
       
       setStats(prev => ({
         ...prev,
-        completedSessions: prev.completedSessions + 1
+        completedSessions: prev.completedSessions + 1,
+        pendingSessions: Math.max(0, prev.pendingSessions - 1)
       }))
       
       toast.success(`تم تسجيل حضور المريض ${selectedPatientForCheckIn.patient}`)
@@ -211,6 +306,25 @@ export default function DoctorDashboard() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // ========== دالة مساعدة للـ POST ==========
+  const post = async (endpoint, data) => {
+    const token = localStorage.getItem('mcsos_token')
+    const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`)
+    }
+    
+    return response.json()
   }
 
   // ========== دالة تحديث البيانات ==========
@@ -265,7 +379,7 @@ export default function DoctorDashboard() {
     }))
   }
 
-  // ========== دالة حفظ الروشتة ==========
+  // ========== دالة حفظ الروشتة (محلياً) ==========
   const handleSavePrescription = async () => {
     if (!newPrescription.patientName) {
       toast.error('الرجاء إدخال اسم المريض')
@@ -285,17 +399,14 @@ export default function DoctorDashboard() {
         medications: validMedications,
         notes: newPrescription.notes || '',
         doctorId: user?.id,
-        doctorName: user?.name
+        doctorName: user?.name,
+        date: new Date().toISOString().split('T')[0]
       }
 
-      if (isOnline) {
-        await prescriptionsService.createPrescription(prescriptionData)
-      } else {
-        // حفظ محلياً
-        const existing = JSON.parse(localStorage.getItem('mcsos_prescriptions') || '[]')
-        existing.push({ ...prescriptionData, id: Date.now(), _syncPending: true })
-        localStorage.setItem('mcsos_prescriptions', JSON.stringify(existing))
-      }
+      // ✅ حفظ محلياً (الـ API مش مدعوم للروشتات)
+      const existing = JSON.parse(localStorage.getItem('mcsos_prescriptions') || '[]')
+      existing.push({ ...prescriptionData, id: Date.now(), _syncPending: true })
+      localStorage.setItem('mcsos_prescriptions', JSON.stringify(existing))
       
       toast.success(`تم إضافة روشتة جديدة للمريض ${newPrescription.patientName}`)
       setShowPrescriptionModal(false)
@@ -363,7 +474,7 @@ export default function DoctorDashboard() {
     toast.success('جاري طباعة التقرير...')
   }
 
-  const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled' || app.status === 'upcoming')
+  const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled' || app.status === 'upcoming' || app.status === 'pending')
 
   if (loading) {
     return (

@@ -12,6 +12,7 @@ export const patientsService = {
       const response = await get(endpoint)
       return response.patients || []
     } catch (error) {
+      console.error('❌ getPatients error:', error)
       throw error
     }
   },
@@ -19,9 +20,10 @@ export const patientsService = {
   // الحصول على مريض محدد
   getPatient: async (id) => {
     try {
-      const response = await get(`${ENDPOINTS.PATIENTS.LIST}/${id}`)
+      const response = await get(ENDPOINTS.PATIENTS.GET(id))
       return response.patient
     } catch (error) {
+      console.error('❌ getPatient error:', error)
       throw error
     }
   },
@@ -30,8 +32,9 @@ export const patientsService = {
   createPatient: async (patientData) => {
     try {
       const response = await post(ENDPOINTS.PATIENTS.CREATE, patientData)
-      return response.patient
+      return response
     } catch (error) {
+      console.error('❌ createPatient error:', error)
       throw error
     }
   },
@@ -40,8 +43,9 @@ export const patientsService = {
   updatePatient: async (id, patientData) => {
     try {
       const response = await put(ENDPOINTS.PATIENTS.UPDATE(id), patientData)
-      return response.patient
+      return response
     } catch (error) {
+      console.error('❌ updatePatient error:', error)
       throw error
     }
   },
@@ -52,6 +56,7 @@ export const patientsService = {
       await del(ENDPOINTS.PATIENTS.DELETE(id))
       return true
     } catch (error) {
+      console.error('❌ deletePatient error:', error)
       throw error
     }
   },
@@ -62,6 +67,7 @@ export const patientsService = {
       const response = await get(`${ENDPOINTS.PATIENTS.SEARCH}?q=${encodeURIComponent(query)}`)
       return response.patients || []
     } catch (error) {
+      console.error('❌ searchPatients error:', error)
       throw error
     }
   },
@@ -72,6 +78,7 @@ export const patientsService = {
       const response = await get(ENDPOINTS.PATIENTS.STATS)
       return response
     } catch (error) {
+      console.error('❌ getPatientsStats error:', error)
       throw error
     }
   },
@@ -82,6 +89,7 @@ export const patientsService = {
       const response = await get(ENDPOINTS.PATIENTS.PROGRESS(id))
       return response
     } catch (error) {
+      console.error('❌ getPatientProgress error:', error)
       throw error
     }
   },
@@ -92,6 +100,7 @@ export const patientsService = {
       const response = await put(ENDPOINTS.PATIENTS.PROGRESS(id), progressData)
       return response
     } catch (error) {
+      console.error('❌ updatePatientProgress error:', error)
       throw error
     }
   },
@@ -102,6 +111,7 @@ export const patientsService = {
       const response = await get(ENDPOINTS.PATIENTS.SESSIONS(id))
       return response.sessions || []
     } catch (error) {
+      console.error('❌ getPatientSessions error:', error)
       throw error
     }
   },
@@ -112,7 +122,70 @@ export const patientsService = {
       const response = await post(ENDPOINTS.PATIENTS.SESSIONS(id), sessionData)
       return response.session
     } catch (error) {
+      console.error('❌ addPatientSession error:', error)
       throw error
     }
   },
+
+  // رفع صورة لمريض
+  uploadPatientImage: async (patientId, file, metadata = {}) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      Object.keys(metadata).forEach(key => {
+        formData.append(key, metadata[key])
+      })
+
+      const response = await post(`/api/v1/patients/${patientId}/images`, formData)
+      return response
+    } catch (error) {
+      console.error('❌ uploadPatientImage error:', error)
+      throw error
+    }
+  },
+
+  // إضافة تقرير لمريض
+  addReport: async (patientId, reportData) => {
+    try {
+      const response = await post(`/api/v1/patients/${patientId}/reports`, reportData)
+      return response
+    } catch (error) {
+      console.error('❌ addReport error:', error)
+      throw error
+    }
+  },
+
+  // تحديث تقرير
+  updateReport: async (patientId, reportId, reportData) => {
+    try {
+      const response = await put(`/api/v1/patients/${patientId}/reports/${reportId}`, reportData)
+      return response
+    } catch (error) {
+      console.error('❌ updateReport error:', error)
+      throw error
+    }
+  },
+
+  // حذف تقرير
+  deleteReport: async (patientId, reportId) => {
+    try {
+      await del(`/api/v1/patients/${patientId}/reports/${reportId}`)
+      return true
+    } catch (error) {
+      console.error('❌ deleteReport error:', error)
+      throw error
+    }
+  },
+
+  // إضافة روشتة لمريض
+  addPrescription: async (patientId, prescriptionData) => {
+    try {
+      const response = await post(`/api/v1/patients/${patientId}/prescriptions`, prescriptionData)
+      return response
+    } catch (error) {
+      console.error('❌ addPrescription error:', error)
+      throw error
+    }
+  }
 }
