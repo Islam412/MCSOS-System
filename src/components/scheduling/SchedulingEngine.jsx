@@ -1,12 +1,15 @@
 // src/components/scheduling/SchedulingEngine.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calendar, Clock, Users, Plus, Trash2, Save, Zap, Loader2, RefreshCw } from 'lucide-react'
+import { Calendar, Clock, Users, Plus, Trash2, Save, Zap, Loader2, RefreshCw, Edit, X, CheckCircle, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
-import { doctorsService, appointmentsService } from '../../services/api'
+import { doctorsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+
+// ========== عنوان الـ API ==========
+const API_BASE = 'https://medical-center-app-production.up.railway.app/api/v1'
 
 export default function SchedulingEngine() {
   const { t, i18n } = useTranslation()
@@ -22,12 +25,108 @@ export default function SchedulingEngine() {
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [showSlotModal, setShowSlotModal] = useState(false)
+  const [editingSlot, setEditingSlot] = useState(null)
+  const [slotForm, setSlotForm] = useState({
+    doctorId: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    capacity: 1,
+    status: 'available'
+  })
 
   const bulkPatterns = [
     { id: 'sun_tue_thu', nameAr: 'الأحد - الثلاثاء - الخميس', nameEn: 'Sun - Tue - Thu' },
     { id: 'mon_wed_sat', nameAr: 'الإثنين - الأربعاء - السبت', nameEn: 'Mon - Wed - Sat' },
     { id: 'daily', nameAr: 'يومياً', nameEn: 'Daily' },
   ]
+
+  // ========== دالة مساعدة للـ GET ==========
+  const fetchApi = async (endpoint) => {
+    const token = localStorage.getItem('mcsos_token')
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.warn(`⚠️ API ${endpoint} failed:`, error.message)
+      return null
+    }
+  }
+
+  // ========== دالة مساعدة للـ POST ==========
+  const postApi = async (endpoint, data) => {
+    const token = localStorage.getItem('mcsos_token')
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || `HTTP ${response.status}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.warn(`⚠️ POST ${endpoint} failed:`, error.message)
+      throw error
+    }
+  }
+
+  // ========== دالة مساعدة للـ PUT ==========
+  const putApi = async (endpoint, data) => {
+    const token = localStorage.getItem('mcsos_token')
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || `HTTP ${response.status}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.warn(`⚠️ PUT ${endpoint} failed:`, error.message)
+      throw error
+    }
+  }
+
+  // ========== دالة مساعدة للـ DELETE ==========
+  const deleteApi = async (endpoint) => {
+    const token = localStorage.getItem('mcsos_token')
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      return true
+    } catch (error) {
+      console.warn(`⚠️ DELETE ${endpoint} failed:`, error.message)
+      throw error
+    }
+  }
 
   // ========== تحميل البيانات ==========
   useEffect(() => {
@@ -37,45 +136,10 @@ export default function SchedulingEngine() {
   const loadData = async () => {
     setLoading(true)
     try {
-      // تحميل الأطباء
-      if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => doctorsService.getDoctors(),
-          'doctors',
-          JSON.parse(localStorage.getItem('mcsos_doctors') || '[]')
-        )
-        const data = response?.doctors || response || []
-        setDoctors(data)
-        localStorage.setItem('mcsos_doctors', JSON.stringify(data))
-      } else {
-        const saved = localStorage.getItem('mcsos_doctors')
-        setDoctors(saved ? JSON.parse(saved) : [])
-      }
-
-      // تحميل المواعيد
-      if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => appointmentsService.getAppointments(),
-          'appointments',
-          JSON.parse(localStorage.getItem('mcsos_appointments') || '[]')
-        )
-        const data = response?.appointments || response || []
-        // تقسيم المواعيد إلى مجمعة وديناميكية
-        const bulk = data.filter(item => item.type === 'bulk')
-        const dynamic = data.filter(item => item.type === 'dynamic')
-        setSlots(bulk)
-        setDynamicSlots(dynamic)
-        localStorage.setItem('mcsos_appointments', JSON.stringify(data))
-      } else {
-        const saved = localStorage.getItem('mcsos_appointments')
-        if (saved) {
-          const data = JSON.parse(saved)
-          const bulk = data.filter(item => item.type === 'bulk')
-          const dynamic = data.filter(item => item.type === 'dynamic')
-          setSlots(bulk)
-          setDynamicSlots(dynamic)
-        }
-      }
+      await Promise.all([
+        loadDoctors(),
+        loadSlots()
+      ])
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('حدث خطأ في تحميل البيانات')
@@ -84,10 +148,67 @@ export default function SchedulingEngine() {
     }
   }
 
+  // ========== تحميل الأطباء ==========
+  const loadDoctors = async () => {
+    try {
+      if (!isOnline) {
+        const saved = localStorage.getItem('mcsos_doctors')
+        if (saved) {
+          setDoctors(JSON.parse(saved))
+        }
+        return
+      }
+
+      const doctors = await doctorsService.getDoctors()
+      if (Array.isArray(doctors) && doctors.length > 0) {
+        setDoctors(doctors)
+        localStorage.setItem('mcsos_doctors', JSON.stringify(doctors))
+      }
+    } catch (error) {
+      console.error('Error loading doctors:', error)
+      const saved = localStorage.getItem('mcsos_doctors')
+      if (saved) {
+        setDoctors(JSON.parse(saved))
+      }
+    }
+  }
+
+  // ========== تحميل المواعيد ==========
+  const loadSlots = async () => {
+    try {
+      // ✅ محاولة جلب من API
+      if (isOnline) {
+        const data = await fetchApi('/scheduling/slots')
+        if (data && Array.isArray(data)) {
+          const bulk = data.filter(item => item.type === 'bulk' || item.isBulk)
+          const dynamic = data.filter(item => item.type === 'dynamic' || !item.isBulk)
+          setSlots(bulk)
+          setDynamicSlots(dynamic)
+          localStorage.setItem('mcsos_slots', JSON.stringify(data))
+          return
+        }
+      }
+
+      // ✅ استخدام localStorage كاحتياطي
+      const saved = localStorage.getItem('mcsos_slots')
+      if (saved) {
+        const data = JSON.parse(saved)
+        if (Array.isArray(data)) {
+          const bulk = data.filter(item => item.type === 'bulk' || item.isBulk)
+          const dynamic = data.filter(item => item.type === 'dynamic' || !item.isBulk)
+          setSlots(bulk)
+          setDynamicSlots(dynamic)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading slots:', error)
+    }
+  }
+
   // ========== دوال مساعدة ==========
   const getDoctorName = (doctor) => {
     if (!doctor) return ''
-    return isRTL ? doctor.nameAr : doctor.nameEn
+    return isRTL ? (doctor.nameAr || doctor.name) : (doctor.nameEn || doctor.name)
   }
 
   const getDoctorById = (id) => {
@@ -102,7 +223,7 @@ export default function SchedulingEngine() {
   // ========== إنشاء مواعيد مجمعة ==========
   const generateBulkSlots = async () => {
     if (!selectedDoctor || !bulkPattern) {
-      toast.error(t('scheduling.select_doctor_pattern'))
+      toast.error('الرجاء اختيار الطبيب والنمط')
       return
     }
 
@@ -123,8 +244,9 @@ export default function SchedulingEngine() {
       let newSlot
       if (isOnline) {
         try {
-          const response = await appointmentsService.createBulkSlots(slotData)
-          newSlot = response?.slot || response
+          const response = await postApi('/scheduling/slots/bulk', slotData)
+          newSlot = response.slot || response
+          toast.success('تم إنشاء المواعيد المجمعة بنجاح')
         } catch (apiError) {
           console.warn('API bulk creation failed, saving locally:', apiError)
           newSlot = { ...slotData, id: Date.now(), _syncPending: true }
@@ -136,8 +258,8 @@ export default function SchedulingEngine() {
       }
 
       setSlots([...slots, newSlot])
-      saveAppointments([...slots, newSlot, ...dynamicSlots])
-      toast.success(t('scheduling.bulk_generated'))
+      saveSlots([...slots, newSlot, ...dynamicSlots])
+      
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في إنشاء المواعيد المجمعة')
     } finally {
@@ -145,7 +267,7 @@ export default function SchedulingEngine() {
     }
   }
 
-  // ========== إنشاء مواعيد ديناميكية ==========
+  // ========== إنشاء موعد ديناميكي ==========
   const generateDynamicSlots = async () => {
     if (!selectedDoctor) {
       toast.error('الرجاء اختيار الطبيب')
@@ -155,43 +277,109 @@ export default function SchedulingEngine() {
     setSubmitting(true)
     try {
       const doctor = getDoctorById(selectedDoctor)
-      const slotData = {
+      
+      // ✅ فتح مودال إضافة موعد
+      setSlotForm({
         doctorId: selectedDoctor,
-        doctorName: getDoctorName(doctor),
         date: new Date().toISOString().split('T')[0],
-        availableSlots: 8,
-        bookedSlots: 0,
-        type: 'dynamic'
+        startTime: '09:00',
+        endTime: '10:00',
+        capacity: 1,
+        status: 'available'
+      })
+      setEditingSlot(null)
+      setShowSlotModal(true)
+      
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ========== حفظ موعد فردي ==========
+  const handleSaveSlot = async () => {
+    if (!slotForm.doctorId || !slotForm.date || !slotForm.startTime) {
+      toast.error('الرجاء ملء جميع الحقول')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const slotData = {
+        doctorId: slotForm.doctorId,
+        date: slotForm.date,
+        startTime: slotForm.startTime,
+        endTime: slotForm.endTime || slotForm.startTime,
+        capacity: parseInt(slotForm.capacity) || 1,
+        status: slotForm.status || 'available'
       }
 
       let newSlot
-      if (isOnline) {
-        try {
-          const response = await appointmentsService.createDynamicSlots(slotData)
-          newSlot = response?.slot || response
-        } catch (apiError) {
-          console.warn('API dynamic creation failed, saving locally:', apiError)
-          newSlot = { ...slotData, id: Date.now(), _syncPending: true }
-          toast.warning('تم الحفظ محلياً، سيتم المزامنة عند الاتصال')
+
+      if (editingSlot) {
+        // ✅ تحديث موعد
+        if (isOnline) {
+          try {
+            const response = await putApi(`/scheduling/slots/${editingSlot.id}`, slotData)
+            newSlot = response.slot || response
+            toast.success('تم تحديث الموعد بنجاح')
+          } catch (apiError) {
+            console.warn('API update failed, saving locally:', apiError)
+            newSlot = { ...slotData, id: editingSlot.id, _syncPending: true }
+            toast.warning('تم الحفظ محلياً، سيتم المزامنة عند الاتصال')
+          }
+        } else {
+          newSlot = { ...slotData, id: editingSlot.id, _syncPending: true }
+          toast.info('تم الحفظ في وضع عدم الاتصال')
         }
+
+        const updated = dynamicSlots.map(s => s.id === editingSlot.id ? newSlot : s)
+        setDynamicSlots(updated)
+        saveSlots([...slots, ...updated])
+        
       } else {
-        newSlot = { ...slotData, id: Date.now(), _syncPending: true }
-        toast.info('تم الحفظ في وضع عدم الاتصال')
+        // ✅ إضافة موعد جديد
+        if (isOnline) {
+          try {
+            const response = await postApi('/scheduling/slots', slotData)
+            newSlot = response.slot || response
+            toast.success('تم إضافة الموعد بنجاح')
+          } catch (apiError) {
+            console.warn('API create failed, saving locally:', apiError)
+            newSlot = { ...slotData, id: Date.now(), _syncPending: true }
+            toast.warning('تم الحفظ محلياً، سيتم المزامنة عند الاتصال')
+          }
+        } else {
+          newSlot = { ...slotData, id: Date.now(), _syncPending: true }
+          toast.info('تم الحفظ في وضع عدم الاتصال')
+        }
+
+        setDynamicSlots([...dynamicSlots, newSlot])
+        saveSlots([...slots, ...dynamicSlots, newSlot])
       }
 
-      setDynamicSlots([...dynamicSlots, newSlot])
-      saveAppointments([...slots, ...dynamicSlots, newSlot])
-      toast.success(t('scheduling.dynamic_generated'))
+      setShowSlotModal(false)
+      setEditingSlot(null)
+      setSlotForm({
+        doctorId: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        capacity: 1,
+        status: 'available'
+      })
+
     } catch (error) {
-      toast.error(error.message || 'حدث خطأ في إنشاء المواعيد الديناميكية')
+      toast.error(error.message || 'حدث خطأ في حفظ الموعد')
     } finally {
       setSubmitting(false)
     }
   }
 
   // ========== حفظ المواعيد ==========
-  const saveAppointments = (data) => {
-    localStorage.setItem('mcsos_appointments', JSON.stringify(data))
+  const saveSlots = (data) => {
+    localStorage.setItem('mcsos_slots', JSON.stringify(data))
   }
 
   // ========== حذف موعد ==========
@@ -201,7 +389,8 @@ export default function SchedulingEngine() {
     try {
       if (isOnline) {
         try {
-          await appointmentsService.deleteAppointment(id)
+          await deleteApi(`/scheduling/slots/${id}`)
+          toast.success('تم حذف الموعد')
         } catch (apiError) {
           console.warn('API delete failed, removing locally:', apiError)
         }
@@ -216,11 +405,45 @@ export default function SchedulingEngine() {
         setDynamicSlots(updated)
       }
 
-      const allAppointments = [...slots, ...dynamicSlots]
-      saveAppointments(allAppointments)
-      toast.success(t('scheduling.slot_deleted'))
+      const allSlots = [...slots, ...dynamicSlots]
+      saveSlots(allSlots)
+      
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في حذف الموعد')
+    }
+  }
+
+  // ========== تعديل موعد ==========
+  const editSlot = (slot) => {
+    setEditingSlot(slot)
+    setSlotForm({
+      doctorId: slot.doctorId || slot.doctor_id,
+      date: slot.date || slot.slot_date,
+      startTime: slot.startTime || slot.start_time || '09:00',
+      endTime: slot.endTime || slot.end_time || '10:00',
+      capacity: slot.capacity || 1,
+      status: slot.status || 'available'
+    })
+    setShowSlotModal(true)
+  }
+
+  // ========== تحديث البيانات ==========
+  const refreshData = () => {
+    loadData()
+    toast.success('تم تحديث البيانات')
+  }
+
+  // ========== حالة الموعد ==========
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case 'available':
+        return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ متاح</span>
+      case 'booked':
+        return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">📅 محجوز</span>
+      case 'cancelled':
+        return <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">✗ ملغي</span>
+      default:
+        return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status}</span>
     }
   }
 
@@ -229,7 +452,7 @@ export default function SchedulingEngine() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">جاري التحميل...</p>
+          <p className="text-gray-400">جاري التحميل...</p>
         </div>
       </div>
     )
@@ -240,10 +463,10 @@ export default function SchedulingEngine() {
       <div className={`flex justify-between items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
-            {t('scheduling.title')}
+            {t('scheduling.title') || 'إدارة المواعيد'}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            {t('scheduling.subtitle')}
+            {t('scheduling.subtitle') || 'إنشاء وإدارة مواعيد الأطباء'}
             {!isOnline && (
               <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
                 ⚡ غير متصل
@@ -252,7 +475,7 @@ export default function SchedulingEngine() {
           </p>
         </div>
         <button
-          onClick={loadData}
+          onClick={refreshData}
           className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30"
         >
           <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> تحديث
@@ -262,14 +485,14 @@ export default function SchedulingEngine() {
       {/* Controls */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <label className="block text-sm font-semibold mb-2">{t('scheduling.select_doctor')}</label>
+          <label className="block text-sm font-semibold mb-2">{t('scheduling.select_doctor') || 'اختر الطبيب'}</label>
           <select
             className="w-full p-2 border rounded-lg dark:bg-gray-900"
             value={selectedDoctor}
             onChange={(e) => setSelectedDoctor(e.target.value)}
             disabled={submitting}
           >
-            <option value="">{t('scheduling.select_doctor')}</option>
+            <option value="">{t('scheduling.select_doctor') || 'اختر الطبيب'}</option>
             {doctors.map(doc => (
               <option key={doc.id} value={doc.id}>{getDoctorName(doc)}</option>
             ))}
@@ -277,14 +500,14 @@ export default function SchedulingEngine() {
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <label className="block text-sm font-semibold mb-2">{t('scheduling.bulk_pattern')}</label>
+          <label className="block text-sm font-semibold mb-2">{t('scheduling.bulk_pattern') || 'نمط المواعيد'}</label>
           <select
             className="w-full p-2 border rounded-lg dark:bg-gray-900"
             value={bulkPattern}
             onChange={(e) => setBulkPattern(e.target.value)}
             disabled={submitting}
           >
-            <option value="">{t('scheduling.select_pattern')}</option>
+            <option value="">{t('scheduling.select_pattern') || 'اختر النمط'}</option>
             {bulkPatterns.map(pattern => (
               <option key={pattern.id} value={pattern.id}>{isRTL ? pattern.nameAr : pattern.nameEn}</option>
             ))}
@@ -298,15 +521,15 @@ export default function SchedulingEngine() {
             className="flex-1 bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? <Loader2 size={18} className="animate-spin" /> : <Calendar size={18} />}
-            {t('scheduling.bulk_generate')}
+            إنشاء مجمع
           </button>
           <button
             onClick={generateDynamicSlots}
             disabled={submitting || !selectedDoctor}
             className="flex-1 bg-green-600 text-white p-3 rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
-            {t('scheduling.dynamic_generate')}
+            {submitting ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+            إضافة موعد
           </button>
         </div>
       </div>
@@ -316,7 +539,7 @@ export default function SchedulingEngine() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <Calendar className="text-blue-500" />
-            {t('scheduling.bulk_slots')}
+            المواعيد المجمعة
             <span className="text-sm text-gray-400 font-normal ml-2">
               ({slots.filter(s => s._syncPending).length > 0 && 
                 <span className="text-yellow-400">⏳ {slots.filter(s => s._syncPending).length} في انتظار المزامنة</span>}
@@ -326,19 +549,27 @@ export default function SchedulingEngine() {
             {slots.map(slot => (
               <div key={slot.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
                 <div>
-                  <p className="font-semibold">{slot.doctorName}</p>
-                  <p className="text-sm text-gray-500">{slot.patternName}</p>
-                  <p className="text-xs text-gray-400">{slot.startDate} → {slot.endDate}</p>
+                  <p className="font-semibold">{slot.doctorName || getDoctorName(getDoctorById(slot.doctorId))}</p>
+                  <p className="text-sm text-gray-500">{slot.patternName || slot.pattern}</p>
+                  <p className="text-xs text-gray-400">{slot.startDate || slot.date} → {slot.endDate}</p>
                   {slot._syncPending && (
                     <span className="text-xs text-yellow-400">⏳ في انتظار المزامنة</span>
                   )}
                 </div>
-                <button
-                  onClick={() => deleteSlot(slot.id, 'bulk')}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
-                >
-                  <Trash2 size={18} />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => editSlot(slot)}
+                    className="p-2 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition"
+                  >
+                    <Edit size={18} />
+                  </button>
+                  <button
+                    onClick={() => deleteSlot(slot.id, 'bulk')}
+                    className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -350,7 +581,7 @@ export default function SchedulingEngine() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <Clock className="text-green-500" />
-            {t('scheduling.dynamic_slots')}
+            المواعيد الفردية
             <span className="text-sm text-gray-400 font-normal ml-2">
               ({dynamicSlots.filter(s => s._syncPending).length > 0 && 
                 <span className="text-yellow-400">⏳ {dynamicSlots.filter(s => s._syncPending).length} في انتظار المزامنة</span>}
@@ -360,19 +591,30 @@ export default function SchedulingEngine() {
             {dynamicSlots.map(slot => (
               <div key={slot.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
                 <div>
-                  <p className="font-semibold">{slot.doctorName}</p>
-                  <p className="text-sm text-gray-500">{slot.date}</p>
-                  <p className="text-xs text-gray-400">{t('scheduling.available')}: {slot.availableSlots - slot.bookedSlots} / {slot.availableSlots}</p>
+                  <p className="font-semibold">{slot.doctorName || getDoctorName(getDoctorById(slot.doctorId))}</p>
+                  <p className="text-sm text-gray-500">{slot.date} - {slot.startTime || slot.start_time}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {getStatusBadge(slot.status)}
+                    {slot.capacity && <span className="text-xs text-gray-400">السعة: {slot.capacity}</span>}
+                  </div>
                   {slot._syncPending && (
                     <span className="text-xs text-yellow-400">⏳ في انتظار المزامنة</span>
                   )}
                 </div>
-                <button
-                  onClick={() => deleteSlot(slot.id, 'dynamic')}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
-                >
-                  <Trash2 size={18} />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => editSlot(slot)}
+                    className="p-2 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition"
+                  >
+                    <Edit size={18} />
+                  </button>
+                  <button
+                    onClick={() => deleteSlot(slot.id, 'dynamic')}
+                    className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -382,8 +624,119 @@ export default function SchedulingEngine() {
       {slots.length === 0 && dynamicSlots.length === 0 && (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl">
           <Calendar size={48} className="mx-auto text-gray-400 mb-3" />
-          <p className="text-gray-500">{t('scheduling.no_slots')}</p>
-          <p className="text-sm text-gray-400">{t('scheduling.generate_first')}</p>
+          <p className="text-gray-500">لا توجد مواعيد</p>
+          <p className="text-sm text-gray-400">قم بإنشاء مواعيد جديدة باستخدام الأزرار أعلاه</p>
+        </div>
+      )}
+
+      {/* Modal إضافة/تعديل موعد */}
+      {showSlotModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                {editingSlot ? 'تعديل موعد' : 'إضافة موعد جديد'}
+              </h2>
+              <button onClick={() => setShowSlotModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                <X size={20} className="text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب</label>
+                <select
+                  className="w-full p-2 border rounded-lg dark:bg-gray-900"
+                  value={slotForm.doctorId}
+                  onChange={(e) => setSlotForm({...slotForm, doctorId: e.target.value})}
+                  disabled={submitting}
+                >
+                  <option value="">اختر الطبيب</option>
+                  {doctors.map(doc => (
+                    <option key={doc.id} value={doc.id}>{getDoctorName(doc)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
+                <input
+                  type="date"
+                  className="w-full p-2 border rounded-lg dark:bg-gray-900"
+                  value={slotForm.date}
+                  onChange={(e) => setSlotForm({...slotForm, date: e.target.value})}
+                  min={new Date().toISOString().split('T')[0]}
+                  disabled={submitting}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">من</label>
+                  <input
+                    type="time"
+                    className="w-full p-2 border rounded-lg dark:bg-gray-900"
+                    value={slotForm.startTime}
+                    onChange={(e) => setSlotForm({...slotForm, startTime: e.target.value})}
+                    disabled={submitting}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">إلى</label>
+                  <input
+                    type="time"
+                    className="w-full p-2 border rounded-lg dark:bg-gray-900"
+                    value={slotForm.endTime}
+                    onChange={(e) => setSlotForm({...slotForm, endTime: e.target.value})}
+                    disabled={submitting}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعة</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full p-2 border rounded-lg dark:bg-gray-900"
+                  value={slotForm.capacity}
+                  onChange={(e) => setSlotForm({...slotForm, capacity: e.target.value})}
+                  disabled={submitting}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحالة</label>
+                <select
+                  className="w-full p-2 border rounded-lg dark:bg-gray-900"
+                  value={slotForm.status}
+                  onChange={(e) => setSlotForm({...slotForm, status: e.target.value})}
+                  disabled={submitting}
+                >
+                  <option value="available">متاح</option>
+                  <option value="booked">محجوز</option>
+                  <option value="cancelled">ملغي</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleSaveSlot}
+                  disabled={submitting}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  {editingSlot ? 'تحديث' : 'حفظ'}
+                </button>
+                <button
+                  onClick={() => setShowSlotModal(false)}
+                  className="flex-1 bg-gray-300 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
