@@ -79,10 +79,13 @@ export const ENDPOINTS = {
     STATS: '/api/v1/appointments/stats',
   },
   // الفواتير
+// src/services/api/config.js
   INVOICES: {
     LIST: '/api/v1/finance/invoices',
     CREATE: '/api/v1/finance/invoices',
     GET: (id) => `/api/v1/finance/invoices/${id}`,
+    UPDATE: (id) => `/api/v1/finance/invoices/${id}`,
+    DELETE: (id) => `/api/v1/finance/invoices/${id}`,
     MARK_PAID: (id) => `/api/v1/finance/invoices/${id}/mark-paid`,
     CANCEL: (id) => `/api/v1/finance/invoices/${id}/cancel`,
     STATS: '/api/v1/finance/invoices/stats',
