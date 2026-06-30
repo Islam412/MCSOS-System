@@ -5,12 +5,13 @@ import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Mail, Lock, User, Shield, AlertCircle, Building, Heart } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-// ========== استيراد خدمات API (المسار الصحيح للمجلد auth) ==========
+// ========== استيراد خدمات API ==========
 import { authService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 
 // ========== الحسابات المحلية (احتياطي لوضع عدم الاتصال) ==========
 const users = [
+  // ===== المستخدمون الأصليون (Medical) =====
   {
     id: 1,
     email: 'admin@medical.com',
@@ -114,6 +115,86 @@ const users = [
     avatar: null,
     department: 'مرضى',
     departmentEn: 'Patients'
+  },
+
+  // ===== المستخدمون الجدد (MCSOS) =====
+  {
+    id: 9,
+    email: 'admin@mcsos.com',
+    password: 'password123',
+    name: 'مدير النظام',
+    nameEn: 'System Admin',
+    role: 'admin',
+    roleAr: 'مدير النظام',
+    roleEn: 'System Administrator',
+    avatar: null,
+    department: 'الإدارة',
+    departmentEn: 'Administration'
+  },
+  {
+    id: 10,
+    email: 'reception@mcsos.com',
+    password: 'password123',
+    name: 'موظف استقبال',
+    nameEn: 'Reception User',
+    role: 'reception',
+    roleAr: 'موظف استقبال',
+    roleEn: 'Receptionist',
+    avatar: null,
+    department: 'الاستقبال',
+    departmentEn: 'Reception'
+  },
+  {
+    id: 11,
+    email: 'doctor@mcsos.com',
+    password: 'password123',
+    name: 'د. محمد',
+    nameEn: 'Doctor User',
+    role: 'doctor',
+    roleAr: 'طبيب',
+    roleEn: 'Doctor',
+    avatar: null,
+    department: 'الطب',
+    departmentEn: 'Medical'
+  },
+  {
+    id: 12,
+    email: 'finance@mcsos.com',
+    password: 'password123',
+    name: 'مدير مالي',
+    nameEn: 'Finance User',
+    role: 'finance',
+    roleAr: 'مدير مالي',
+    roleEn: 'Finance Manager',
+    avatar: null,
+    department: 'المالية',
+    departmentEn: 'Finance'
+  },
+  {
+    id: 13,
+    email: 'ops@mcsos.com',
+    password: 'password123',
+    name: 'مدير العمليات',
+    nameEn: 'Operations Manager',
+    role: 'admin',
+    roleAr: 'مدير العمليات',
+    roleEn: 'Operations Manager',
+    avatar: null,
+    department: 'العمليات',
+    departmentEn: 'Operations'
+  },
+  {
+    id: 14,
+    email: 'support@mcsos.com',
+    password: 'password123',
+    name: 'دعم العملاء',
+    nameEn: 'Customer Support',
+    role: 'user',
+    roleAr: 'دعم العملاء',
+    roleEn: 'Customer Support',
+    avatar: null,
+    department: 'الدعم',
+    departmentEn: 'Support'
   }
 ]
 
@@ -269,7 +350,6 @@ export default function Login() {
           <p className="text-gray-500 dark:text-gray-400 mt-2">
             {isRTL ? 'نظام إدارة المركز الطبي' : 'Medical Center Management System'}
           </p>
-          {/* حالة الاتصال */}
           {!isOnline && (
             <span className="inline-block mt-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
               ⚡ غير متصل - وضع عدم الاتصال
@@ -303,7 +383,6 @@ export default function Login() {
           
           {/* نموذج تسجيل الدخول */}
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* رسالة الخطأ */}
             {error && (
               <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-3 flex items-center gap-2">
                 <AlertCircle size={18} className="text-red-500 dark:text-red-400" />
@@ -311,7 +390,6 @@ export default function Login() {
               </div>
             )}
             
-            {/* البريد الإلكتروني */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {isRTL ? 'البريد الإلكتروني' : 'Email Address'}
@@ -329,7 +407,6 @@ export default function Login() {
               </div>
             </div>
             
-            {/* كلمة المرور */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {isRTL ? 'كلمة المرور' : 'Password'}
@@ -354,7 +431,6 @@ export default function Login() {
               </div>
             </div>
             
-            {/* تذكرني ونسيت كلمة المرور */}
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input 
@@ -376,7 +452,6 @@ export default function Login() {
               </button>
             </div>
             
-            {/* زر تسجيل الدخول */}
             <button
               type="submit"
               disabled={loading}
@@ -390,7 +465,6 @@ export default function Login() {
             </button>
           </form>
           
-          {/* رابط إنشاء حساب */}
           <div className="mt-4 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {isRTL ? 'ليس لديك حساب؟' : "Don't have an account?"}{' '}
@@ -400,42 +474,97 @@ export default function Login() {
             </p>
           </div>
           
-          {/* حسابات تجريبية */}
+          {/* ========== حسابات تجريبية - الشكل الجديد ========== */}
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
               {isRTL ? 'حسابات تجريبية' : 'Demo Accounts'}
             </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2 text-center">
-                <p className="text-blue-600 dark:text-blue-400 font-semibold">👑 Admin</p>
-                <p className="text-gray-400 dark:text-gray-500">admin@medical.com</p>
-                <p className="text-gray-400 dark:text-gray-500">admin123</p>
+            
+            {/* Medical Accounts */}
+            <div className="mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">🏥 Medical</span>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2 text-center">
-                <p className="text-green-600 dark:text-green-400 font-semibold">👨‍⚕️ Doctor</p>
-                <p className="text-gray-400 dark:text-gray-500">doctor@medical.com</p>
-                <p className="text-gray-400 dark:text-gray-500">doctor123</p>
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
+                <div className="bg-blue-50/80 dark:bg-blue-900/20 rounded-lg p-1.5 text-center border border-blue-200 dark:border-blue-800 hover:shadow-md transition-all cursor-pointer" onClick={() => { setEmail('admin@medical.com'); setPassword('admin123'); }}>
+                  <p className="text-blue-600 dark:text-blue-400 font-semibold text-[10px]">👑 Admin</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">admin@medical.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-green-50/80 dark:bg-green-900/20 rounded-lg p-1.5 text-center border border-green-200 dark:border-green-800 hover:shadow-md transition-all cursor-pointer" onClick={() => { setEmail('doctor@medical.com'); setPassword('doctor123'); }}>
+                  <p className="text-green-600 dark:text-green-400 font-semibold text-[10px]">👨‍⚕️ Doctor</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">doctor@medical.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-yellow-50/80 dark:bg-yellow-900/20 rounded-lg p-1.5 text-center border border-yellow-200 dark:border-yellow-800 hover:shadow-md transition-all cursor-pointer" onClick={() => { setEmail('reception@medical.com'); setPassword('reception123'); }}>
+                  <p className="text-yellow-600 dark:text-yellow-400 font-semibold text-[10px]">📞 Reception</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">reception@medical.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-purple-50/80 dark:bg-purple-900/20 rounded-lg p-1.5 text-center border border-purple-200 dark:border-purple-800 hover:shadow-md transition-all cursor-pointer" onClick={() => { setEmail('finance@medical.com'); setPassword('finance123'); }}>
+                  <p className="text-purple-600 dark:text-purple-400 font-semibold text-[10px]">💰 Finance</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">finance@medical.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-pink-50/80 dark:bg-pink-900/20 rounded-lg p-1.5 text-center border border-pink-200 dark:border-pink-800 hover:shadow-md transition-all cursor-pointer" onClick={() => { setEmail('patient@medical.com'); setPassword('patient123'); }}>
+                  <p className="text-pink-600 dark:text-pink-400 font-semibold text-[10px]">👤 Patient</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">patient@medical.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-gray-50/80 dark:bg-gray-700/20 rounded-lg p-1.5 text-center border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer" onClick={() => { setEmail('user@medical.com'); setPassword('user123'); }}>
+                  <p className="text-gray-600 dark:text-gray-400 font-semibold text-[10px]">🧑 User</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">user@medical.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2 text-center">
-                <p className="text-yellow-600 dark:text-yellow-400 font-semibold">📞 Reception</p>
-                <p className="text-gray-400 dark:text-gray-500">reception@medical.com</p>
-                <p className="text-gray-400 dark:text-gray-500">reception123</p>
+            </div>
+
+            {/* MCSOS Accounts */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">🚀 MCSOS</span>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2 text-center">
-                <p className="text-purple-600 dark:text-purple-400 font-semibold">💰 Finance</p>
-                <p className="text-gray-400 dark:text-gray-500">finance@medical.com</p>
-                <p className="text-gray-400 dark:text-gray-500">finance123</p>
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
+                <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-1.5 text-center border-2 border-blue-400 dark:border-blue-600 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setEmail('admin@mcsos.com'); setPassword('password123'); }}>
+                  <p className="text-blue-700 dark:text-blue-300 font-bold text-[10px]">👑 Admin</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">admin@mcsos.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-green-100/50 dark:bg-green-900/30 rounded-lg p-1.5 text-center border-2 border-green-400 dark:border-green-600 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setEmail('doctor@mcsos.com'); setPassword('password123'); }}>
+                  <p className="text-green-700 dark:text-green-300 font-bold text-[10px]">👨‍⚕️ Doctor</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">doctor@mcsos.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-yellow-100/50 dark:bg-yellow-900/30 rounded-lg p-1.5 text-center border-2 border-yellow-400 dark:border-yellow-600 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setEmail('reception@mcsos.com'); setPassword('password123'); }}>
+                  <p className="text-yellow-700 dark:text-yellow-300 font-bold text-[10px]">📞 Reception</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">reception@mcsos.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-1.5 text-center border-2 border-purple-400 dark:border-purple-600 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setEmail('finance@mcsos.com'); setPassword('password123'); }}>
+                  <p className="text-purple-700 dark:text-purple-300 font-bold text-[10px]">💰 Finance</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">finance@mcsos.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-1.5 text-center border-2 border-orange-400 dark:border-orange-600 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setEmail('ops@mcsos.com'); setPassword('password123'); }}>
+                  <p className="text-orange-700 dark:text-orange-300 font-bold text-[10px]">⚙️ Ops</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">ops@mcsos.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
+                <div className="bg-teal-100/50 dark:bg-teal-900/30 rounded-lg p-1.5 text-center border-2 border-teal-400 dark:border-teal-600 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setEmail('support@mcsos.com'); setPassword('password123'); }}>
+                  <p className="text-teal-700 dark:text-teal-300 font-bold text-[10px]">🛟 Support</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px] truncate">support@mcsos.com</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-[9px]">••••••••</p>
+                </div>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2 text-center">
-                <p className="text-pink-600 dark:text-pink-400 font-semibold">👤 Patient</p>
-                <p className="text-gray-400 dark:text-gray-500">patient@medical.com</p>
-                <p className="text-gray-400 dark:text-gray-500">patient123</p>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2 text-center">
-                <p className="text-gray-600 dark:text-gray-400 font-semibold">🧑 User</p>
-                <p className="text-gray-400 dark:text-gray-500">user@medical.com</p>
-                <p className="text-gray-400 dark:text-gray-500">user123</p>
-              </div>
+            </div>
+
+            {/* تلميح */}
+            <div className="mt-3 text-center">
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                💡 {isRTL ? 'انقر على أي حساب لتعبئة البيانات تلقائياً' : 'Click any account to auto-fill credentials'}
+              </span>
             </div>
           </div>
         </div>
