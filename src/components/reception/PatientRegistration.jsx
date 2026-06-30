@@ -1,3 +1,4 @@
+// src/components/reception/PatientRegistration.jsx
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserPlus, Mail, Phone, User, IdCard, Sparkles, Loader2 } from 'lucide-react'
@@ -15,10 +16,13 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
   const { isOnline } = useServices()
 
   const [form, setForm] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
     phone: '',
     email: '',
-    idNumber: ''
+    address: '',
+    gender: 'male',
+    date_of_birth: ''
   })
   const [loading, setLoading] = useState(false)
 
@@ -27,25 +31,25 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
     e.preventDefault()
 
     // التحقق من الحقول المطلوبة
-    if (!form.name || !form.phone) {
+    if (!form.first_name || !form.phone) {
       toast.error('الرجاء ملء الحقول المطلوبة')
       return
     }
 
     setLoading(true)
     try {
+      // ✅ البيانات بالشكل المطلوب من الـ API
       const patientData = {
-        nameAr: form.name,
-        nameEn: form.name,
+        first_name: form.first_name,
+        last_name: form.last_name || form.first_name,
+        gender: form.gender || 'male',
+        date_of_birth: form.date_of_birth || new Date(Date.now() - 30 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        address: form.address || '',
         phone: form.phone,
+        whatsapp_number: form.phone,
+        emergency_contact: form.phone,
         email: form.email || '',
-        nationalId: form.idNumber || '',
-        // حقول إضافية يمكن إضافتها
-        age: 0,
-        address: '',
-        bloodType: '',
-        diagnosis: 'قيد التشخيص',
-        status: 'active'
+        notes: 'تم التسجيل عبر الاستقبال'
       }
 
       let response
@@ -55,7 +59,7 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
         response = await patientsService.createPatient(patientData)
         const newPatient = response?.patient || response
 
-        toast.success(`${form.name} تم التسجيل بنجاح - ID: ${newPatient.id || 'تم التسجيل'}`)
+        toast.success(`${form.first_name} ${form.last_name || ''} تم التسجيل بنجاح`)
 
         // استدعاء دالة النجاح إذا وجدت
         if (onRegistrationSuccess) {
@@ -75,7 +79,7 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
         existingPatients.push(newPatient)
         localStorage.setItem('mcsos_patients_v2', JSON.stringify(existingPatients))
 
-        toast.success(`${form.name} تم التسجيل بنجاح - ID: ${newPatient.id} (تم الحفظ محلياً)`)
+        toast.success(`${form.first_name} تم التسجيل بنجاح (تم الحفظ محلياً)`)
 
         if (onRegistrationSuccess) {
           onRegistrationSuccess(newPatient)
@@ -84,10 +88,13 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
 
       // إعادة تعيين النموذج
       setForm({
-        name: '',
+        first_name: '',
+        last_name: '',
         phone: '',
         email: '',
-        idNumber: ''
+        address: '',
+        gender: 'male',
+        date_of_birth: ''
       })
 
     } catch (error) {
@@ -124,20 +131,38 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* الاسم الكامل */}
+        {/* الاسم الأول */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            الاسم الكامل <span className="text-red-500">*</span>
+            الاسم الأول <span className="text-red-500">*</span>
           </label>
           <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
             <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="text"
               required
-              placeholder="أدخل الاسم الكامل"
+              placeholder="أدخل الاسم الأول"
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              value={form.first_name}
+              onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        {/* اسم العائلة */}
+        <div>
+          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            اسم العائلة
+          </label>
+          <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
+            <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+            <input
+              type="text"
+              placeholder="أدخل اسم العائلة"
+              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
+              value={form.last_name}
+              onChange={(e) => setForm({ ...form, last_name: e.target.value })}
               disabled={loading}
             />
           </div>
@@ -180,19 +205,51 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
           </div>
         </div>
 
-        {/* رقم الهوية */}
+        {/* العنوان */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            رقم الهوية
+            العنوان
           </label>
           <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
-            <IdCard className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+            <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="text"
-              placeholder="أدخل رقم الهوية"
+              placeholder="أدخل العنوان"
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
-              value={form.idNumber}
-              onChange={(e) => setForm({ ...form, idNumber: e.target.value })}
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        {/* النوع */}
+        <div>
+          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            النوع
+          </label>
+          <select
+            className={`w-full py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all ${isRTL ? 'pr-4 pl-4' : 'pr-4 pl-4'}`}
+            value={form.gender}
+            onChange={(e) => setForm({ ...form, gender: e.target.value })}
+            disabled={loading}
+          >
+            <option value="male">ذكر</option>
+            <option value="female">أنثى</option>
+          </select>
+        </div>
+
+        {/* تاريخ الميلاد */}
+        <div>
+          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            تاريخ الميلاد
+          </label>
+          <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
+            <input
+              type="date"
+              className={`w-full py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all ${isRTL ? 'pr-4 pl-4' : 'pr-4 pl-4'}`}
+              value={form.date_of_birth}
+              onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
               disabled={loading}
             />
           </div>

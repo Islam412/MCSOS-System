@@ -108,7 +108,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== تحميل الأطباء ==========
+  // ========== تحميل الأطباء (GET /api/v1/doctors) ==========
   const loadDoctors = async () => {
     try {
       if (isOnline) {
@@ -130,7 +130,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== تحميل مواعيد اليوم ==========
+  // ========== تحميل مواعيد اليوم (GET /api/v1/sessions?session_date=today) ==========
   const loadTodayAppointments = async () => {
     try {
       let data = []
@@ -189,7 +189,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== تحميل المرضى ==========
+  // ========== تحميل المرضى (GET /api/v1/patients) ==========
   const loadPatients = async () => {
     try {
       let data = []
@@ -293,7 +293,7 @@ export default function ReceptionDashboard() {
     return colors[bloodType] || 'text-gray-400'
   }
 
-  // ========== تسجيل حضور ==========
+  // ========== تسجيل حضور (POST /api/v1/sessions/{id}/attendance) ==========
   const handleCheckIn = async (id) => {
     setIsSubmitting(true)
     try {
@@ -320,7 +320,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== حذف موعد ==========
+  // ========== حذف موعد (DELETE /api/v1/sessions/{id}) ==========
   const handleDeleteAppointment = async (id) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا الموعد؟')) return
 
@@ -341,7 +341,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== تعديل موعد ==========
+  // ========== تعديل موعد (PUT /api/v1/sessions/{id}) ==========
   const handleEditAppointment = (appointment) => {
     setEditingAppointment(appointment)
     setEditAppointmentData({
@@ -353,7 +353,6 @@ export default function ReceptionDashboard() {
     setShowEditAppointmentModal(true)
   }
 
-  // ========== حفظ تعديل الموعد ==========
   const handleSaveAppointmentEdit = async () => {
     setIsSubmitting(true)
     try {
@@ -386,7 +385,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== حذف مريض ==========
+  // ========== حذف مريض (DELETE /api/v1/patients/{id}) ==========
   const handleDeletePatient = async (id) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المريض؟')) return
 
@@ -408,7 +407,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== تعديل مريض ==========
+  // ========== تعديل مريض (PUT /api/v1/patients/{id}) ==========
   const handleEditPatient = (patient) => {
     setEditingPatient(patient)
     setEditPatientData({
@@ -420,7 +419,6 @@ export default function ReceptionDashboard() {
     setShowEditPatientModal(true)
   }
 
-  // ========== حفظ تعديل المريض ==========
   const handleSavePatientEdit = async () => {
     setIsSubmitting(true)
     try {
@@ -469,7 +467,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== تسجيل مريض جديد ==========
+  // ========== تسجيل مريض جديد (POST /api/v1/patients) ==========
   const handleRegisterPatient = async () => {
     if (!newPatient.name) {
       toast.error('الرجاء إدخال اسم المريض')
@@ -537,7 +535,7 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== حجز موعد جديد ==========
+  // ========== حجز موعد جديد (POST /api/v1/sessions) ==========
   const handleBookAppointment = async () => {
     if (!newAppointment.patientName || !newAppointment.doctorName || !newAppointment.date || !newAppointment.time) {
       toast.error('الرجاء ملء جميع الحقول')
@@ -598,7 +596,7 @@ export default function ReceptionDashboard() {
     setShowAppointmentModal(true)
   }
 
-  // ========== البحث عن مريض ==========
+  // ========== البحث عن مريض (GET /api/v1/patients/search) ==========
   const handleSearchPatient = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([])

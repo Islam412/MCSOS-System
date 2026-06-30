@@ -32,16 +32,34 @@ export default function PatientSearch({ onSelectPatient }) {
       let patients = []
 
       if (isOnline) {
-        // محاولة البحث عبر API
-        const response = await patientsService.searchPatients(searchQuery)
-        patients = response || []
+        try {
+          // محاولة البحث عبر API
+          const response = await patientsService.searchPatients(searchQuery)
+          // ✅ التأكد من أن response مصفوفة
+          if (Array.isArray(response)) {
+            patients = response
+          } else if (response?.patients && Array.isArray(response.patients)) {
+            patients = response.patients
+          } else {
+            patients = []
+          }
+        } catch (apiError) {
+          console.warn('API search failed, using local:', apiError)
+          // وضع غير متصل - البحث في localStorage
+          const savedPatients = JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
+          patients = savedPatients.filter(p =>
+            (p.first_name || p.name || p.nameAr || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.last_name || p.nameEn || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.phone || '').includes(searchQuery)
+          )
+        }
       } else {
         // وضع غير متصل - البحث في localStorage
         const savedPatients = JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
         patients = savedPatients.filter(p =>
-          p.nameAr?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.nameEn?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.phone?.includes(searchQuery)
+          (p.first_name || p.name || p.nameAr || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.last_name || p.nameEn || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.phone || '').includes(searchQuery)
         )
       }
 
@@ -92,9 +110,15 @@ export default function PatientSearch({ onSelectPatient }) {
   // ========== الحصول على اسم المريض حسب اللغة ==========
   const getPatientName = (patient) => {
     if (isRTL) {
-      return patient.nameAr || patient.name
+      return patient.first_name || patient.nameAr || patient.name || 'مريض'
     }
-    return patient.nameEn || patient.name
+    return patient.first_name || patient.nameEn || patient.name || 'Patient'
+  }
+
+  const getFullName = (patient) => {
+    const firstName = patient.first_name || patient.name || patient.nameAr || ''
+    const lastName = patient.last_name || patient.nameEn || ''
+    return `${firstName} ${lastName}`.trim() || 'مريض'
   }
 
   return (
@@ -144,7 +168,7 @@ export default function PatientSearch({ onSelectPatient }) {
                 <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <User size={18} className="text-blue-500" />
                   <span className="font-bold text-gray-900 dark:text-white text-lg">
-                    {getPatientName(p)}
+                    {getFullName(p)}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -156,7 +180,7 @@ export default function PatientSearch({ onSelectPatient }) {
               </div>
               <div className={`flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <Phone size={14} />
-                <span>{p.phone || p.phoneNumber || '-'}</span>
+                <span>{p.phone || p.phone_number || '-'}</span>
                 <span className="text-gray-300 mx-2">|</span>
                 <span className="text-xs">ID: {p.id}</span>
               </div>
