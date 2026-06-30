@@ -1,3 +1,4 @@
+// src/components/whatsapp/WhatsAppManager.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { 
@@ -21,6 +22,48 @@ import toast from 'react-hot-toast'
 // ========== استيراد الخدمات ==========
 import { whatsappService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+
+// ========== مفاتيح التخزين في localStorage ==========
+const STORAGE_KEYS = {
+  CONTACTS: 'mcsos_whatsapp_contacts',
+  TEMPLATES: 'mcsos_whatsapp_templates',
+  FLOWS: 'mcsos_whatsapp_flows',
+  HISTORY: 'mcsos_whatsapp_history'
+}
+
+// ========== دالة مساعدة للوصول إلى localStorage ==========
+const getLocalData = (key) => {
+  try {
+    const data = localStorage.getItem(key)
+    return data ? JSON.parse(data) : null
+  } catch (error) {
+    console.error(`Error reading ${key}:`, error)
+    return null
+  }
+}
+
+// ========== البيانات الافتراضية (للاختبار) ==========
+const defaultContacts = [
+  { id: '1', name: 'أحمد محمد', phone: '0501111111', department: 'مرضى', icon: '👤' },
+  { id: '2', name: 'د. أحمد علي', phone: '0502222222', department: 'أطباء', icon: '👨‍⚕️' },
+  { id: '3', name: 'نورة عبدالله', phone: '0503333333', department: 'مرضى', icon: '👩' },
+  { id: '4', name: 'موظف الاستقبال', phone: '0504444444', department: 'استقبال', icon: '📞' }
+]
+
+const defaultTemplates = [
+  { id: '1', nameAr: 'تذكير بموعد', nameEn: 'Appointment Reminder', icon: '📅', messageAr: 'تذكير بموعدك مع د. {doctor} يوم {date} الساعة {time}', messageEn: 'Reminder for your appointment with Dr. {doctor} on {date} at {time}' },
+  { id: '2', nameAr: 'تأكيد موعد', nameEn: 'Appointment Confirmation', icon: '✅', messageAr: 'تم تأكيد موعدك مع د. {doctor} يوم {date} الساعة {time}', messageEn: 'Your appointment with Dr. {doctor} on {date} at {time} has been confirmed' },
+  { id: '3', nameAr: 'استفسار', nameEn: 'Inquiry', icon: '❓', messageAr: 'استفسار بخصوص {topic}', messageEn: 'Inquiry regarding {topic}' },
+  { id: '4', nameAr: 'تأكيد دفع', nameEn: 'Payment Confirmation', icon: '💰', messageAr: 'تم تأكيد دفع مبلغ {amount} عن الفاتورة {invoice}', messageEn: 'Payment of {amount} for invoice {invoice} has been confirmed' }
+]
+
+const defaultFlows = [
+  { id: '1', nameAr: 'تذكير بالموعد', nameEn: 'Appointment Reminder', message: 'تذكير بموعدك مع د. {doctor} يوم {date} الساعة {time}', delay: 24, delayUnit: 'hours', enabled: true },
+  { id: '2', nameAr: 'متابعة ما بعد الموعد', nameEn: 'Post-Appointment Follow-up', message: 'كيف كانت تجربتك مع د. {doctor}؟', delay: 2, delayUnit: 'days', enabled: true },
+  { id: '3', nameAr: 'تأكيد الحضور', nameEn: 'Attendance Confirmation', message: 'يرجى تأكيد حضورك للموعد مع د. {doctor} يوم {date}', delay: 48, delayUnit: 'hours', enabled: false }
+]
+
+const defaultHistory = []
 
 export default function WhatsAppManager() {
   const { t, i18n } = useTranslation()
@@ -62,7 +105,7 @@ export default function WhatsAppManager() {
   const [templates, setTemplates] = useState([])
   const [autoFlows, setAutoFlows] = useState([])
 
-  // بيانات المستخدم من localStorage
+  // ==================== تحميل البيانات ====================
   useEffect(() => {
     const userData = localStorage.getItem('mcsos_user')
     if (userData) {
@@ -73,7 +116,6 @@ export default function WhatsAppManager() {
     loadAllData()
   }, [])
 
-  // ==================== تحميل البيانات من API ====================
   const loadAllData = async () => {
     setLoading(true)
     try {
@@ -91,92 +133,172 @@ export default function WhatsAppManager() {
     }
   }
 
+  // ==================== تحميل جهات الاتصال ====================
   const loadContacts = async () => {
     try {
       if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => whatsappService.getContacts(),
-          'whatsapp_contacts',
-          JSON.parse(localStorage.getItem('mcsos_whatsapp_contacts') || '[]')
-        )
-        const data = response?.contacts || response || []
-        setContactsList(data)
-        localStorage.setItem('mcsos_whatsapp_contacts', JSON.stringify(data))
+        try {
+          const response = await executeWithOfflineSupport(
+            () => whatsappService.getContacts(),
+            'whatsapp_contacts',
+            getLocalData(STORAGE_KEYS.CONTACTS)
+          )
+          
+          let data = []
+          if (response && response.contacts) {
+            data = response.contacts
+          } else if (Array.isArray(response)) {
+            data = response
+          }
+          
+          if (data.length > 0) {
+            setContactsList(data)
+            localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(data))
+            return
+          }
+        } catch (apiError) {
+          console.warn('API contacts failed:', apiError)
+        }
+      }
+      
+      // استخدام localStorage كاحتياطي
+      const saved = getLocalData(STORAGE_KEYS.CONTACTS)
+      if (saved && saved.length > 0) {
+        setContactsList(saved)
       } else {
-        const saved = localStorage.getItem('mcsos_whatsapp_contacts')
-        setContactsList(saved ? JSON.parse(saved) : [])
+        setContactsList(defaultContacts)
+        localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(defaultContacts))
       }
     } catch (error) {
       console.error('Error loading contacts:', error)
-      // استخدام بيانات محلية كاحتياطي
-      const saved = localStorage.getItem('mcsos_whatsapp_contacts')
-      setContactsList(saved ? JSON.parse(saved) : [])
+      const saved = getLocalData(STORAGE_KEYS.CONTACTS)
+      setContactsList(saved && saved.length > 0 ? saved : defaultContacts)
     }
   }
 
+  // ==================== تحميل القوالب ====================
   const loadTemplates = async () => {
     try {
       if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => whatsappService.getTemplates(),
-          'whatsapp_templates',
-          JSON.parse(localStorage.getItem('mcsos_whatsapp_templates') || '[]')
-        )
-        const data = response?.templates || response || []
-        setTemplates(data)
-        localStorage.setItem('mcsos_whatsapp_templates', JSON.stringify(data))
+        try {
+          const response = await executeWithOfflineSupport(
+            () => whatsappService.getTemplates(),
+            'whatsapp_templates',
+            getLocalData(STORAGE_KEYS.TEMPLATES)
+          )
+          
+          let data = []
+          if (response && response.templates) {
+            data = response.templates
+          } else if (Array.isArray(response)) {
+            data = response
+          }
+          
+          if (data.length > 0) {
+            setTemplates(data)
+            localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(data))
+            return
+          }
+        } catch (apiError) {
+          console.warn('API templates failed:', apiError)
+        }
+      }
+      
+      const saved = getLocalData(STORAGE_KEYS.TEMPLATES)
+      if (saved && saved.length > 0) {
+        setTemplates(saved)
       } else {
-        const saved = localStorage.getItem('mcsos_whatsapp_templates')
-        setTemplates(saved ? JSON.parse(saved) : [])
+        setTemplates(defaultTemplates)
+        localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(defaultTemplates))
       }
     } catch (error) {
       console.error('Error loading templates:', error)
-      const saved = localStorage.getItem('mcsos_whatsapp_templates')
-      setTemplates(saved ? JSON.parse(saved) : [])
+      const saved = getLocalData(STORAGE_KEYS.TEMPLATES)
+      setTemplates(saved && saved.length > 0 ? saved : defaultTemplates)
     }
   }
 
+  // ==================== تحميل التدفقات الآلية ====================
   const loadFlows = async () => {
     try {
       if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => whatsappService.getFlows(),
-          'whatsapp_flows',
-          JSON.parse(localStorage.getItem('mcsos_whatsapp_flows') || '[]')
-        )
-        const data = response?.flows || response || []
-        setAutoFlows(data)
-        localStorage.setItem('mcsos_whatsapp_flows', JSON.stringify(data))
+        try {
+          const response = await executeWithOfflineSupport(
+            () => whatsappService.getFlows(),
+            'whatsapp_flows',
+            getLocalData(STORAGE_KEYS.FLOWS)
+          )
+          
+          let data = []
+          if (response && response.flows) {
+            data = response.flows
+          } else if (Array.isArray(response)) {
+            data = response
+          }
+          
+          if (data.length > 0) {
+            setAutoFlows(data)
+            localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(data))
+            return
+          }
+        } catch (apiError) {
+          console.warn('API flows failed:', apiError)
+        }
+      }
+      
+      const saved = getLocalData(STORAGE_KEYS.FLOWS)
+      if (saved && saved.length > 0) {
+        setAutoFlows(saved)
       } else {
-        const saved = localStorage.getItem('mcsos_whatsapp_flows')
-        setAutoFlows(saved ? JSON.parse(saved) : [])
+        setAutoFlows(defaultFlows)
+        localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(defaultFlows))
       }
     } catch (error) {
       console.error('Error loading flows:', error)
-      const saved = localStorage.getItem('mcsos_whatsapp_flows')
-      setAutoFlows(saved ? JSON.parse(saved) : [])
+      const saved = getLocalData(STORAGE_KEYS.FLOWS)
+      setAutoFlows(saved && saved.length > 0 ? saved : defaultFlows)
     }
   }
 
+  // ==================== تحميل سجل الرسائل ====================
   const loadHistory = async () => {
     try {
       if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => whatsappService.getHistory(),
-          'whatsapp_history',
-          JSON.parse(localStorage.getItem('mcsos_whatsapp_history') || '[]')
-        )
-        const data = response?.messages || response || []
-        setScheduledMessages(data)
-        localStorage.setItem('mcsos_whatsapp_history', JSON.stringify(data))
+        try {
+          const response = await executeWithOfflineSupport(
+            () => whatsappService.getHistory(),
+            'whatsapp_history',
+            getLocalData(STORAGE_KEYS.HISTORY)
+          )
+          
+          let data = []
+          if (response && response.messages) {
+            data = response.messages
+          } else if (Array.isArray(response)) {
+            data = response
+          }
+          
+          if (data.length > 0) {
+            setScheduledMessages(data)
+            localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(data))
+            return
+          }
+        } catch (apiError) {
+          console.warn('API history failed:', apiError)
+        }
+      }
+      
+      const saved = getLocalData(STORAGE_KEYS.HISTORY)
+      if (saved && saved.length > 0) {
+        setScheduledMessages(saved)
       } else {
-        const saved = localStorage.getItem('mcsos_whatsapp_history')
-        setScheduledMessages(saved ? JSON.parse(saved) : [])
+        setScheduledMessages(defaultHistory)
+        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(defaultHistory))
       }
     } catch (error) {
       console.error('Error loading history:', error)
-      const saved = localStorage.getItem('mcsos_whatsapp_history')
-      setScheduledMessages(saved ? JSON.parse(saved) : [])
+      const saved = getLocalData(STORAGE_KEYS.HISTORY)
+      setScheduledMessages(saved && saved.length > 0 ? saved : defaultHistory)
     }
   }
 
@@ -228,14 +350,14 @@ export default function WhatsAppManager() {
     const template = templates.find(t => t.id === templateId)
     if (template) {
       let msg = getTemplateMessage(template)
-      msg = msg.replace('{doctor}', selectedContact?.name || 'الطبيب')
-      msg = msg.replace('{patient}', selectedContact?.name || 'المريض')
-      msg = msg.replace('{date}', new Date().toLocaleDateString('ar-EG'))
-      msg = msg.replace('{time}', new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }))
-      msg = msg.replace('{amount}', '500')
-      msg = msg.replace('{invoice}', 'INV-001')
-      msg = msg.replace('{announcement}', 'إعلان جديد')
-      msg = msg.replace('{topic}', 'خدمات المركز')
+      msg = msg.replace(/{doctor}/g, selectedContact?.name || 'الطبيب')
+      msg = msg.replace(/{patient}/g, selectedContact?.name || 'المريض')
+      msg = msg.replace(/{date}/g, new Date().toLocaleDateString('ar-EG'))
+      msg = msg.replace(/{time}/g, new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }))
+      msg = msg.replace(/{amount}/g, '500')
+      msg = msg.replace(/{invoice}/g, 'INV-001')
+      msg = msg.replace(/{announcement}/g, 'إعلان جديد')
+      msg = msg.replace(/{topic}/g, 'خدمات المركز')
       setMessage(msg)
     }
   }
@@ -294,7 +416,7 @@ export default function WhatsAppManager() {
       
       const updated = [newMessage, ...scheduledMessages]
       setScheduledMessages(updated)
-      localStorage.setItem('mcsos_whatsapp_history', JSON.stringify(updated))
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated))
       
       toast.success('تم إرسال الرسالة')
       setPhoneNumber('')
@@ -345,7 +467,7 @@ export default function WhatsAppManager() {
       
       const updated = [newSchedule, ...scheduledMessages]
       setScheduledMessages(updated)
-      localStorage.setItem('mcsos_whatsapp_history', JSON.stringify(updated))
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated))
       
       toast.success('تم جدولة الرسالة')
       setShowScheduleModal(false)
@@ -365,7 +487,7 @@ export default function WhatsAppManager() {
     if (window.confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
       const updated = scheduledMessages.filter(m => m.id !== id)
       setScheduledMessages(updated)
-      localStorage.setItem('mcsos_whatsapp_history', JSON.stringify(updated))
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated))
       toast.success('تم حذف الرسالة')
     }
   }
@@ -398,7 +520,7 @@ export default function WhatsAppManager() {
         f.id === id ? { ...f, enabled: newEnabled, _syncPending: !isOnline } : f
       )
       setAutoFlows(updated)
-      localStorage.setItem('mcsos_whatsapp_flows', JSON.stringify(updated))
+      localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(updated))
       toast.success('تم تحديث الإعدادات')
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في تحديث التدفق')
@@ -407,11 +529,11 @@ export default function WhatsAppManager() {
 
   const handlePreviewFlow = (flow) => {
     let previewMsg = flow.message
-    previewMsg = previewMsg.replace('{doctor}', 'د. أحمد علي')
-    previewMsg = previewMsg.replace('{patient}', 'أحمد محمد')
-    previewMsg = previewMsg.replace('{date}', '2024-05-25')
-    previewMsg = previewMsg.replace('{time}', '10:00 صباحاً')
-    previewMsg = previewMsg.replace('{amount}', '500')
+    previewMsg = previewMsg.replace(/{doctor}/g, 'د. أحمد علي')
+    previewMsg = previewMsg.replace(/{patient}/g, 'أحمد محمد')
+    previewMsg = previewMsg.replace(/{date}/g, '2024-05-25')
+    previewMsg = previewMsg.replace(/{time}/g, '10:00 صباحاً')
+    previewMsg = previewMsg.replace(/{amount}/g, '500')
     setPreviewMessage(previewMsg)
     setShowPreviewModal(true)
   }
@@ -453,7 +575,7 @@ export default function WhatsAppManager() {
         flow.id === editingFlow.id ? { ...updatedFlow, _syncPending: !isOnline } : flow
       )
       setAutoFlows(updated)
-      localStorage.setItem('mcsos_whatsapp_flows', JSON.stringify(updated))
+      localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(updated))
       
       setShowEditFlowModal(false)
       setEditingFlow(null)
@@ -485,7 +607,7 @@ export default function WhatsAppManager() {
     return `${delay} ${unitText} قبل الموعد`
   }
 
-  if (loading || !userRole) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -588,7 +710,12 @@ export default function WhatsAppManager() {
                 <label className="block text-sm font-semibold mb-2 text-gray-300">
                   القالب
                 </label>
-                <select className="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 text-white focus:ring-2 focus:ring-green-500 transition" value={selectedTemplate} onChange={handleTemplateChange} disabled={submitting}>
+                <select 
+                  className="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 text-white focus:ring-2 focus:ring-green-500 transition" 
+                  value={selectedTemplate} 
+                  onChange={handleTemplateChange} 
+                  disabled={submitting}
+                >
                   <option value="">اختر قالباً</option>
                   {templates.map(template => (
                     <option key={template.id} value={template.id}>{template.icon} {getTemplateName(template)}</option>
@@ -612,11 +739,19 @@ export default function WhatsAppManager() {
               </div>
               
               <div className="flex gap-3 pt-4">
-                <button onClick={handleSendMessage} disabled={submitting} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl transition flex items-center justify-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                <button 
+                  onClick={handleSendMessage} 
+                  disabled={submitting} 
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl transition flex items-center justify-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                   {submitting ? 'جاري الإرسال...' : 'إرسال الآن'}
                 </button>
-                <button onClick={() => setShowScheduleModal(true)} disabled={submitting} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl transition flex items-center justify-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                <button 
+                  onClick={() => setShowScheduleModal(true)} 
+                  disabled={submitting} 
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl transition flex items-center justify-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Clock size={18} /> جدولة
                 </button>
               </div>
@@ -680,10 +815,10 @@ export default function WhatsAppManager() {
             {contactsList.map(contact => (
               <div key={contact.id} className="bg-gray-700/30 rounded-xl p-4 hover:bg-gray-700/50 transition cursor-pointer" onClick={() => handleSelectContact(contact)}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">{contact.icon}</div>
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">{contact.icon || '👤'}</div>
                   <div>
                     <p className="font-semibold text-white">{contact.name}</p>
-                    <p className="text-xs text-gray-400">{contact.department}</p>
+                    <p className="text-xs text-gray-400">{contact.department || 'مستخدم'}</p>
                     <p className="text-xs text-gray-500 dir-ltr">{contact.phone}</p>
                     {contact.nextAppointment && <p className="text-xs text-green-400">الموعد القادم: {contact.nextAppointment}</p>}
                     {contact._syncPending && (
@@ -790,7 +925,6 @@ export default function WhatsAppManager() {
         </div>
       )}
 
-      {/* باقي المودالات (نفس الكود الأصلي) */}
       {/* مودال اختيار جهة اتصال */}
       {showContactModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -808,10 +942,10 @@ export default function WhatsAppManager() {
               {contactsList.map(contact => (
                 <div key={contact.id} className="bg-gray-700/30 rounded-xl p-3 hover:bg-gray-700/50 transition cursor-pointer" onClick={() => handleSelectContact(contact)}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">{contact.icon}</div>
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">{contact.icon || '👤'}</div>
                     <div>
                       <p className="font-semibold text-white">{contact.name}</p>
-                      <p className="text-xs text-gray-400">{contact.department}</p>
+                      <p className="text-xs text-gray-400">{contact.department || 'مستخدم'}</p>
                       <p className="text-xs text-gray-500 dir-ltr">{contact.phone}</p>
                     </div>
                   </div>
