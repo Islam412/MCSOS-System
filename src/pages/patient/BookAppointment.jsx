@@ -11,90 +11,8 @@ import {
 import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
-import { doctorsService, appointmentsService } from '../../services/api'
+import { doctorsService, appointmentsService, patientsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
-
-// ========== بيانات الأطباء الثابتة (احتياطي) ==========
-const FIXED_DOCTORS = [
-  { 
-    id: 1, 
-    name: 'د. أحمد علي', 
-    specialization: 'جراحة عظام', 
-    experience: 15,
-    rating: 4.8,
-    reviews: 128,
-    price: 300,
-    bio: 'استشاري جراحة العظام والمفاصل، خبرة 15 سنة',
-    availableSlots: [
-      { date: '2024-05-25', time: '09:00', available: true },
-      { date: '2024-05-25', time: '10:00', available: true },
-      { date: '2024-05-26', time: '09:00', available: true },
-      { date: '2024-05-26', time: '14:00', available: true }
-    ],
-    color: 'blue'
-  },
-  { 
-    id: 2, 
-    name: 'د. منى حسن', 
-    specialization: 'علاج طبيعي', 
-    experience: 10,
-    rating: 4.9,
-    reviews: 95,
-    price: 250,
-    bio: 'أخصائية علاج طبيعي، حاصلة على دكتوراه في العلاج الطبيعي',
-    availableSlots: [
-      { date: '2024-05-24', time: '10:00', available: true },
-      { date: '2024-05-24', time: '11:00', available: true },
-      { date: '2024-05-25', time: '14:00', available: true }
-    ],
-    color: 'green'
-  },
-  { 
-    id: 3, 
-    name: 'د. خالد محمود', 
-    specialization: 'أعصاب', 
-    experience: 20,
-    rating: 4.7,
-    reviews: 210,
-    price: 400,
-    bio: 'استشاري أمراض المخ والأعصاب، زمالة أوروبية',
-    availableSlots: [
-      { date: '2024-05-27', time: '09:00', available: true },
-      { date: '2024-05-27', time: '11:00', available: true }
-    ],
-    color: 'purple'
-  },
-  { 
-    id: 4, 
-    name: 'د. نورة سعيد', 
-    specialization: 'أطفال', 
-    experience: 12,
-    rating: 4.9,
-    reviews: 156,
-    price: 280,
-    bio: 'استشارية طب الأطفال وحديثي الولادة',
-    availableSlots: [
-      { date: '2024-05-23', time: '14:00', available: true },
-      { date: '2024-05-24', time: '09:00', available: true }
-    ],
-    color: 'pink'
-  },
-  { 
-    id: 5, 
-    name: 'د. محمد عبدالله', 
-    specialization: 'جراحة عامة', 
-    experience: 18,
-    rating: 4.8,
-    reviews: 180,
-    price: 350,
-    bio: 'استشاري الجراحة العامة والمناظير',
-    availableSlots: [
-      { date: '2024-05-26', time: '10:00', available: true },
-      { date: '2024-05-26', time: '11:00', available: true }
-    ],
-    color: 'orange'
-  }
-]
 
 export default function BookAppointment() {
   const navigate = useNavigate()
@@ -103,6 +21,7 @@ export default function BookAppointment() {
   const { isOnline, executeWithOfflineSupport } = useServices()
   
   const [user, setUser] = useState(null)
+  const [patientId, setPatientId] = useState(null)
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -115,51 +34,99 @@ export default function BookAppointment() {
   const [bookingType, setBookingType] = useState('clinic')
   const [availableSlots, setAvailableSlots] = useState([])
 
+  // ========== قائمة التخصصات ==========
   const specialties = [
     { id: 'all', name: 'جميع التخصصات', icon: '🏥' },
-    { id: 'جراحة عظام', name: 'جراحة عظام', icon: '🦴' },
-    { id: 'علاج طبيعي', name: 'علاج طبيعي', icon: '💪' },
-    { id: 'أعصاب', name: 'أعصاب', icon: '🧠' },
-    { id: 'أطفال', name: 'أطفال', icon: '👶' },
-    { id: 'جراحة عامة', name: 'جراحة عامة', icon: '🔪' }
+    { id: 'orthopedic', name: 'جراحة عظام', icon: '🦴' },
+    { id: 'physical_therapy', name: 'علاج طبيعي', icon: '💪' },
+    { id: 'neurology', name: 'أعصاب', icon: '🧠' },
+    { id: 'pediatrics', name: 'أطفال', icon: '👶' },
+    { id: 'general_surgery', name: 'جراحة عامة', icon: '🔪' },
+    { id: 'cardiology', name: 'قلب', icon: '❤️' },
+    { id: 'dermatology', name: 'جلدية', icon: '✨' },
+    { id: 'gynecology', name: 'نساء وتوليد', icon: '👩' },
+    { id: 'ophthalmology', name: 'عيون', icon: '👁️' },
+    { id: 'urology', name: 'مسالك بولية', icon: '🧬' }
   ]
 
   // ========== تحميل البيانات ==========
   useEffect(() => {
     const userData = localStorage.getItem('mcsos_user')
     if (userData) {
-      setUser(JSON.parse(userData))
+      const parsed = JSON.parse(userData)
+      setUser(parsed)
+      setPatientId(parsed.id)
     }
     loadDoctors()
   }, [])
 
+  // ========== تحميل الأطباء من API ==========
   const loadDoctors = async () => {
     setLoading(true)
     try {
+      let data = []
+      
       if (isOnline) {
-        const response = await executeWithOfflineSupport(
-          () => doctorsService.getDoctors(),
-          'doctors',
-          JSON.parse(localStorage.getItem('mcsos_doctors') || '[]')
-        )
-        const data = response?.doctors || response || []
-        if (data.length > 0) {
-          setDoctors(data)
-          localStorage.setItem('mcsos_doctors', JSON.stringify(data))
-        } else {
-          setDoctors(FIXED_DOCTORS)
+        try {
+          const response = await executeWithOfflineSupport(
+            () => doctorsService.getDoctors(),
+            'doctors',
+            JSON.parse(localStorage.getItem('mcsos_doctors') || '[]')
+          )
+          
+          // ✅ التأكد من أن response مصفوفة
+          if (Array.isArray(response)) {
+            data = response
+          } else if (response?.doctors && Array.isArray(response.doctors)) {
+            data = response.doctors
+          } else if (response?.data && Array.isArray(response.data)) {
+            data = response.data
+          } else {
+            data = []
+          }
+        } catch (apiError) {
+          console.warn('API doctors failed:', apiError)
+          const saved = localStorage.getItem('mcsos_doctors')
+          data = saved ? JSON.parse(saved) : []
         }
       } else {
         const saved = localStorage.getItem('mcsos_doctors')
-        if (saved && JSON.parse(saved).length > 0) {
-          setDoctors(JSON.parse(saved))
-        } else {
-          setDoctors(FIXED_DOCTORS)
-        }
+        data = saved ? JSON.parse(saved) : []
       }
+
+      // ✅ التأكد من أن data مصفوفة
+      if (!Array.isArray(data)) {
+        data = []
+      }
+
+      // ✅ تنسيق بيانات الأطباء من API
+      const formattedDoctors = data.map(d => ({
+        id: d.id,
+        name: d.name || d.nameAr || d.nameEn || 'طبيب',
+        nameAr: d.nameAr || d.name,
+        nameEn: d.nameEn || d.name,
+        specialization: d.specialization || d.specializationAr || 'عام',
+        specializationAr: d.specializationAr || d.specialization,
+        specializationEn: d.specializationEn || d.specialization,
+        experience: d.experience || d.years_of_experience || 0,
+        rating: d.rating || 4.5,
+        reviews: d.reviews || 0,
+        price: d.consultation_fee || d.price || 200,
+        bio: d.bio || d.description || '',
+        availableSlots: d.available_slots || d.availability || [],
+        phone: d.phone || '',
+        email: d.email || '',
+        isActive: d.is_active !== undefined ? d.is_active : true,
+        color: d.color || 'blue'
+      }))
+
+      setDoctors(formattedDoctors)
+      localStorage.setItem('mcsos_doctors', JSON.stringify(formattedDoctors))
+      
     } catch (error) {
       console.error('Error loading doctors:', error)
-      setDoctors(FIXED_DOCTORS)
+      toast.error('حدث خطأ في تحميل الأطباء')
+      setDoctors([])
     } finally {
       setLoading(false)
     }
@@ -181,11 +148,22 @@ export default function BookAppointment() {
           doctorId: selectedDoctor.id,
           date: selectedDate
         })
-        setAvailableSlots(response?.slots || response || [])
+        
+        // ✅ التأكد من أن response مصفوفة
+        let slots = []
+        if (Array.isArray(response)) {
+          slots = response
+        } else if (response?.slots && Array.isArray(response.slots)) {
+          slots = response.slots
+        } else if (response?.data && Array.isArray(response.data)) {
+          slots = response.data
+        }
+        
+        setAvailableSlots(slots)
       } else {
         // استخدام المواعيد الثابتة من الطبيب
         const fixedSlots = selectedDoctor.availableSlots?.filter(
-          slot => slot.date === selectedDate && slot.available
+          slot => slot.date === selectedDate && slot.available !== false
         ) || []
         setAvailableSlots(fixedSlots)
       }
@@ -193,7 +171,7 @@ export default function BookAppointment() {
       console.error('Error loading available slots:', error)
       // استخدام المواعيد الثابتة كاحتياطي
       const fixedSlots = selectedDoctor.availableSlots?.filter(
-        slot => slot.date === selectedDate && slot.available
+        slot => slot.date === selectedDate && slot.available !== false
       ) || []
       setAvailableSlots(fixedSlots)
     }
@@ -203,11 +181,16 @@ export default function BookAppointment() {
   const renderStars = (rating) => {
     const stars = []
     const fullStars = Math.floor(rating || 0)
+    const hasHalfStar = (rating || 0) % 1 >= 0.5
+    
     for (let i = 0; i < fullStars; i++) {
       stars.push(<Star key={i} size={16} className="fill-yellow-500 text-yellow-500" />)
     }
+    if (hasHalfStar) {
+      stars.push(<StarHalf key="half" size={16} className="fill-yellow-500 text-yellow-500" />)
+    }
     for (let i = stars.length; i < 5; i++) {
-      stars.push(<Star key={i} size={16} className="text-gray-500" />)
+      stars.push(<Star key={i} size={16} className="text-gray-300 dark:text-gray-600" />)
     }
     return stars
   }
@@ -219,7 +202,9 @@ export default function BookAppointment() {
       green: { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400', gradient: 'from-green-500 to-green-600' },
       purple: { bg: 'bg-purple-500/10', border: 'border-purple-500/30', text: 'text-purple-400', gradient: 'from-purple-500 to-purple-600' },
       pink: { bg: 'bg-pink-500/10', border: 'border-pink-500/30', text: 'text-pink-400', gradient: 'from-pink-500 to-pink-600' },
-      orange: { bg: 'bg-orange-500/10', border: 'border-orange-500/30', text: 'text-orange-400', gradient: 'from-orange-500 to-orange-600' }
+      orange: { bg: 'bg-orange-500/10', border: 'border-orange-500/30', text: 'text-orange-400', gradient: 'from-orange-500 to-orange-600' },
+      red: { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', gradient: 'from-red-500 to-red-600' },
+      teal: { bg: 'bg-teal-500/10', border: 'border-teal-500/30', text: 'text-teal-400', gradient: 'from-teal-500 to-teal-600' }
     }
     return colors[color] || colors.blue
   }
@@ -244,19 +229,22 @@ export default function BookAppointment() {
     try {
       const appointmentData = {
         doctorId: selectedDoctor.id,
-        patientId: user?.id || Date.now(),
+        patientId: patientId || user?.id,
         patientName: user?.name || 'مريض',
         date: selectedDate,
         time: selectedTime,
         type: bookingType === 'clinic' ? 'clinic' : 'online',
-        price: selectedDoctor.price
+        session_type: bookingType === 'clinic' ? 'CLINIC' : 'ONLINE',
+        status: 'scheduled'
       }
+
+      console.log('📤 Booking appointment:', appointmentData)
 
       let newAppointment
 
       if (isOnline) {
         const response = await appointmentsService.bookAppointment(appointmentData)
-        newAppointment = response?.appointment || response
+        newAppointment = response?.session || response?.appointment || response
         toast.success(`تم حجز موعد مع ${selectedDoctor.name} يوم ${selectedDate} الساعة ${selectedTime}`)
       } else {
         // وضع غير متصل - حفظ محلياً
@@ -275,12 +263,18 @@ export default function BookAppointment() {
         toast.success(`تم حجز موعد مع ${selectedDoctor.name} (تم الحفظ محلياً)`)
       }
 
+      // ✅ حفظ في localStorage للمزامنة
+      const allAppointments = JSON.parse(localStorage.getItem('mcsos_appointments') || '[]')
+      allAppointments.push(newAppointment)
+      localStorage.setItem('mcsos_appointments', JSON.stringify(allAppointments))
+
       setShowBookingModal(false)
       setSelectedDoctor(null)
       
       setTimeout(() => {
         navigate('/appointments')
       }, 1500)
+      
     } catch (error) {
       console.error('Booking error:', error)
       toast.error(error.message || 'حدث خطأ، يرجى المحاولة مرة أخرى')
@@ -294,8 +288,9 @@ export default function BookAppointment() {
     if (!selectedDoctor) return []
     const dates = [...new Set(
       (selectedDoctor.availableSlots || [])
-        .filter(slot => slot.available)
-        .map(slot => slot.date)
+        .filter(slot => slot.available !== false)
+        .map(slot => slot.date || slot.session_date)
+        .filter(d => d)
     )]
     return dates.sort()
   }
@@ -305,8 +300,9 @@ export default function BookAppointment() {
     if (!selectedDoctor) return []
     const slots = availableSlots.length > 0 ? availableSlots : (selectedDoctor.availableSlots || [])
     return slots
-      .filter(slot => slot.date === date && slot.available)
-      .map(slot => slot.time)
+      .filter(slot => (slot.date === date || slot.session_date === date) && slot.available !== false)
+      .map(slot => slot.time || slot.start_time)
+      .filter(t => t)
   }
 
   // ========== تصفية الأطباء ==========
@@ -314,8 +310,11 @@ export default function BookAppointment() {
     if (!doctor || !doctor.name) return false
     const matchesSearch = doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (doctor.specialization && doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesSpecialty = selectedSpecialty === 'all' || doctor.specialization === selectedSpecialty
-    return matchesSearch && matchesSpecialty
+    const matchesSpecialty = selectedSpecialty === 'all' || 
+                            doctor.specialization?.toLowerCase().includes(selectedSpecialty) ||
+                            doctor.specializationAr?.toLowerCase().includes(selectedSpecialty) ||
+                            doctor.specializationEn?.toLowerCase().includes(selectedSpecialty)
+    return matchesSearch && matchesSpecialty && doctor.isActive !== false
   })
 
   if (loading) {
@@ -407,65 +406,65 @@ export default function BookAppointment() {
 
       {/* قائمة الأطباء */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredDoctors.map((doctor) => {
-          const colors = getColorClasses(doctor.color)
-          return (
-            <div key={doctor.id} className={`group bg-gray-800/40 rounded-2xl border ${colors.border} hover:border-blue-500/50 transition-all duration-300 overflow-hidden hover:shadow-xl`}>
-              <div className="p-5">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-16 h-16 ${colors.bg} rounded-xl flex items-center justify-center text-3xl`}>
-                      {doctor.specialization === 'جراحة عظام' ? '🦴' : 
-                       doctor.specialization === 'علاج طبيعي' ? '💪' :
-                       doctor.specialization === 'أعصاب' ? '🧠' :
-                       doctor.specialization === 'أطفال' ? '👶' : '👨‍⚕️'}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        {doctor.name}
-                        {doctor._syncPending && (
-                          <span className="text-xs text-yellow-400">⏳ مزامنة</span>
-                        )}
-                      </h3>
-                      <p className={`text-sm ${colors.text}`}>{doctor.specialization}</p>
-                      <div className="flex items-center gap-1 mt-1">
-                        {renderStars(doctor.rating)}
-                        <span className="text-xs text-gray-400 ml-1">({doctor.reviews} تقييم)</span>
+        {filteredDoctors.length === 0 ? (
+          <div className="col-span-2 text-center py-12">
+            <p className="text-gray-400">لا توجد أطباء مطابقين لبحثك</p>
+          </div>
+        ) : (
+          filteredDoctors.map((doctor) => {
+            const colors = getColorClasses(doctor.color)
+            return (
+              <div key={doctor.id} className={`group bg-gray-800/40 rounded-2xl border ${colors.border} hover:border-blue-500/50 transition-all duration-300 overflow-hidden hover:shadow-xl`}>
+                <div className="p-5">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-16 h-16 ${colors.bg} rounded-xl flex items-center justify-center text-3xl`}>
+                        {doctor.specialization === 'جراحة عظام' ? '🦴' : 
+                         doctor.specialization === 'علاج طبيعي' ? '💪' :
+                         doctor.specialization === 'أعصاب' ? '🧠' :
+                         doctor.specialization === 'أطفال' ? '👶' : '👨‍⚕️'}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                          {doctor.name}
+                          {doctor._syncPending && (
+                            <span className="text-xs text-yellow-400">⏳ مزامنة</span>
+                          )}
+                        </h3>
+                        <p className={`text-sm ${colors.text}`}>{doctor.specialization}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          {renderStars(doctor.rating)}
+                          <span className="text-xs text-gray-400 ml-1">({doctor.reviews} تقييم)</span>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-green-400">{doctor.price} <span className="text-xs">ر.س</span></div>
+                      <p className="text-xs text-gray-400">رسوم الكشف</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-green-400">{doctor.price} <span className="text-xs">ر.س</span></div>
-                    <p className="text-xs text-gray-400">رسوم الكشف</p>
+                  
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2"><Award size={16} className="text-blue-400" /><span className="text-gray-300">خبرة {doctor.experience} سنة</span></div>
+                    <div className="flex items-center gap-2"><Calendar size={16} className="text-purple-400" /><span className="text-gray-300">مواعيد متاحة</span></div>
                   </div>
-                </div>
-                
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2"><Award size={16} className="text-blue-400" /><span className="text-gray-300">خبرة {doctor.experience} سنة</span></div>
-                  <div className="flex items-center gap-2"><Calendar size={16} className="text-purple-400" /><span className="text-gray-300">مواعيد متاحة</span></div>
-                </div>
-                
-                <p className="text-gray-400 text-sm mt-3 line-clamp-2">{doctor.bio}</p>
-                
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <button 
-                    onClick={() => handleBookNow(doctor)}
-                    className="w-full bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white py-2.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
-                  >
-                    <CalendarCheck size={18} /> حجز موعد
-                  </button>
+                  
+                  <p className="text-gray-400 text-sm mt-3 line-clamp-2">{doctor.bio}</p>
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <button 
+                      onClick={() => handleBookNow(doctor)}
+                      className="w-full bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white py-2.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
+                    >
+                      <CalendarCheck size={18} /> حجز موعد
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })
+        )}
       </div>
-
-      {filteredDoctors.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-400">لا توجد أطباء مطابقين لبحثك</p>
-        </div>
-      )}
 
       {/* Modal حجز موعد */}
       {showBookingModal && selectedDoctor && (
