@@ -1,140 +1,268 @@
 // src/services/api/services/appointmentsService.js
 
 import { ENDPOINTS } from '../config'
-import { get, post, put, del } from '../client'
+import { get, post, put, del, patch } from '../client'
 
 export const appointmentsService = {
-  // الحصول على قائمة المواعيد
+  // ========== الحصول على قائمة المواعيد (Sessions) ==========
   getAppointments: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString()
-      const endpoint = queryString ? `${ENDPOINTS.APPOINTMENTS.LIST}?${queryString}` : ENDPOINTS.APPOINTMENTS.LIST
+      const endpoint = queryString ? `/api/v1/sessions?${queryString}` : '/api/v1/sessions'
       const response = await get(endpoint)
-      return response.appointments || []
+      return response.sessions || response || []
     } catch (error) {
-      throw error
+      console.warn('⚠️ getAppointments failed:', error.message)
+      return []
     }
   },
 
-  // الحصول على موعد محدد
+  // ========== الحصول على موعد محدد ==========
   getAppointment: async (id) => {
     try {
-      const response = await get(`${ENDPOINTS.APPOINTMENTS.LIST}/${id}`)
-      return response.appointment
+      const response = await get(`/api/v1/sessions/${id}`)
+      return response.session || response
     } catch (error) {
-      throw error
+      console.warn('⚠️ getAppointment failed:', error.message)
+      return null
     }
   },
 
-  // حجز موعد جديد
+  // ========== حجز موعد جديد (Session) ==========
   bookAppointment: async (appointmentData) => {
     try {
-      const response = await post(ENDPOINTS.APPOINTMENTS.BOOK, appointmentData)
-      return response.appointment
+      const payload = {
+        patient_id: appointmentData.patientId || appointmentData.patient_id,
+        doctor_id: appointmentData.doctorId || appointmentData.doctor_id,
+        service_id: appointmentData.serviceId || appointmentData.service_id || '',
+        slot_id: appointmentData.slotId || appointmentData.slot_id || '',
+        treatment_plan_id: appointmentData.treatmentPlanId || appointmentData.treatment_plan_id || '',
+        patient_package_id: appointmentData.patientPackageId || appointmentData.patient_package_id || '',
+        session_type: appointmentData.sessionType || appointmentData.type || 'ASSESSMENT',
+        session_date: appointmentData.date || appointmentData.session_date,
+        reception_notes: appointmentData.notes || appointmentData.reception_notes || ''
+      }
+      const response = await post('/api/v1/sessions', payload)
+      return response.session || response
     } catch (error) {
+      console.warn('⚠️ bookAppointment failed:', error.message)
       throw error
     }
   },
 
-  // تحديث موعد
+  // ========== تحديث موعد ==========
   updateAppointment: async (id, appointmentData) => {
     try {
-      const response = await put(ENDPOINTS.APPOINTMENTS.UPDATE(id), appointmentData)
-      return response.appointment
+      const payload = {
+        patient_id: appointmentData.patientId || appointmentData.patient_id,
+        doctor_id: appointmentData.doctorId || appointmentData.doctor_id,
+        service_id: appointmentData.serviceId || appointmentData.service_id,
+        slot_id: appointmentData.slotId || appointmentData.slot_id,
+        treatment_plan_id: appointmentData.treatmentPlanId || appointmentData.treatment_plan_id,
+        patient_package_id: appointmentData.patientPackageId || appointmentData.patient_package_id,
+        session_type: appointmentData.sessionType || appointmentData.type,
+        session_date: appointmentData.date || appointmentData.session_date,
+        reception_notes: appointmentData.notes || appointmentData.reception_notes,
+        status: appointmentData.status,
+        doctor_notes: appointmentData.doctorNotes || appointmentData.doctor_notes || '',
+        absence_reason: appointmentData.absenceReason || appointmentData.absence_reason || '',
+        is_deducted: appointmentData.isDeducted || appointmentData.is_deducted
+      }
+      const response = await put(`/api/v1/sessions/${id}`, payload)
+      return response.session || response
     } catch (error) {
+      console.warn('⚠️ updateAppointment failed:', error.message)
       throw error
     }
   },
 
-  // حذف موعد
+  // ========== حذف موعد ==========
   deleteAppointment: async (id) => {
     try {
-      await del(ENDPOINTS.APPOINTMENTS.DELETE(id))
+      await del(`/api/v1/sessions/${id}`)
       return true
     } catch (error) {
+      console.warn('⚠️ deleteAppointment failed:', error.message)
       throw error
     }
   },
 
-  // تأكيد موعد
+  // ========== تأكيد موعد ==========
   confirmAppointment: async (id) => {
     try {
-      const response = await post(ENDPOINTS.APPOINTMENTS.CONFIRM(id))
-      return response.appointment
+      return await appointmentsService.updateAppointment(id, { status: 'CONFIRMED' })
     } catch (error) {
+      console.warn('⚠️ confirmAppointment failed:', error.message)
       throw error
     }
   },
 
-  // إلغاء موعد
+  // ========== إلغاء موعد ==========
   cancelAppointment: async (id, reason = '') => {
     try {
-      const response = await post(ENDPOINTS.APPOINTMENTS.CANCEL(id), { reason })
-      return response.appointment
+      return await appointmentsService.updateAppointment(id, { 
+        status: 'CANCELLED',
+        absence_reason: reason || 'تم الإلغاء من قبل المريض'
+      })
     } catch (error) {
+      console.warn('⚠️ cancelAppointment failed:', error.message)
       throw error
     }
   },
 
-  // تسجيل حضور
+  // ========== تسجيل حضور ==========
   checkInAppointment: async (id) => {
     try {
-      const response = await post(ENDPOINTS.APPOINTMENTS.CHECK_IN(id))
-      return response.appointment
+      const response = await post(`/api/v1/sessions/${id}/attendance`, { 
+        status: 'ATTENDED',
+        reason: 'تم تسجيل الحضور'
+      })
+      return response.attendance || response
     } catch (error) {
+      console.warn('⚠️ checkInAppointment failed:', error.message)
       throw error
     }
   },
 
-  // الحصول على المواعيد المتاحة
+  // ========== الحصول على المواعيد المتاحة (Scheduling) ==========
   getAvailableSlots: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString()
-      const endpoint = queryString ? `${ENDPOINTS.APPOINTMENTS.AVAILABLE_SLOTS}?${queryString}` : ENDPOINTS.APPOINTMENTS.AVAILABLE_SLOTS
+      const endpoint = queryString ? `/api/v1/scheduling/availability?${queryString}` : '/api/v1/scheduling/availability'
       const response = await get(endpoint)
-      return response.slots || []
+      return response.slots || response || []
     } catch (error) {
-      throw error
+      console.warn('⚠️ getAvailableSlots failed:', error.message)
+      return []
     }
   },
 
-  // الحصول على مواعيد اليوم
+  // ========== الحصول على مواعيد اليوم ==========
   getTodayAppointments: async () => {
     try {
-      const response = await get(ENDPOINTS.APPOINTMENTS.TODAY)
-      return response.appointments || []
+      const today = new Date().toISOString().split('T')[0]
+      const response = await get(`/api/v1/sessions?session_date=${today}`)
+      return response.sessions || response || []
     } catch (error) {
-      throw error
+      console.warn('⚠️ getTodayAppointments failed:', error.message)
+      return []
     }
   },
 
-  // الحصول على إحصائيات المواعيد
+  // ========== الحصول على إحصائيات المواعيد ==========
   getAppointmentsStats: async () => {
     try {
-      const response = await get(ENDPOINTS.APPOINTMENTS.STATS)
-      return response
+      const response = await get('/api/v1/reports/daily')
+      return response || {}
     } catch (error) {
-      throw error
+      console.warn('⚠️ getAppointmentsStats failed:', error.message)
+      return {
+        total: 0,
+        scheduled: 0,
+        attended: 0,
+        cancelled: 0,
+        no_show: 0
+      }
     }
   },
 
-  // ========== إنشاء مواعيد مجمعة ==========
+  // ========== الحصول على جلسات مريض ==========
+  getAppointmentsByPatient: async (patientId) => {
+    try {
+      const response = await get(`/api/v1/sessions/patient/${patientId}`)
+      return response.sessions || response || []
+    } catch (error) {
+      console.warn('⚠️ getAppointmentsByPatient failed:', error.message)
+      return []
+    }
+  },
+
+  // ========== إنشاء مواعيد مجمعة (Bulk Slots) ==========
   createBulkSlots: async (slotData) => {
     try {
-      const response = await post('/appointments/bulk', slotData)
-      return response
+      const payload = {
+        doctor_id: slotData.doctorId || slotData.doctor_id,
+        service_id: slotData.serviceId || slotData.service_id,
+        pattern: slotData.pattern || [0, 2, 4],
+        start_date: slotData.startDate || slotData.start_date,
+        end_date: slotData.endDate || slotData.end_date,
+        start_time: slotData.startTime || slotData.start_time || '09:00',
+        end_time: slotData.endTime || slotData.end_time || '17:00',
+        slot_duration_minutes: slotData.slotDurationMinutes || slotData.slot_duration_minutes || 30,
+        capacity: slotData.capacity || 1
+      }
+      const response = await post('/api/v1/scheduling/slots/bulk', payload)
+      return response.slots || response
     } catch (error) {
+      console.warn('⚠️ createBulkSlots failed:', error.message)
       throw error
     }
   },
 
-  // ========== إنشاء مواعيد ديناميكية ==========
+  // ========== إنشاء موعد فردي ==========
   createDynamicSlots: async (slotData) => {
     try {
-      const response = await post('/appointments/dynamic', slotData)
-      return response
+      const payload = {
+        doctor_id: slotData.doctorId || slotData.doctor_id,
+        service_id: slotData.serviceId || slotData.service_id,
+        start_time: slotData.startTime || slotData.start_time,
+        end_time: slotData.endTime || slotData.end_time,
+        capacity: slotData.capacity || 1,
+        type: slotData.type || 'DYNAMIC'
+      }
+      const response = await post('/api/v1/scheduling/slots', payload)
+      return response.slot || response
     } catch (error) {
+      console.warn('⚠️ createDynamicSlots failed:', error.message)
       throw error
     }
   },
+
+  // ========== حجز موعد من خلال Scheduling ==========
+  bookSlot: async (slotId) => {
+    try {
+      const response = await patch(`/api/v1/scheduling/slots/${slotId}/book`)
+      return response.slot || response
+    } catch (error) {
+      console.warn('⚠️ bookSlot failed:', error.message)
+      throw error
+    }
+  },
+
+  // ========== إلغاء حجز موعد ==========
+  cancelBooking: async (slotId) => {
+    try {
+      const response = await patch(`/api/v1/scheduling/slots/${slotId}/cancel-booking`)
+      return response.slot || response
+    } catch (error) {
+      console.warn('⚠️ cancelBooking failed:', error.message)
+      throw error
+    }
+  },
+
+  // ========== الحصول على مواعيد طبيب معين ==========
+  getAppointmentsByDoctor: async (doctorId, date = null) => {
+    try {
+      let endpoint = `/api/v1/sessions?doctor_id=${doctorId}`
+      if (date) {
+        endpoint += `&session_date=${date}`
+      }
+      const response = await get(endpoint)
+      return response.sessions || response || []
+    } catch (error) {
+      console.warn('⚠️ getAppointmentsByDoctor failed:', error.message)
+      return []
+    }
+  },
+
+  // ========== الحصول على مواعيد حسب التاريخ ==========
+  getAppointmentsByDate: async (date) => {
+    try {
+      const response = await get(`/api/v1/sessions?session_date=${date}`)
+      return response.sessions || response || []
+    } catch (error) {
+      console.warn('⚠️ getAppointmentsByDate failed:', error.message)
+      return []
+    }
+  }
 }
