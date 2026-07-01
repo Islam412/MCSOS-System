@@ -359,7 +359,6 @@ The system includes `localStorage` fallback for offline operation:
 | Contributor | Role | GitHub |
 | :--- | :--- | :--- |
 | **Islam Hamdy** | Lead Developer | [@Islam412](https://github.com/Islam412) |
-| **Hassan Salah** | Contributor | [@HassanSalah1](https://github.com/HassanSalah1) |
 
 ---
 
