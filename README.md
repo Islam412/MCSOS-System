@@ -369,7 +369,9 @@ This project is open-source and freely available for use.
 ---
 
 ## 📞 Contact & Support
-* **GitHub Issues:** [Report an issue](https://github.com/Islam412/MCSOS-System/issues)
+* **GitHub:** [@Islam Hamdy](https://github.com/Islam412/)
+* **Linkdin:** [@Islam Hamdy](https://www.linkedin.com/in/islam-hamdy-62a94826b/)
+* **Portfolio:** [@Islam Hamdy](https://islam-portfolio-phi.vercel.app/)
 * **Live Demo:** [https://mcsos-system.vercel.app/](https://mcsos-system.vercel.app/)
 * **Repository:** [https://github.com/Islam412/MCSOS-System](https://github.com/Islam412/MCSOS-System)
 
