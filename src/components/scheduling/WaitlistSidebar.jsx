@@ -52,7 +52,7 @@ export default function WaitlistSidebar({ onSelectEntry, selectedEntryId, refres
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-xl flex flex-col h-full">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-xl flex flex-col h-full max-h-[80vh]">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700 mb-4">
         <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
