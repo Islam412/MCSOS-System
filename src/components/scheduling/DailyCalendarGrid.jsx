@@ -116,14 +116,15 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   // Find session for a doctor and time slot
   const findSession = (doctorId, timeStr) => {
     return sessions.find(s => {
-      if (s.doctor_id !== doctorId) return false
-      const sessionTime = new Date(s.session_date).toLocaleTimeString('en-US', {
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-      // Match by comparing first 5 characters (HH:MM)
-      return sessionTime.startsWith(timeStr)
+      const sDocId = s.doctor_id || s.doctor?.id
+      if (sDocId !== doctorId) return false
+      
+      const sessionDateObj = new Date(s.session_date)
+      const hours = sessionDateObj.getHours().toString().padStart(2, '0')
+      const minutes = sessionDateObj.getMinutes().toString().padStart(2, '0')
+      const sessionTime = `${hours}:${minutes}`
+      
+      return sessionTime === timeStr
     })
   }
 
