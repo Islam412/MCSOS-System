@@ -29,6 +29,18 @@ export const setUser = (user) => {
   }
 }
 
+let isRefreshing = false
+let refreshSubscribers = []
+
+const onRefreshed = (token) => {
+  refreshSubscribers.forEach((cb) => cb(token))
+  refreshSubscribers = []
+}
+
+const addRefreshSubscriber = (cb) => {
+  refreshSubscribers.push(cb)
+}
+
 // دالة الطلب الأساسية مع إعادة المحاولة
 export const apiRequest = async (url, options = {}, retryCount = 0) => {
   const token = getToken()
@@ -88,6 +100,71 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
     }
 
     if (!response.ok) {
+      if (response.status === 401 && !options._retry && !url.includes(ENDPOINTS.AUTH.LOGIN) && !url.includes(ENDPOINTS.AUTH.REFRESH)) {
+        if (isRefreshing) {
+          return new Promise(resolve => {
+            addRefreshSubscriber(token => {
+              if (token) {
+                options._retry = true
+                options.headers.Authorization = `Bearer ${token}`
+                resolve(apiRequest(url, options, retryCount))
+              } else {
+                resolve(Promise.reject(new Error(ERROR_MESSAGES.UNAUTHORIZED)))
+              }
+            })
+          })
+        }
+
+        options._retry = true
+        isRefreshing = true
+
+        try {
+          const baseUrl = API_CONFIG.BASE_URL.replace(/\/+$/, '')
+          const refreshUrl = `${baseUrl}${ENDPOINTS.AUTH.REFRESH}`
+          
+          const refreshResponse = await fetch(refreshUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'include',
+          })
+          
+          if (!refreshResponse.ok) {
+            throw new Error('Refresh failed')
+          }
+          
+          const textResponse = await refreshResponse.text()
+          let refreshData = {}
+          if (textResponse) {
+             try { refreshData = JSON.parse(textResponse) } catch(e){}
+          }
+
+          const newToken = refreshData.token || refreshData.access_token
+          
+          if (newToken) {
+            setToken(newToken)
+            onRefreshed(newToken)
+            options.headers.Authorization = `Bearer ${newToken}`
+            return apiRequest(url, options, retryCount)
+          } else {
+            throw new Error('No token returned')
+          }
+        } catch (refreshError) {
+          onRefreshed(null)
+          setToken(null)
+          setUser(null)
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login'
+          }
+          throw new Error(ERROR_MESSAGES.UNAUTHORIZED)
+        } finally {
+          isRefreshing = false
+        }
+      }
+
       const errorMessage = data?.message || data?.error || ERROR_MESSAGES.SERVER_ERROR
       throw new Error(errorMessage)
     }
