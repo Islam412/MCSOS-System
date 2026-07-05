@@ -1,15 +1,16 @@
-// src/components/scheduling/WaitlistSidebar.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { User, ClipboardList, RefreshCw, Check, AlertCircle, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import AddToWaitlistModal from './AddToWaitlistModal'
 
-export default function WaitlistSidebar({ onSelectEntry, selectedEntryId, refreshTrigger }) {
+export default function WaitlistSidebar({ onSelectEntry, selectedEntryId, refreshTrigger, doctors }) {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
   
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
   
@@ -64,13 +65,22 @@ export default function WaitlistSidebar({ onSelectEntry, selectedEntryId, refres
             </span>
           )}
         </h3>
-        <button 
-          onClick={fetchWaitlist} 
-          disabled={loading}
-          className="p-1.5 text-gray-400 hover:text-gray-650 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="p-1.5 text-indigo-650 hover:text-indigo-850 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition"
+            title={isRTL ? 'إضافة للانتظار' : 'Add to Waitlist'}
+          >
+            <Plus size={16} />
+          </button>
+          <button 
+            onClick={fetchWaitlist} 
+            disabled={loading}
+            className="p-1.5 text-gray-400 hover:text-gray-650 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       {/* Main List */}
@@ -155,6 +165,16 @@ export default function WaitlistSidebar({ onSelectEntry, selectedEntryId, refres
           </p>
         </div>
       )}
+      {/* Add to Waitlist Modal */}
+      <AddToWaitlistModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        doctors={doctors}
+        onAddComplete={() => {
+          setShowAddModal(false)
+          fetchWaitlist()
+        }}
+      />
     </div>
   )
 }

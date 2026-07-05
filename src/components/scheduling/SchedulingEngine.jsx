@@ -540,6 +540,7 @@ export default function SchedulingEngine() {
               selectedEntryId={selectedWaitlistEntry?.id}
               onSelectEntry={(entry) => setSelectedWaitlistEntry(entry)}
               refreshTrigger={waitlistRefreshTrigger}
+              doctors={doctors}
             />
           </div>
         </div>

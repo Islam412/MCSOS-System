@@ -1,8 +1,8 @@
-// src/components/scheduling/DailyCalendarGrid.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, Plus, MapPin, Search, Filter } from 'lucide-react'
 import toast from 'react-hot-toast'
+import DirectBookingModal from './DirectBookingModal'
 
 export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignComplete, onViewSession }) {
   const { t, i18n } = useTranslation()
@@ -15,6 +15,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   const [loading, setLoading] = useState(false)
   const [assigningSlot, setAssigningSlot] = useState(null)
   const [selectedRoomId, setSelectedRoomId] = useState('')
+  const [directBookingSlot, setDirectBookingSlot] = useState(null)
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState('')
@@ -128,9 +129,12 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     })
   }
 
-  // Handle cell click for waitlist assignment
+  // Handle cell click for waitlist assignment or direct booking
   const handleCellClick = (doctor, timeStr) => {
-    if (!selectedWaitlistEntry) return
+    if (!selectedWaitlistEntry) {
+      setDirectBookingSlot({ doctor, timeStr, dateStr: selectedDate })
+      return
+    }
     
     // Set the assigning slot state to open the Room selection dialog
     setAssigningSlot({ doctor, timeStr })
@@ -330,8 +334,10 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                         key={doc.id}
                         onClick={() => !session && handleCellClick(doc, timeStr)}
                         className={`w-[180px] min-w-[180px] p-2 border-r border-gray-100/60 dark:border-gray-800/40 text-center relative ${
-                          !session && selectedWaitlistEntry
-                            ? 'hover:bg-indigo-50/40 dark:hover:bg-indigo-950/5 cursor-pointer bg-indigo-50/5 dark:bg-indigo-950/2'
+                          !session 
+                            ? selectedWaitlistEntry
+                              ? 'hover:bg-indigo-50/40 dark:hover:bg-indigo-950/5 cursor-pointer bg-indigo-50/5 dark:bg-indigo-950/2'
+                              : 'cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/10'
                             : ''
                         }`}
                       >
@@ -372,7 +378,15 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                             <Plus size={12} className="shrink-0" />
                             <span>{isRTL ? 'تسكين' : 'Assign'}</span>
                           </div>
-                        ) : null}
+                        ) : (
+                          /* Interactive cell in direct booking mode */
+                          <div className="group/cell h-full min-h-[55px] flex items-center justify-center">
+                            <div className="opacity-0 group-hover/cell:opacity-100 border border-dashed border-gray-300 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl p-2.5 w-full text-center text-[10px] font-bold text-gray-500 dark:text-gray-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition duration-200 flex items-center justify-center gap-1 shadow-sm">
+                              <Plus size={12} className="shrink-0" />
+                              <span>{isRTL ? 'حجز مباشر' : 'Book'}</span>
+                            </div>
+                          </div>
+                        )}
                       </td>
                     )
                   })}
@@ -430,6 +444,17 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
           </div>
         </div>
       )}
+      {/* Direct Booking Modal */}
+      <DirectBookingModal
+        isOpen={!!directBookingSlot}
+        onClose={() => setDirectBookingSlot(null)}
+        slotInfo={directBookingSlot}
+        rooms={rooms}
+        onBookingComplete={() => {
+          setDirectBookingSlot(null)
+          fetchSessions()
+        }}
+      />
     </div>
   )
 }
