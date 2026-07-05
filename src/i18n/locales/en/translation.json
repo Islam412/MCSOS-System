@@ -21,6 +21,7 @@
     "invoice": "Invoice",
     "appointments": "Appointments",
     "book_appointment": "Book Appointment",
+    "rooms_manager": "Rooms Manager",
     "logout": "Logout"
   },
   "reception": {

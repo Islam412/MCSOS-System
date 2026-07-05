@@ -50,6 +50,17 @@ export const patientsService = {
     }
   },
 
+  // إكمال تقييم مريض
+  completeAssessment: async (id) => {
+    try {
+      const response = await put(`${ENDPOINTS.PATIENTS.UPDATE(id)}/complete-assessment`)
+      return response
+    } catch (error) {
+      console.error('❌ completeAssessment error:', error)
+      throw error
+    }
+  },
+
   // حذف مريض
   deletePatient: async (id) => {
     try {

@@ -24,6 +24,7 @@ import PatientProfile from './pages/patient/PatientProfile'
 import Profile from './pages/profile/Profile'
 import DoctorsManager from './components/admin/DoctorsManager'
 import UsersManager from './components/admin/UsersManager'
+import RoomsManager from './components/admin/RoomsManager'
 import Appointments from './pages/patient/Appointments' 
 import BookAppointment from './pages/patient/BookAppointment'
 
@@ -45,6 +46,7 @@ function App() {
           <Route path="dashboard" element={<HospitalDashboard />} />
           <Route path="doctors-manager" element={<DoctorsManager />} />
           <Route path="users-manager" element={<UsersManager />} />
+          <Route path="rooms-manager" element={<RoomsManager />} />
           
           {/* مسارات الدكتور */}
           <Route path="doctor-dashboard" element={<DoctorDashboard />} />

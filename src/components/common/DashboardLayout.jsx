@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck } from 'lucide-react'
+import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck, DoorOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -61,6 +61,7 @@ export default function DashboardLayout() {
         { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
         { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
+        { to: '/rooms-manager', label: 'sidebar.rooms_manager', icon: DoorOpen },
         profileItem
       ]
     } else if (userRole === 'doctor') {

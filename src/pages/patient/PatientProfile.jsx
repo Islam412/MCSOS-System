@@ -1128,6 +1128,40 @@ export default function PatientProfile() {
                     </span></div>
                     <div><span className="text-gray-400">الطبيب المعالج: </span><span className="text-white">{selectedPatient.doctorName || '-'}</span></div>
                     <div><span className="text-gray-400">ملاحظات: </span><span className="text-white">{selectedPatient.notes || '-'}</span></div>
+                    
+                    {(selectedPatient.status === 'pending' || 
+                      selectedPatient.status === 'pending_assessment' || 
+                      selectedPatient.status === 'PENDING_ASSESSMENT') && (
+                      <div className="pt-4 border-t border-gray-700 mt-3">
+                        <button
+                          onClick={async () => {
+                            try {
+                              setIsSubmitting(true)
+                              await patientsService.completeAssessment(selectedPatient.id)
+                              toast.success(isRTL ? 'تم اكتمال التقييم بنجاح!' : 'Assessment completed successfully!')
+                              
+                              if (window.confirm(isRTL 
+                                ? 'تم إكمال التقييم بنجاح! هل تود الانتقال لصفحة الباقات لتخصيص باقة علاجية لهذا المريض؟' 
+                                : 'Assessment completed! Would you like to go to the packages page to assign a treatment package for this patient?')) {
+                                window.location.href = `/packages?patientId=${selectedPatient.id}`
+                              } else {
+                                loadAllData()
+                                setShowPatientModal(false)
+                              }
+                            } catch (err) {
+                              toast.error(isRTL ? 'فشل اعتماد التقييم' : 'Failed to complete assessment')
+                            } finally {
+                              setIsSubmitting(false)
+                            }
+                          }}
+                          disabled={isSubmitting}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-green-600/10"
+                        >
+                          {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                          {isRTL ? 'اعتماد اكتمال التقييم' : 'Complete Assessment'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

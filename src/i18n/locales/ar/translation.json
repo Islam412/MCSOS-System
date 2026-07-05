@@ -21,6 +21,7 @@
     "invoice": "الفواتير",
     "appointments": "المواعيد",
     "book_appointment": "حجز موعد",
+    "rooms_manager": "إدارة الغرف",
     "logout": "تسجيل الخروج"
   },
   "reception": {

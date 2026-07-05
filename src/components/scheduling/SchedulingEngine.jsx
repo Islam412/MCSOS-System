@@ -8,6 +8,11 @@ import toast from 'react-hot-toast'
 import { doctorsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 
+// ========== استيراد المكونات الجديدة ==========
+import DailyCalendarGrid from './DailyCalendarGrid'
+import SessionDetailModal from './SessionDetailModal'
+import WaitlistSidebar from './WaitlistSidebar'
+
 // ========== عنوان الـ API ==========
 const API_BASE = 'https://medical-center-app-production.up.railway.app/api/v1'
 
@@ -35,6 +40,12 @@ export default function SchedulingEngine() {
     capacity: 1,
     status: 'available'
   })
+
+  // ========== حالات المكونات الجديدة ==========
+  const [activeTab, setActiveTab] = useState('grid') // 'grid' or 'slots'
+  const [selectedWaitlistEntry, setSelectedWaitlistEntry] = useState(null)
+  const [selectedSession, setSelectedSession] = useState(null)
+  const [waitlistRefreshTrigger, setWaitlistRefreshTrigger] = useState(0)
 
   const bulkPatterns = [
     { id: 'sun_tue_thu', nameAr: 'الأحد - الثلاثاء - الخميس', nameEn: 'Sun - Tue - Thu' },
@@ -462,13 +473,13 @@ export default function SchedulingEngine() {
     <div className="space-y-6">
       <div className={`flex justify-between items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
-            {t('scheduling.title') || 'إدارة المواعيد'}
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+            {t('scheduling.title') || 'إدارة المواعيد والجدولة'}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            {t('scheduling.subtitle') || 'إنشاء وإدارة مواعيد الأطباء'}
+            {t('scheduling.subtitle') || 'نظام جدولة المواعيد اليومية للأطباء وإدارة قائمة الانتظار'}
             {!isOnline && (
-              <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+              <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs animate-pulse">
                 ⚡ غير متصل
               </span>
             )}
@@ -476,156 +487,207 @@ export default function SchedulingEngine() {
         </div>
         <button
           onClick={refreshData}
-          className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30"
+          className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-indigo-500/20 transition-all font-semibold"
         >
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> تحديث
+          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+          {isRTL ? 'تحديث البيانات' : 'Refresh'}
         </button>
       </div>
 
-      {/* Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <label className="block text-sm font-semibold mb-2">{t('scheduling.select_doctor') || 'اختر الطبيب'}</label>
-          <select
-            className="w-full p-2 border rounded-lg dark:bg-gray-900"
-            value={selectedDoctor}
-            onChange={(e) => setSelectedDoctor(e.target.value)}
-            disabled={submitting}
-          >
-            <option value="">{t('scheduling.select_doctor') || 'اختر الطبيب'}</option>
-            {doctors.map(doc => (
-              <option key={doc.id} value={doc.id}>{getDoctorName(doc)}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <label className="block text-sm font-semibold mb-2">{t('scheduling.bulk_pattern') || 'نمط المواعيد'}</label>
-          <select
-            className="w-full p-2 border rounded-lg dark:bg-gray-900"
-            value={bulkPattern}
-            onChange={(e) => setBulkPattern(e.target.value)}
-            disabled={submitting}
-          >
-            <option value="">{t('scheduling.select_pattern') || 'اختر النمط'}</option>
-            {bulkPatterns.map(pattern => (
-              <option key={pattern.id} value={pattern.id}>{isRTL ? pattern.nameAr : pattern.nameEn}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={generateBulkSlots}
-            disabled={submitting || !selectedDoctor || !bulkPattern}
-            className="flex-1 bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? <Loader2 size={18} className="animate-spin" /> : <Calendar size={18} />}
-            إنشاء مجمع
-          </button>
-          <button
-            onClick={generateDynamicSlots}
-            disabled={submitting || !selectedDoctor}
-            className="flex-1 bg-green-600 text-white p-3 rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-            إضافة موعد
-          </button>
-        </div>
+      {/* Tab Navigation */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl p-1 shadow-sm gap-1">
+        <button
+          onClick={() => setActiveTab('grid')}
+          className={`flex-1 py-2.5 px-5 rounded-lg font-semibold text-sm transition-all ${
+            activeTab === 'grid'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/50'
+          }`}
+        >
+          {isRTL ? 'مخطط التقويم اليومي' : 'Daily Calendar Grid'}
+        </button>
+        <button
+          onClick={() => setActiveTab('slots')}
+          className={`flex-1 py-2.5 px-5 rounded-lg font-semibold text-sm transition-all ${
+            activeTab === 'slots'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/50'
+          }`}
+        >
+          {isRTL ? 'توليد المواعيد والأنماط' : 'Slot Generator'}
+        </button>
       </div>
 
-      {/* Bulk Slots */}
-      {slots.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <Calendar className="text-blue-500" />
-            المواعيد المجمعة
-            <span className="text-sm text-gray-400 font-normal ml-2">
-              ({slots.filter(s => s._syncPending).length > 0 && 
-                <span className="text-yellow-400">⏳ {slots.filter(s => s._syncPending).length} في انتظار المزامنة</span>}
-            </span>
-          </h2>
-          <div className="space-y-3">
-            {slots.map(slot => (
-              <div key={slot.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-                <div>
-                  <p className="font-semibold">{slot.doctorName || getDoctorName(getDoctorById(slot.doctorId))}</p>
-                  <p className="text-sm text-gray-500">{slot.patternName || slot.pattern}</p>
-                  <p className="text-xs text-gray-400">{slot.startDate || slot.date} → {slot.endDate}</p>
-                  {slot._syncPending && (
-                    <span className="text-xs text-yellow-400">⏳ في انتظار المزامنة</span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => editSlot(slot)}
-                    className="p-2 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition"
-                  >
-                    <Edit size={18} />
-                  </button>
-                  <button
-                    onClick={() => deleteSlot(slot.id, 'bulk')}
-                    className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            ))}
+      {/* Tab Contents */}
+      {activeTab === 'grid' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3">
+            <DailyCalendarGrid 
+              selectedWaitlistEntry={selectedWaitlistEntry}
+              onAssignComplete={() => {
+                setSelectedWaitlistEntry(null)
+                setWaitlistRefreshTrigger(prev => prev + 1)
+              }}
+              onViewSession={(session) => setSelectedSession(session)}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <WaitlistSidebar 
+              selectedEntryId={selectedWaitlistEntry?.id}
+              onSelectEntry={(entry) => setSelectedWaitlistEntry(entry)}
+              refreshTrigger={waitlistRefreshTrigger}
+            />
           </div>
         </div>
-      )}
+      ) : (
+        /* Slot Generator View */
+        <div className="space-y-6">
+          {/* Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-semibold mb-2">{t('scheduling.select_doctor') || 'اختر الطبيب'}</label>
+              <select
+                className="w-full p-2 border rounded-lg dark:bg-gray-900"
+                value={selectedDoctor}
+                onChange={(e) => setSelectedDoctor(e.target.value)}
+                disabled={submitting}
+              >
+                <option value="">{t('scheduling.select_doctor') || 'اختر الطبيب'}</option>
+                {doctors.map(doc => (
+                  <option key={doc.id} value={doc.id}>{getDoctorName(doc)}</option>
+                ))}
+              </select>
+            </div>
 
-      {/* Dynamic Slots */}
-      {dynamicSlots.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <Clock className="text-green-500" />
-            المواعيد الفردية
-            <span className="text-sm text-gray-400 font-normal ml-2">
-              ({dynamicSlots.filter(s => s._syncPending).length > 0 && 
-                <span className="text-yellow-400">⏳ {dynamicSlots.filter(s => s._syncPending).length} في انتظار المزامنة</span>}
-            </span>
-          </h2>
-          <div className="grid gap-3">
-            {dynamicSlots.map(slot => (
-              <div key={slot.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-                <div>
-                  <p className="font-semibold">{slot.doctorName || getDoctorName(getDoctorById(slot.doctorId))}</p>
-                  <p className="text-sm text-gray-500">{slot.date} - {slot.startTime || slot.start_time}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getStatusBadge(slot.status)}
-                    {slot.capacity && <span className="text-xs text-gray-400">السعة: {slot.capacity}</span>}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-semibold mb-2">{t('scheduling.bulk_pattern') || 'نمط المواعيد'}</label>
+              <select
+                className="w-full p-2 border rounded-lg dark:bg-gray-900"
+                value={bulkPattern}
+                onChange={(e) => setBulkPattern(e.target.value)}
+                disabled={submitting}
+              >
+                <option value="">{t('scheduling.select_pattern') || 'اختر النمط'}</option>
+                {bulkPatterns.map(pattern => (
+                  <option key={pattern.id} value={pattern.id}>{isRTL ? pattern.nameAr : pattern.nameEn}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={generateBulkSlots}
+                disabled={submitting || !selectedDoctor || !bulkPattern}
+                className="flex-1 bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? <Loader2 size={18} className="animate-spin" /> : <Calendar size={18} />}
+                إنشاء مجمع
+              </button>
+              <button
+                onClick={generateDynamicSlots}
+                disabled={submitting || !selectedDoctor}
+                className="flex-1 bg-green-600 text-white p-3 rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                إضافة موعد
+              </button>
+            </div>
+          </div>
+
+          {/* Bulk Slots */}
+          {slots.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Calendar className="text-blue-500" />
+                المواعيد المجمعة
+                <span className="text-sm text-gray-400 font-normal ml-2">
+                  ({slots.filter(s => s._syncPending).length > 0 && 
+                    <span className="text-yellow-400">⏳ {slots.filter(s => s._syncPending).length} في انتظار المزامنة</span>}
+                </span>
+              </h2>
+              <div className="space-y-3">
+                {slots.map(slot => (
+                  <div key={slot.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
+                    <div>
+                      <p className="font-semibold">{slot.doctorName || getDoctorName(getDoctorById(slot.doctorId))}</p>
+                      <p className="text-sm text-gray-500">{slot.patternName || slot.pattern}</p>
+                      <p className="text-xs text-gray-400">{slot.startDate || slot.date} → {slot.endDate}</p>
+                      {slot._syncPending && (
+                        <span className="text-xs text-yellow-400">⏳ في انتظار المزامنة</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => editSlot(slot)}
+                        className="p-2 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => deleteSlot(slot.id, 'bulk')}
+                        className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
-                  {slot._syncPending && (
-                    <span className="text-xs text-yellow-400">⏳ في انتظار المزامنة</span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => editSlot(slot)}
-                    className="p-2 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition"
-                  >
-                    <Edit size={18} />
-                  </button>
-                  <button
-                    onClick={() => deleteSlot(slot.id, 'dynamic')}
-                    className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {slots.length === 0 && dynamicSlots.length === 0 && (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl">
-          <Calendar size={48} className="mx-auto text-gray-400 mb-3" />
-          <p className="text-gray-500">لا توجد مواعيد</p>
-          <p className="text-sm text-gray-400">قم بإنشاء مواعيد جديدة باستخدام الأزرار أعلاه</p>
+          {/* Dynamic Slots */}
+          {dynamicSlots.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Clock className="text-green-500" />
+                المواعيد الفردية
+                <span className="text-sm text-gray-400 font-normal ml-2">
+                  ({dynamicSlots.filter(s => s._syncPending).length > 0 && 
+                    <span className="text-yellow-400">⏳ {dynamicSlots.filter(s => s._syncPending).length} في انتظار المزامنة</span>}
+                </span>
+              </h2>
+              <div className="grid gap-3">
+                {dynamicSlots.map(slot => (
+                  <div key={slot.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
+                    <div>
+                      <p className="font-semibold">{slot.doctorName || getDoctorName(getDoctorById(slot.doctorId))}</p>
+                      <p className="text-sm text-gray-500">{slot.date} - {slot.startTime || slot.start_time}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {getStatusBadge(slot.status)}
+                        {slot.capacity && <span className="text-xs text-gray-400">السعة: {slot.capacity}</span>}
+                      </div>
+                      {slot._syncPending && (
+                        <span className="text-xs text-yellow-400">⏳ في انتظار المزامنة</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => editSlot(slot)}
+                        className="p-2 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => deleteSlot(slot.id, 'dynamic')}
+                        className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {slots.length === 0 && dynamicSlots.length === 0 && (
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl">
+              <Calendar size={48} className="mx-auto text-gray-400 mb-3" />
+              <p className="text-gray-500">لا توجد مواعيد</p>
+              <p className="text-sm text-gray-400">قم بإنشاء مواعيد جديدة باستخدام الأزرار أعلاه</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -665,12 +727,11 @@ export default function SchedulingEngine() {
                   className="w-full p-2 border rounded-lg dark:bg-gray-900"
                   value={slotForm.date}
                   onChange={(e) => setSlotForm({...slotForm, date: e.target.value})}
-                  min={new Date().toISOString().split('T')[0]}
                   disabled={submitting}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">من</label>
                   <input
@@ -739,6 +800,17 @@ export default function SchedulingEngine() {
           </div>
         </div>
       )}
+
+      {/* Session Detail Modal */}
+      <SessionDetailModal 
+        isOpen={!!selectedSession}
+        onClose={() => setSelectedSession(null)}
+        session={selectedSession}
+        onUpdate={(updatedSession) => {
+          setSelectedSession(null)
+          setWaitlistRefreshTrigger(prev => prev + 1) // Refresh waitlist sidebar & grid
+        }}
+      />
     </div>
   )
 }
