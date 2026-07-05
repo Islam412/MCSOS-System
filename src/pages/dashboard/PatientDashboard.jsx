@@ -32,6 +32,7 @@ export default function PatientDashboard() {
   const [patient, setPatient] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
+  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -337,7 +338,7 @@ export default function PatientDashboard() {
 
   // ========== دالة مساعدة للـ GET ==========
   const get = async (endpoint) => {
-    const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+    const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
         'Content-Type': 'application/json'

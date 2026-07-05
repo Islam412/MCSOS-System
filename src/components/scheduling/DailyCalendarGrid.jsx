@@ -1,7 +1,7 @@
 // src/components/scheduling/DailyCalendarGrid.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, Plus, MapPin } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, Plus, MapPin, Search, Filter } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignComplete, onViewSession }) {
@@ -15,8 +15,12 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   const [loading, setLoading] = useState(false)
   const [assigningSlot, setAssigningSlot] = useState(null)
   const [selectedRoomId, setSelectedRoomId] = useState('')
+  
+  // Filter States
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSpecialization, setSelectedSpecialization] = useState('')
 
-  const API_BASE = 'https://medical-center-app-production.up.railway.app/api/v1'
+  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   // Time slots from 08:00 to 21:30 (half-hour intervals)
   const timeSlots = []
@@ -24,6 +28,26 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     const hh = String(hour).padStart(2, '0')
     timeSlots.push(`${hh}:00`)
     timeSlots.push(`${hh}:30`)
+  }
+
+  // Extract unique specializations
+  const specializations = [...new Set(doctors.map(d => d.specialization).filter(Boolean))]
+
+  // Filtered Doctors
+  const filteredDoctors = doctors.filter(doc => {
+    const nameMatch = doc.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    const specMatch = !selectedSpecialization || doc.specialization === selectedSpecialization
+    return nameMatch && specMatch
+  })
+
+  // Initials Helper
+  const getInitials = (name) => {
+    if (!name) return '?'
+    const parts = name.trim().split(/\s+/)
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    }
+    return parts[0][0].toUpperCase()
   }
 
   useEffect(() => {
@@ -173,138 +197,189 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden flex flex-col h-full">
       {/* Grid Header Controls */}
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3 bg-gray-50/50 dark:bg-gray-900/10">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="text-blue-500" size={20} />
-          <span className="font-bold text-gray-800 dark:text-white">
-            {isRTL ? 'الجدول اليومي للمركز' : 'Medical Center Daily Schedule'}
-          </span>
-        </div>
-        
-        {/* Date Selector */}
-        <div className="flex items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
-          <button 
-            onClick={handlePrevDay} 
-            className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700"
-          >
-            <ChevronRight size={16} />
-          </button>
+      <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="text-indigo-500" size={20} />
+            <span className="font-extrabold text-gray-800 dark:text-white text-base">
+              {isRTL ? 'الجدول اليومي للمركز' : 'Medical Center Daily Schedule'}
+            </span>
+          </div>
           
-          <input 
-            type="date" 
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="p-2 border-0 bg-transparent text-sm font-semibold dark:text-white focus:ring-0 outline-none cursor-pointer"
-          />
+          <div className="flex items-center gap-3">
+            {/* Date Selector */}
+            <div className="flex items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+              <button 
+                onClick={handlePrevDay} 
+                className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700"
+              >
+                <ChevronRight size={16} />
+              </button>
+              
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="p-2 border-0 bg-transparent text-sm font-bold dark:text-white focus:ring-0 outline-none cursor-pointer"
+              />
 
-          <button 
-            onClick={handleNextDay} 
-            className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700"
-          >
-            <ChevronLeft size={16} />
-          </button>
+              <button 
+                onClick={handleNextDay} 
+                className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            </div>
+
+            <button 
+              onClick={fetchSessions} 
+              disabled={loading}
+              className="p-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1.5 transition text-xs font-bold shadow-sm"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              {isRTL ? 'تحديث' : 'Refresh'}
+            </button>
+          </div>
         </div>
 
-        <button 
-          onClick={fetchSessions} 
-          disabled={loading}
-          className="p-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1.5 transition text-xs font-semibold shadow-sm"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {isRTL ? 'تحديث الجدول' : 'Refresh Grid'}
-        </button>
+        {/* Filter controls */}
+        <div className="flex flex-wrap gap-3 items-center pt-3 border-t border-gray-200/40 dark:border-gray-700/50">
+          {/* Search Doctor */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute right-3 top-2.5 text-gray-400" size={16} />
+            <input 
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={isRTL ? 'البحث عن طبيب بالاسم...' : 'Search doctor by name...'}
+              className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm"
+            />
+          </div>
+
+          {/* Specialization Filter */}
+          <div className="relative min-w-[200px]">
+            <Filter className="absolute right-3 top-2.5 text-gray-400" size={16} />
+            <select
+              value={selectedSpecialization}
+              onChange={(e) => setSelectedSpecialization(e.target.value)}
+              className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
+            >
+              <option value="">{isRTL ? 'كل التخصصات' : 'All Specializations'}</option>
+              {specializations.map(spec => (
+                <option key={spec} value={spec}>{spec}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Grid Container */}
       <div className="flex-1 overflow-auto relative max-h-[65vh]">
-        <table className="w-full border-collapse border-spacing-0 table-fixed min-w-[700px]">
-          {/* Header row (Doctors) */}
-          <thead>
-            <tr className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <th className="w-20 p-3 text-xs font-bold text-gray-400 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-50 dark:bg-gray-900 z-30">
-                {isRTL ? 'الوقت' : 'Time'}
-              </th>
-              {doctors.map(doc => (
-                <th key={doc.id} className="p-3 text-center border-r border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-xs font-bold text-gray-700 dark:text-gray-200 block truncate max-w-[120px]">
-                      {doc.name}
-                    </span>
-                  </div>
-                  {doc.specialization && (
-                    <span className="text-[10px] text-gray-400 font-normal block truncate mt-0.5">
-                      {doc.specialization}
-                    </span>
-                  )}
+        {filteredDoctors.length === 0 ? (
+          <div className="text-center py-16 bg-white dark:bg-gray-800">
+            <User size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+            <p className="text-gray-500 dark:text-gray-400 text-sm font-semibold">
+              {isRTL ? 'لم يتم العثور على أطباء يطابقون خيارات التصفية' : 'No doctors matching the filter criteria found'}
+            </p>
+          </div>
+        ) : (
+          <table 
+            className="w-full border-collapse border-spacing-0 table-fixed"
+            style={{ minWidth: `${80 + filteredDoctors.length * 180}px` }}
+          >
+            {/* Header row (Doctors) */}
+            <thead>
+              <tr className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-900 border-b border-gray-250 dark:border-gray-700">
+                <th className="w-[80px] min-w-[80px] p-3 text-xs font-bold text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-100 dark:bg-gray-900 z-30 text-center">
+                  {isRTL ? 'الوقت' : 'Time'}
                 </th>
-              ))}
-            </tr>
-          </thead>
-
-          {/* Time Rows */}
-          <tbody>
-            {timeSlots.map(timeStr => (
-              <tr key={timeStr} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/20 dark:hover:bg-gray-800/10">
-                {/* Time header */}
-                <td className="p-2 text-center text-xs font-mono font-bold text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-white dark:bg-gray-850 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.03)]">
-                  {timeStr}
-                </td>
-
-                {/* Doctor cells */}
-                {doctors.map(doc => {
-                  const session = findSession(doc.id, timeStr)
-                  
-                  return (
-                    <td 
-                      key={doc.id}
-                      onClick={() => !session && handleCellClick(doc, timeStr)}
-                      className={`p-1.5 border-r border-gray-100 dark:border-gray-800 text-center relative ${
-                        !session && selectedWaitlistEntry
-                          ? 'hover:bg-indigo-50/50 dark:hover:bg-indigo-950/10 cursor-pointer border-dashed border-indigo-200 dark:border-indigo-850'
-                          : ''
-                      }`}
-                    >
-                      {session ? (
-                        /* Booked session card */
-                        <div 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onViewSession(session)
-                          }}
-                          className={`p-2 rounded-lg text-right border text-xs shadow-sm cursor-pointer transition transform hover:scale-[1.01] ${
-                            session.confirm_status === 'CONFIRMED' 
-                              ? 'bg-green-50/70 border-green-200 text-green-800 dark:bg-green-950/15 dark:border-green-900/30 dark:text-green-300' 
-                              : session.confirm_status === 'DECLINED'
-                              ? 'bg-red-50/70 border-red-200 text-red-800 dark:bg-red-950/15 dark:border-red-900/30 dark:text-red-300'
-                              : 'bg-yellow-50/70 border-yellow-200 text-yellow-800 dark:bg-yellow-950/15 dark:border-yellow-900/30 dark:text-yellow-300'
-                          }`}
-                        >
-                          <div className="font-bold truncate">
-                            {session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N/A'}
-                          </div>
-                          
-                          {session.room && (
-                            <div className="flex items-center justify-end gap-0.5 text-[9px] text-gray-500 dark:text-gray-400 mt-1">
-                              <span>{session.room.name || session.room.code}</span>
-                              <MapPin size={9} className="text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                      ) : selectedWaitlistEntry ? (
-                        /* Interactive cell in assign mode */
-                        <div className="border border-dashed border-indigo-300 dark:border-indigo-800 rounded-lg p-2 text-center text-[10px] font-semibold text-indigo-500 hover:bg-indigo-600 hover:text-white transition">
-                          <Plus size={10} className="inline mr-1" />
-                          {isRTL ? 'تعيين' : 'Assign'}
-                        </div>
-                      ) : null}
-                    </td>
-                  )
-                })}
+                {filteredDoctors.map(doc => (
+                  <th key={doc.id} className="w-[180px] min-w-[180px] p-3 text-center border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                    <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm animate-pulse"></div>
+                      <span className="text-xs font-extrabold text-gray-800 dark:text-gray-150 block truncate max-w-[150px]">
+                        {doc.name}
+                      </span>
+                    </div>
+                    {doc.specialization && (
+                      <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-full inline-block truncate max-w-[160px] mt-0.5 border border-indigo-100/50 dark:border-indigo-900/30">
+                        {doc.specialization}
+                      </span>
+                    )}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+
+            {/* Time Rows */}
+            <tbody>
+              {timeSlots.map(timeStr => (
+                <tr key={timeStr} className="border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50/40 dark:hover:bg-gray-800/10">
+                  {/* Time header */}
+                  <td className="p-3 text-center text-xs font-mono font-extrabold text-gray-600 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-white dark:bg-gray-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                    {timeStr}
+                  </td>
+
+                  {/* Doctor cells */}
+                  {filteredDoctors.map(doc => {
+                    const session = findSession(doc.id, timeStr)
+                    
+                    return (
+                      <td 
+                        key={doc.id}
+                        onClick={() => !session && handleCellClick(doc, timeStr)}
+                        className={`w-[180px] min-w-[180px] p-2 border-r border-gray-100/60 dark:border-gray-800/40 text-center relative ${
+                          !session && selectedWaitlistEntry
+                            ? 'hover:bg-indigo-50/40 dark:hover:bg-indigo-950/5 cursor-pointer bg-indigo-50/5 dark:bg-indigo-950/2'
+                            : ''
+                        }`}
+                      >
+                        {session ? (
+                          /* Booked session card */
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onViewSession(session)
+                            }}
+                            className={`p-2.5 rounded-xl text-right border text-xs shadow-sm cursor-pointer transition duration-300 transform hover:scale-[1.02] hover:shadow-md flex flex-col justify-between border-l-4 h-full min-h-[55px] ${
+                              session.confirm_status === 'CONFIRMED' 
+                                ? 'bg-emerald-50/90 border-emerald-200/80 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-300 border-l-emerald-500' 
+                                : session.confirm_status === 'DECLINED'
+                                ? 'bg-rose-50/90 border-rose-200/80 text-rose-900 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300 border-l-rose-500'
+                                : 'bg-amber-50/90 border-amber-200/80 text-amber-900 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-300 border-l-amber-500'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[9px] font-bold flex items-center justify-center shrink-0">
+                                {getInitials(session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N A')}
+                              </div>
+                              <div className="font-extrabold truncate text-gray-800 dark:text-white text-[11px] leading-tight">
+                                {session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N/A'}
+                              </div>
+                            </div>
+                            
+                            {session.room && (
+                              <div className="flex items-center justify-end gap-1 text-[9px] text-gray-500 dark:text-gray-400 mt-1.5 font-semibold bg-white/40 dark:bg-black/10 px-1.5 py-0.5 rounded w-max self-end font-mono">
+                                <span>{session.room.name || session.room.code}</span>
+                                <MapPin size={9} className="text-gray-400 dark:text-gray-500" />
+                              </div>
+                            )}
+                          </div>
+                        ) : selectedWaitlistEntry ? (
+                          /* Interactive cell in assign mode */
+                          <div className="border border-dashed border-indigo-300 hover:border-indigo-500 dark:border-indigo-800 dark:hover:border-indigo-600 rounded-xl p-2.5 text-center text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/10 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition duration-300 flex items-center justify-center gap-1 shadow-sm">
+                            <Plus size={12} className="shrink-0" />
+                            <span>{isRTL ? 'تسكين' : 'Assign'}</span>
+                          </div>
+                        ) : null}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Room Selection Popup Modal during assignment */}

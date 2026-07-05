@@ -7,7 +7,7 @@ import {
   Shield, Bell, Globe, Moon, Sun, Monitor, Award, TrendingUp,
   Users, Calendar as CalendarIcon, FileText, Stethoscope,
   RefreshCw, AlertCircle, Upload, Image as ImageIcon,
-  Loader2
+  Loader2, Building, Check, Briefcase
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTheme } from '../../context/ThemeContext'
@@ -15,6 +15,8 @@ import { useTheme } from '../../context/ThemeContext'
 // ========== استيراد الخدمات ==========
 import { authService, usersService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
 // خدمة حفظ واسترجاع بيانات المستخدم
 const STORAGE_KEY = 'mcsos_user_profile'
@@ -202,7 +204,7 @@ export default function Profile() {
   const loadUserStats = async (userId) => {
     try {
       if (isOnline) {
-        const response = await fetch(`https://medical-center-app-production.up.railway.app/api/v1/stats/user/${userId}`, {
+        const response = await fetch(`${API_BASE}/stats/user/${userId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
             'Content-Type': 'application/json'
@@ -231,7 +233,7 @@ export default function Profile() {
   const loadUserActivities = async () => {
     try {
       if (isOnline) {
-        const response = await fetch(`https://medical-center-app-production.up.railway.app/api/v1/activities/recent`, {
+        const response = await fetch(`${API_BASE}/activities/recent`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
             'Content-Type': 'application/json'

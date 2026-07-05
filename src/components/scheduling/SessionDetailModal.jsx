@@ -15,7 +15,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
 
   if (!isOpen || !session) return null
 
-  const API_BASE = 'https://medical-center-app-production.up.railway.app/api/v1'
+  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   const handleAction = async (actionType, body = {}) => {
     setSubmitting(true)

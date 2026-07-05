@@ -89,9 +89,10 @@ export default function PackagesManager() {
         const token = localStorage.getItem('mcsos_token')
         console.log('🔑 Token:', token ? 'موجود' : 'غير موجود')
         
-        const response = await fetch('https://medical-center-app-production.up.railway.app/api/v1/services', {
+        const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
+        const response = await fetch(`${API_BASE}/services`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
             'Content-Type': 'application/json'
           }
         })

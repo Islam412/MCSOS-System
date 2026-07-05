@@ -36,6 +36,7 @@ export default function AdminDashboard() {
   const [apiError, setApiError] = useState(null)
 
   // ========== بيانات من API ==========
+  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
   const [employees, setEmployees] = useState({
     reception: [],
     doctors: [],
@@ -197,7 +198,7 @@ export default function AdminDashboard() {
         return
       }
 
-      const response = await fetch('https://medical-center-app-production.up.railway.app/api/v1/services', {
+      const response = await fetch(`${API_BASE}/services`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
           'Content-Type': 'application/json'
@@ -289,7 +290,7 @@ export default function AdminDashboard() {
 
       for (const endpoint of endpoints) {
         try {
-          const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint.url}`, {
+          const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint.url}`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
               'Content-Type': 'application/json'

@@ -3,7 +3,7 @@
 // تكوين API
 export const API_CONFIG = {
   // ✅ BASE_URL بدون /api في النهاية لتجنب التكرار
-  BASE_URL: 'https://medical-center-app-production.up.railway.app',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app',
   TIMEOUT: 30000,
   RETRY_COUNT: 3,
   RETRY_DELAY: 1000,

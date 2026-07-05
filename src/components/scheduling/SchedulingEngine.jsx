@@ -14,7 +14,7 @@ import SessionDetailModal from './SessionDetailModal'
 import WaitlistSidebar from './WaitlistSidebar'
 
 // ========== عنوان الـ API ==========
-const API_BASE = 'https://medical-center-app-production.up.railway.app/api/v1'
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
 export default function SchedulingEngine() {
   const { t, i18n } = useTranslation()
@@ -495,27 +495,31 @@ export default function SchedulingEngine() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl p-1 shadow-sm gap-1">
-        <button
-          onClick={() => setActiveTab('grid')}
-          className={`flex-1 py-2.5 px-5 rounded-lg font-semibold text-sm transition-all ${
-            activeTab === 'grid'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/50'
-          }`}
-        >
-          {isRTL ? 'مخطط التقويم اليومي' : 'Daily Calendar Grid'}
-        </button>
-        <button
-          onClick={() => setActiveTab('slots')}
-          className={`flex-1 py-2.5 px-5 rounded-lg font-semibold text-sm transition-all ${
-            activeTab === 'slots'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/50'
-          }`}
-        >
-          {isRTL ? 'توليد المواعيد والأنماط' : 'Slot Generator'}
-        </button>
+      <div className="flex justify-center mb-2">
+        <div className="flex w-full max-w-lg bg-gray-100/80 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-800/50 rounded-2xl p-1.5 shadow-inner gap-2">
+          <button
+            onClick={() => setActiveTab('grid')}
+            className={`flex-1 py-2.5 px-6 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+              activeTab === 'grid'
+                ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_4px_15px_rgba(99,102,241,0.35)] scale-[1.02]'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-150 hover:bg-white/50 dark:hover:bg-gray-800/30'
+            }`}
+          >
+            <Calendar size={16} />
+            {isRTL ? 'مخطط التقويم اليومي' : 'Daily Calendar Grid'}
+          </button>
+          <button
+            onClick={() => setActiveTab('slots')}
+            className={`flex-1 py-2.5 px-6 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+              activeTab === 'slots'
+                ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_4px_15px_rgba(99,102,241,0.35)] scale-[1.02]'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-150 hover:bg-white/50 dark:hover:bg-gray-800/30'
+            }`}
+          >
+            <Clock size={16} />
+            {isRTL ? 'توليد المواعيد والأنماط' : 'Slot Generator'}
+          </button>
+        </div>
       </div>
 
       {/* Tab Contents */}

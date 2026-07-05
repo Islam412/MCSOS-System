@@ -23,6 +23,8 @@ export default function OperationsDashboard() {
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
+  
+  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   // ========== بيانات ==========
   const [stats, setStats] = useState({
@@ -75,7 +77,7 @@ export default function OperationsDashboard() {
       if (isOnline) {
         try {
           const response = await fetch(
-            `https://medical-center-app-production.up.railway.app/api/v1/sessions`,
+            `${API_BASE}/sessions`,
             {
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
@@ -192,7 +194,7 @@ export default function OperationsDashboard() {
         try {
           const today = new Date().toISOString().split('T')[0]
           const response = await fetch(
-            `https://medical-center-app-production.up.railway.app/api/v1/sessions?date=${today}`,
+            `${API_BASE}/sessions?date=${today}`,
             {
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
@@ -251,7 +253,7 @@ export default function OperationsDashboard() {
         try {
           const [patientsRes, sessionsRes] = await Promise.all([
             fetch(
-              `https://medical-center-app-production.up.railway.app/api/v1/patients`,
+              `${API_BASE}/patients`,
               {
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
@@ -260,7 +262,7 @@ export default function OperationsDashboard() {
               }
             ),
             fetch(
-              `https://medical-center-app-production.up.railway.app/api/v1/sessions`,
+              `${API_BASE}/sessions`,
               {
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,

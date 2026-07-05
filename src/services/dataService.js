@@ -42,9 +42,10 @@ const defaultWeeklySchedule = [
 ]
 
 // ========== دوال مساعدة للـ API ==========
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 const get = async (endpoint) => {
   const token = localStorage.getItem('mcsos_token')
-  const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+  const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -55,7 +56,7 @@ const get = async (endpoint) => {
 
 const post = async (endpoint, data) => {
   const token = localStorage.getItem('mcsos_token')
-  const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+  const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -68,7 +69,7 @@ const post = async (endpoint, data) => {
 
 const put = async (endpoint, data) => {
   const token = localStorage.getItem('mcsos_token')
-  const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+  const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -81,7 +82,7 @@ const put = async (endpoint, data) => {
 
 const del = async (endpoint) => {
   const token = localStorage.getItem('mcsos_token')
-  const response = await fetch(`https://medical-center-app-production.up.railway.app/api${endpoint}`, {
+  const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`

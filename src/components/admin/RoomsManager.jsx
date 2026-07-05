@@ -23,7 +23,7 @@ export default function RoomsManager() {
     is_active: true
   })
 
-  const API_BASE = 'https://medical-center-app-production.up.railway.app/api/v1'
+  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   useEffect(() => {
     loadRooms()
