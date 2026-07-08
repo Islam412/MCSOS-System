@@ -472,7 +472,6 @@ export default function CapacityTab() {
           </div>
         )}
       </div>
-      </div>
     </div>
   )
 }
