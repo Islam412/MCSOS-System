@@ -20,6 +20,8 @@ export default function CapacityTab() {
 
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('day')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
 
   useEffect(() => {
     fetchDoctors()
@@ -197,6 +199,16 @@ export default function CapacityTab() {
     return true
   })
 
+  // Pagination logic
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterType, searchQuery, selectedDate, selectedDoctorId, dateFilter])
+
+  const totalPages = Math.ceil(filteredSlots.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredSlots.slice(indexOfFirstItem, indexOfLastItem)
+
   return (
     <div className="space-y-6">
       {/* Filters Card */}
@@ -356,7 +368,7 @@ export default function CapacityTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
-                {filteredSlots.map(slot => {
+                {currentItems.map(slot => {
                   const isReserved = slot.booked_count > 0 || slot.session
                   const formattedTime = new Date(slot.start_time).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', {
                     hour: '2-digit',
@@ -431,6 +443,35 @@ export default function CapacityTab() {
             </table>
           </div>
         )}
+
+        {/* Pagination Controls */}
+        {filteredSlots.length > itemsPerPage && (
+          <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 p-4">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {isRTL ? 'إجمالي' : 'Total'}: <span className="font-bold text-gray-900 dark:text-white">{filteredSlots.length}</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-sm font-bold text-gray-900 dark:text-white px-4">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       </div>
     </div>
   )
