@@ -10,7 +10,7 @@ export const doctorsService = {
       const queryString = new URLSearchParams(params).toString()
       const endpoint = queryString ? `${ENDPOINTS.DOCTORS.LIST}?${queryString}` : ENDPOINTS.DOCTORS.LIST
       const response = await get(endpoint)
-      return response.doctors || []
+      return response?.data || response?.doctors || (Array.isArray(response) ? response : [])
     } catch (error) {
       console.error('❌ getDoctors error:', error)
       throw error
@@ -67,7 +67,7 @@ export const doctorsService = {
       const queryString = new URLSearchParams(params).toString()
       const endpoint = queryString ? `${ENDPOINTS.DOCTORS.AVAILABILITY(doctorId)}?${queryString}` : ENDPOINTS.DOCTORS.AVAILABILITY(doctorId)
       const response = await get(endpoint)
-      return response.slots || []
+      return response?.slots || response?.data || (Array.isArray(response) ? response : [])
     } catch (error) {
       console.error('❌ getDoctorSlots error:', error)
       throw error

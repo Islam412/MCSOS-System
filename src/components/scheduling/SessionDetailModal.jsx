@@ -1,5 +1,6 @@
 // src/components/scheduling/SessionDetailModal.jsx
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -377,6 +378,17 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                   {isRTL ? 'إعادة جدولة' : 'Reschedule'}
                 </button>
               )}
+
+              {!session.start_time && session.status !== 'CANCELED' && session.confirm_status === 'CONFIRMED' && (
+                <button
+                  disabled={submitting}
+                  onClick={() => handleAction('start')}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1"
+                >
+                  <Play size={16} />
+                  {isRTL ? 'بدء الجلسة' : 'Start Session'}
+                </button>
+              )}
               
               {session.start_time && !session.end_time && session.status !== 'CANCELED' ? (
                 <button
@@ -395,8 +407,8 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
               <div className="flex gap-2 pt-1">
                 <button
                   disabled={submitting}
-                  onClick={() => {
-                    if (window.confirm(isRTL ? 'هل أنت متأكد من إلغاء هذه الجلسة؟' : 'Are you sure you want to cancel this session?')) {
+                  onClick={async () => {
+                    if ((await confirmAlert({ title: 'تأكيد', text: isRTL ? 'هل أنت متأكد من إلغاء هذه الجلسة؟' : 'Are you sure you want to cancel this session?' }))) {
                       handleAction('cancel')
                     }
                   }}
@@ -408,8 +420,8 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                 {isAdmin && (
                   <button
                     disabled={submitting}
-                    onClick={() => {
-                      if (window.confirm(isRTL ? 'هل أنت متأكد من حذف هذه الجلسة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to permanently delete this session? This action cannot be undone.')) {
+                    onClick={async () => {
+                      if ((await confirmAlert({ title: 'تأكيد', text: isRTL ? 'هل أنت متأكد من حذف هذه الجلسة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to permanently delete this session? This action cannot be undone.' }))) {
                         handleAction('delete')
                       }
                     }}

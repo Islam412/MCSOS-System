@@ -10,6 +10,7 @@ import {
   Send, Copy, Share2, Bookmark, Trash2, Edit, Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { confirmAlert } from '../../utils/confirmAlert'
 
 // ========== استيراد الخدمات ==========
 import { appointmentsService } from '../../services/api'
@@ -246,7 +247,7 @@ export default function Appointments() {
 
   // ========== إلغاء موعد ==========
   const handleCancelAppointment = async (id) => {
-    if (!window.confirm('هل أنت متأكد من إلغاء هذا الموعد؟')) return
+    if (!(await confirmAlert({ title: 'تأكيد الإلغاء', text: 'هل أنت متأكد من إلغاء هذا الموعد؟' }))) return
 
     setIsSubmitting(true)
     try {

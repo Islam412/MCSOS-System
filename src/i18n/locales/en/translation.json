@@ -22,6 +22,7 @@
     "appointments": "Appointments",
     "book_appointment": "Book Appointment",
     "rooms_manager": "Rooms Manager",
+    "services_manager": "Services Manager",
     "logout": "Logout"
   },
   "reception": {

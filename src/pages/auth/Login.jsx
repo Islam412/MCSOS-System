@@ -265,6 +265,10 @@ export default function Login() {
             if (token) {
               localStorage.setItem('mcsos_token', token)
             }
+            const refreshToken = response.refresh_token
+            if (refreshToken) {
+              localStorage.setItem('mcsos_refresh_token', refreshToken)
+            }
             
             if (rememberMe) {
               localStorage.setItem('mcsos_remember', 'true')

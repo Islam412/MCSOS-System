@@ -86,7 +86,7 @@ export default function FinanceDashboard() {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'SAR',
+      currency: 'EGP',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount)

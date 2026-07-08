@@ -123,6 +123,7 @@ export const ENDPOINTS = {
     UPDATE: (id) => `/api/v1/packages/${id}`,
     DELETE: (id) => `/api/v1/packages/${id}`,
     ASSIGN: '/api/v1/packages/assign',
+    COMPLETED_SESSIONS: '/api/v1/packages/assign/completed-sessions',
   },
   // باقات المرضى
   PATIENT_PACKAGES: {

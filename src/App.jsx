@@ -12,7 +12,7 @@ import ReceptionDashboard from './pages/dashboard/ReceptionDashboard'
 import PatientDashboard from './pages/dashboard/PatientDashboard'
 import HospitalDashboard from './pages/dashboard/HospitalDashboard'
 import ReceptionPage from './pages/ReceptionDashboard'
-import DoctorPage from './pages/DoctorDashboard'
+import DoctorPage from './pages/dashboard/DoctorDashboard'
 import FinanceManager from './components/finance/FinanceManager'
 import OperationsDashboard from './pages/OperationsDashboard'
 import SchedulingEngine from './components/scheduling/SchedulingEngine'
@@ -25,6 +25,7 @@ import Profile from './pages/profile/Profile'
 import DoctorsManager from './components/admin/DoctorsManager'
 import UsersManager from './components/admin/UsersManager'
 import RoomsManager from './components/admin/RoomsManager'
+import ServicesManager from './components/admin/ServicesManager'
 import Appointments from './pages/patient/Appointments' 
 import BookAppointment from './pages/patient/BookAppointment'
 
@@ -47,6 +48,7 @@ function App() {
           <Route path="doctors-manager" element={<DoctorsManager />} />
           <Route path="users-manager" element={<UsersManager />} />
           <Route path="rooms-manager" element={<RoomsManager />} />
+          <Route path="services-manager" element={<ServicesManager />} />
           
           {/* مسارات الدكتور */}
           <Route path="doctor-dashboard" element={<DoctorDashboard />} />

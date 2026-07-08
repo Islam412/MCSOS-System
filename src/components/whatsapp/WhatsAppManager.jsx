@@ -1,5 +1,6 @@
 // src/components/whatsapp/WhatsAppManager.jsx
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { 
   MessageCircle, Send, Clock, Users, Bell, Settings, 
@@ -483,8 +484,8 @@ export default function WhatsAppManager() {
   }
 
   // ==================== حذف رسالة ====================
-  const handleDeleteMessage = (id) => {
-    if (window.confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
+  const handleDeleteMessage = async (id) => {
+    if ((await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من حذف هذه الرسالة؟' }))) {
       const updated = scheduledMessages.filter(m => m.id !== id)
       setScheduledMessages(updated)
       localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated))

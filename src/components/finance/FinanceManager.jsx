@@ -1,5 +1,6 @@
 // src/components/finance/FinanceManager.jsx
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { 
   DollarSign, CreditCard, FileText, TrendingUp, Clock, CheckCircle, 
@@ -267,7 +268,7 @@ export default function FinanceManager() {
 
   // ========== حذف معاملة ==========
   const handleDeleteTransaction = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه المعاملة؟')) return
+    if (!(await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من حذف هذه المعاملة؟' }))) return
 
     try {
       if (isOnline) {

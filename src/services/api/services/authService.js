@@ -36,6 +36,7 @@ export const authService = {
   logout: () => {
     localStorage.removeItem('mcsos_user')
     localStorage.removeItem('mcsos_token')
+    localStorage.removeItem('mcsos_refresh_token')
     localStorage.removeItem('mcsos_remember')
     localStorage.removeItem('mcsos_saved_email')
     window.location.href = '/login'

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, Plus, MapPin, Search, Filter } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, Plus, MapPin, Search, Filter, Clock, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DirectBookingModal from './DirectBookingModal'
+import AddPatientModal from '../common/AddPatientModal'
 
-export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignComplete, onViewSession }) {
+export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignComplete, onViewSession, refreshTrigger }) {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   
@@ -16,19 +18,33 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   const [assigningSlot, setAssigningSlot] = useState(null)
   const [selectedRoomId, setSelectedRoomId] = useState('')
   const [directBookingSlot, setDirectBookingSlot] = useState(null)
+  const [showAddPatientModal, setShowAddPatientModal] = useState(false)
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSpecialization, setSelectedSpecialization] = useState('')
+  const [selectedShift, setSelectedShift] = useState('all') // 'all', 'morning', 'evening'
 
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   // Time slots from 08:00 to 21:30 (half-hour intervals)
-  const timeSlots = []
+  let timeSlots = []
   for (let hour = 8; hour < 22; hour++) {
     const hh = String(hour).padStart(2, '0')
     timeSlots.push(`${hh}:00`)
     timeSlots.push(`${hh}:30`)
+  }
+
+  if (selectedShift === 'morning') {
+    timeSlots = timeSlots.filter(t => {
+      const hour = parseInt(t.split(':')[0], 10)
+      return hour >= 8 && hour < 15 // 08:00 to 14:30
+    })
+  } else if (selectedShift === 'evening') {
+    timeSlots = timeSlots.filter(t => {
+      const hour = parseInt(t.split(':')[0], 10)
+      return hour >= 15 && hour < 22 // 15:00 to 21:30
+    })
   }
 
   // Extract unique specializations
@@ -57,7 +73,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
 
   useEffect(() => {
     fetchSessions()
-  }, [selectedDate])
+  }, [selectedDate, refreshTrigger])
 
   const fetchInitialData = async () => {
     const token = localStorage.getItem('mcsos_token')
@@ -166,7 +182,8 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
         },
         body: JSON.stringify({
           slot_id: null,
-          session_date: sessionDate.toISOString()
+          session_date: sessionDate.toISOString(),
+          doctor_id: doctor.id
         })
       })
 
@@ -244,6 +261,14 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
               {isRTL ? 'تحديث' : 'Refresh'}
             </button>
+
+            <button 
+              onClick={() => setShowAddPatientModal(true)} 
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 rounded-xl hover:shadow-indigo-500/50 flex items-center gap-2 transition-all duration-300 text-xs font-bold"
+            >
+              <UserPlus size={16} />
+              <span>{isRTL ? 'مريض جديد' : 'Add new Patient'}</span>
+            </button>
           </div>
         </div>
 
@@ -275,6 +300,20 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
               ))}
             </select>
           </div>
+
+          {/* Shift Filter */}
+          <div className="relative min-w-[200px]">
+            <Clock className="absolute right-3 top-2.5 text-gray-400" size={16} />
+            <select
+              value={selectedShift}
+              onChange={(e) => setSelectedShift(e.target.value)}
+              className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
+            >
+              <option value="all">{isRTL ? 'اليوم بالكامل' : 'Full Day'}</option>
+              <option value="morning">{isRTL ? 'شيفت صباحي' : 'Morning Shift'}</option>
+              <option value="evening">{isRTL ? 'شيفت مسائي' : 'Evening Shift'}</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -294,7 +333,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
           >
             {/* Header row (Doctors) */}
             <thead>
-              <tr className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-900 border-b border-gray-250 dark:border-gray-700">
+              <tr className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-600">
                 <th className="w-[80px] min-w-[80px] p-3 text-xs font-bold text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-100 dark:bg-gray-900 z-30 text-center">
                   {isRTL ? 'الوقت' : 'Time'}
                 </th>
@@ -319,9 +358,9 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
             {/* Time Rows */}
             <tbody>
               {timeSlots.map(timeStr => (
-                <tr key={timeStr} className="border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50/40 dark:hover:bg-gray-800/10">
+                <tr key={timeStr} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50/40 dark:hover:bg-gray-800/10">
                   {/* Time header */}
-                  <td className="p-3 text-center text-xs font-mono font-extrabold text-gray-600 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-white dark:bg-gray-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                  <td className="p-3 text-center text-xs font-mono font-extrabold text-gray-600 dark:text-gray-300 border-r border-gray-300 dark:border-gray-600 sticky left-0 bg-white dark:bg-gray-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                     {timeStr}
                   </td>
 
@@ -333,7 +372,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                       <td 
                         key={doc.id}
                         onClick={() => !session && handleCellClick(doc, timeStr)}
-                        className={`w-[180px] min-w-[180px] p-2 border-r border-gray-100/60 dark:border-gray-800/40 text-center relative ${
+                        className={`w-[180px] min-w-[180px] p-2 border-r border-gray-200 dark:border-gray-700 text-center relative ${
                           !session 
                             ? selectedWaitlistEntry
                               ? 'hover:bg-indigo-50/40 dark:hover:bg-indigo-950/5 cursor-pointer bg-indigo-50/5 dark:bg-indigo-950/2'
@@ -380,9 +419,9 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                           </div>
                         ) : (
                           /* Interactive cell in direct booking mode */
-                          <div className="group/cell h-full min-h-[55px] flex items-center justify-center">
-                            <div className="opacity-0 group-hover/cell:opacity-100 border border-dashed border-gray-300 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl p-2.5 w-full text-center text-[10px] font-bold text-gray-500 dark:text-gray-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition duration-200 flex items-center justify-center gap-1 shadow-sm">
-                              <Plus size={12} className="shrink-0" />
+                          <div className="group/cell h-full min-h-[55px] flex items-center justify-center relative p-1">
+                            <div className="opacity-0 group-hover/cell:opacity-100 border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 hover:border-transparent rounded-xl p-2 w-full h-full text-center text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-white transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md hover:shadow-indigo-500/20">
+                              <Plus size={14} className="shrink-0" />
                               <span>{isRTL ? 'حجز مباشر' : 'Book'}</span>
                             </div>
                           </div>
@@ -453,6 +492,16 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
         onBookingComplete={() => {
           setDirectBookingSlot(null)
           fetchSessions()
+        }}
+      />
+
+      {/* Add Patient Modal */}
+      <AddPatientModal
+        isOpen={showAddPatientModal}
+        onClose={() => setShowAddPatientModal(false)}
+        onPatientAdded={(newPatient) => {
+          // You could potentially open the direct booking modal with this new patient 
+          // or just show success, the modal already handles the toast.
         }}
       />
     </div>

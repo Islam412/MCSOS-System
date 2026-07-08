@@ -1,7 +1,8 @@
 // src/components/reception/PatientRegistration.jsx
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserPlus, Mail, Phone, User, IdCard, Sparkles, Loader2 } from 'lucide-react'
+import { UserPlus, Mail, Phone, User, IdCard, Sparkles, Loader2, X } from 'lucide-react'
+
 import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
@@ -19,6 +20,10 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
     first_name: '',
     last_name: '',
     phone: '',
+    whatsapp_number: '',
+    sameAsPhone: true,
+    referral_source: '',
+    national_id_photo: '',
     email: '',
     address: '',
     gender: 'male',
@@ -46,7 +51,9 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
         date_of_birth: form.date_of_birth || new Date(Date.now() - 30 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         address: form.address || '',
         phone: form.phone,
-        whatsapp_number: form.phone,
+        whatsapp_number: form.sameAsPhone ? form.phone : form.whatsapp_number || form.phone,
+        referral_source: form.referral_source || '',
+        national_id_photo: form.national_id_photo || '',
         emergency_contact: form.phone,
         email: form.email || '',
         notes: 'تم التسجيل عبر الاستقبال'
@@ -91,6 +98,10 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
         first_name: '',
         last_name: '',
         phone: '',
+        whatsapp_number: '',
+        sameAsPhone: true,
+        referral_source: '',
+        national_id_photo: '',
         email: '',
         address: '',
         gender: 'male',
@@ -187,6 +198,58 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
           </div>
         </div>
 
+        {/* خيار رقم الواتساب هو نفسه رقم الجوال */}
+        <div className="flex items-center gap-2 px-1">
+          <input
+            type="checkbox"
+            id="sameAsPhone"
+            className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-gray-100 dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+            checked={form.sameAsPhone}
+            onChange={(e) => setForm({ ...form, sameAsPhone: e.target.checked })}
+            disabled={loading}
+          />
+          <label htmlFor="sameAsPhone" className="text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
+            رقم الواتساب هو نفسه رقم الجوال
+          </label>
+        </div>
+
+        {!form.sameAsPhone && (
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              رقم الواتساب
+            </label>
+            <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
+              <Phone className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+              <input
+                type="tel"
+                placeholder="أدخل رقم الواتساب"
+                className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
+                value={form.whatsapp_number}
+                onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* جهة التحويل */}
+        <div>
+          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            جهة التحويل
+          </label>
+          <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
+            <Sparkles className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+            <input
+              type="text"
+              placeholder="جهة التحويل (مثال: دكتور محول، فيسبوك...)"
+              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
+              value={form.referral_source}
+              onChange={(e) => setForm({ ...form, referral_source: e.target.value })}
+              disabled={loading}
+            />
+          </div>
+        </div>
+
         {/* البريد الإلكتروني */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
@@ -252,6 +315,47 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
               onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
               disabled={loading}
             />
+          </div>
+        </div>
+
+        {/* صورة البطاقة */}
+        <div>
+          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            صورة البطاقة
+          </label>
+          <div className="flex flex-col gap-2">
+            <input
+              type="file"
+              accept="image/*"
+              className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20"
+              onChange={(e) => {
+                const file = e.target.files[0]
+                if (file) {
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast.error('حجم الصورة يجب أن لا يتجاوز 5 ميجابايت')
+                    return
+                  }
+                  const reader = new FileReader()
+                  reader.onloadend = () => {
+                    setForm({ ...form, national_id_photo: reader.result })
+                  }
+                  reader.readAsDataURL(file)
+                }
+              }}
+              disabled={loading}
+            />
+            {form.national_id_photo && (
+              <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-1">
+                <img src={form.national_id_photo} alt="National ID" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, national_id_photo: '' })}
+                  className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

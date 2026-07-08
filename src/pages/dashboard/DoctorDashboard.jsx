@@ -143,14 +143,14 @@ export default function DoctorDashboard() {
         // ✅ استخدام الـ API الجديد /sessions بدلاً من /stats/doctor
         const response = await get(`/sessions?doctorId=${user?.id}`)
         
-        const sessions = response?.sessions || response || []
+        const sessions = response?.data || response?.sessions || (Array.isArray(response) ? response : [])
         const today = new Date().toISOString().split('T')[0]
         
         // حساب الإحصائيات من البيانات
-        const totalPatients = [...new Set(sessions.map(s => s.patientId))].filter(Boolean).length
+        const totalPatients = [...new Set(sessions.map(s => s.patientId || s.patient_id || s.patient?.id))].filter(Boolean).length
         const completedSessions = sessions.filter(s => s.status === 'completed' || s.status === 'attended').length
         const pendingSessions = sessions.filter(s => s.status === 'scheduled' || s.status === 'pending').length
-        const todayPatients = sessions.filter(s => s.date === today).length
+        const todayPatients = sessions.filter(s => (s.date || s.session_date || s.sessionDate)?.split('T')[0] === today).length
         
         setStats({
           todayPatients: todayPatients,
@@ -158,7 +158,7 @@ export default function DoctorDashboard() {
           completedSessions: completedSessions,
           pendingSessions: pendingSessions,
           upcomingAppointments: pendingSessions,
-          averageRating: 4.5 // يمكن جلبها من تقييمات المرضى لو موجودة
+          averageRating: 4.5
         })
         
         localStorage.setItem('mcsos_doctor_sessions', JSON.stringify(sessions))
@@ -167,10 +167,10 @@ export default function DoctorDashboard() {
         if (saved) {
           const sessions = JSON.parse(saved)
           const today = new Date().toISOString().split('T')[0]
-          const totalPatients = [...new Set(sessions.map(s => s.patientId))].filter(Boolean).length
+          const totalPatients = [...new Set(sessions.map(s => s.patientId || s.patient_id || s.patient?.id))].filter(Boolean).length
           const completedSessions = sessions.filter(s => s.status === 'completed' || s.status === 'attended').length
           const pendingSessions = sessions.filter(s => s.status === 'scheduled' || s.status === 'pending').length
-          const todayPatients = sessions.filter(s => s.date === today).length
+          const todayPatients = sessions.filter(s => (s.date || s.session_date || s.sessionDate)?.split('T')[0] === today).length
           
           setStats({
             todayPatients: todayPatients,
@@ -201,13 +201,15 @@ export default function DoctorDashboard() {
         // ✅ استخدام الـ API الجديد /sessions مع فلتر التاريخ والدكتور
         const response = await get(`/sessions?doctorId=${user?.id}&date=${today}`)
         
-        const sessions = response?.sessions || response || []
+        const sessions = response?.data || response?.sessions || (Array.isArray(response) ? response : [])
         
         // تحويل البيانات إلى شكل متوافق مع الواجهة
         const formattedSessions = sessions.map(s => ({
           id: s.id,
           time: s.time || s.startTime || '09:00',
-          patient: s.patientName || s.patient || 'مريض',
+          patient: s.patientName || 
+                   (s.patient ? (typeof s.patient === 'object' ? `${s.patient.first_name || ''} ${s.patient.last_name || ''}`.trim() : s.patient) : null) || 
+                   'مريض',
           patientId: s.patientId,
           age: s.patientAge || s.age || 30,
           type: s.type || s.sessionType || 'كشف',
@@ -238,7 +240,7 @@ export default function DoctorDashboard() {
         // ✅ جلب المرضى من الـ API
         const response = await get('/patients')
         
-        const patients = response?.patients || response || []
+        const patients = response?.data || response?.patients || (Array.isArray(response) ? response : [])
         
         // فلتر مرضى هذا الدكتور
         const myPatients = patients.filter(p => p.doctorId === user?.id || p.assignedDoctor === user?.id)

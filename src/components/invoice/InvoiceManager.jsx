@@ -1,5 +1,6 @@
 // src/components/invoice/InvoiceManager.jsx
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { 
   FileText, Plus, Edit, Trash2, Eye, Printer, Download,
@@ -294,7 +295,7 @@ export default function InvoiceManager() {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'SAR',
+      currency: 'EGP',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount || 0)
@@ -402,7 +403,7 @@ export default function InvoiceManager() {
 
   // ========== حذف فاتورة ==========
   const handleDeleteInvoice = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه الفاتورة؟')) return
+    if (!(await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من حذف هذه الفاتورة؟' }))) return
 
     try {
       if (isOnline) {

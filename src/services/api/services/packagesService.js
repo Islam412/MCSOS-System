@@ -112,4 +112,26 @@ export const packagesService = {
       throw error
     }
   },
+
+  // تعيين باقة لمريض
+  assignPackage: async (data) => {
+    try {
+      const response = await post(ENDPOINTS.PACKAGES.ASSIGN, data)
+      return response
+    } catch (error) {
+      console.error('❌ assignPackage error:', error)
+      throw error
+    }
+  },
+
+  // الحصول على الجلسات المكتملة لليوم
+  getCompletedFirstSessions: async () => {
+    try {
+      const response = await get(ENDPOINTS.PACKAGES.COMPLETED_SESSIONS)
+      return response
+    } catch (error) {
+      console.error('❌ getCompletedFirstSessions error:', error)
+      throw error
+    }
+  }
 }

@@ -1,5 +1,6 @@
 // src/components/admin/UsersManager.jsx
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { 
   Users, UserPlus, Search, Filter, Eye, Edit, Trash2, 
@@ -248,7 +249,7 @@ export default function UsersManager() {
       return
     }
 
-    if (!window.confirm('هل أنت متأكد من حذف هذا الحساب؟')) return
+    if (!(await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من حذف هذا الحساب؟' }))) return
 
     try {
       if (isOnline) {

@@ -17,6 +17,7 @@ export const setToken = (token) => {
     localStorage.setItem('mcsos_token', token)
   } else {
     localStorage.removeItem('mcsos_token')
+    localStorage.removeItem('mcsos_refresh_token')
   }
 }
 
@@ -121,12 +122,14 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
         try {
           const baseUrl = API_CONFIG.BASE_URL.replace(/\/+$/, '')
           const refreshUrl = `${baseUrl}${ENDPOINTS.AUTH.REFRESH}`
+          const refreshToken = localStorage.getItem('mcsos_refresh_token')
           
           const refreshResponse = await fetch(refreshUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Accept': 'application/json'
+              'Accept': 'application/json',
+              ...(refreshToken ? { 'Authorization': `Bearer ${refreshToken}` } : {})
             },
             mode: 'cors',
             credentials: 'include',
@@ -143,9 +146,13 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
           }
 
           const newToken = refreshData.token || refreshData.access_token
+          const newRefreshToken = refreshData.refresh_token
           
           if (newToken) {
             setToken(newToken)
+            if (newRefreshToken) {
+              localStorage.setItem('mcsos_refresh_token', newRefreshToken)
+            }
             onRefreshed(newToken)
             options.headers.Authorization = `Bearer ${newToken}`
             return apiRequest(url, options, retryCount)

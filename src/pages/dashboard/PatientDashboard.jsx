@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { 
   User, Users, Calendar, Clock, Activity, Pill, FileText, 
@@ -608,7 +609,7 @@ ${report.description || 'لا يوجد وصف تفصيلي'}
 
   // ========== إلغاء موعد ==========
   const handleCancelAppointment = async (id) => {
-    if (!window.confirm('هل أنت متأكد من إلغاء هذا الموعد؟')) return
+    if (!(await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من إلغاء هذا الموعد؟' }))) return
 
     try {
       if (isOnline) {

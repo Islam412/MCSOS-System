@@ -1,5 +1,6 @@
 // src/components/prescription/PrescriptionManager.jsx
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { 
   Pill, Plus, Edit, Trash2, Eye, Printer, Download,
@@ -506,7 +507,7 @@ export default function PrescriptionManager() {
 
   // ========== حذف روشتة ==========
   const handleDeletePrescription = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه الروشتة؟')) return
+    if (!(await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من حذف هذه الروشتة؟' }))) return
 
     try {
       if (isOnline) {

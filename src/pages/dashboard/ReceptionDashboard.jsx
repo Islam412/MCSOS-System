@@ -1,5 +1,6 @@
 // src/pages/dashboard/ReceptionDashboard.jsx
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { 
   UserPlus, Calendar, Clock, Users, CheckCircle, Activity, Search, 
@@ -40,6 +41,10 @@ export default function ReceptionDashboard() {
     name: '',
     age: '',
     phone: '',
+    whatsapp_number: '',
+    sameAsPhone: true,
+    referral_source: '',
+    national_id_photo: '',
     address: ''
   })
   
@@ -49,6 +54,10 @@ export default function ReceptionDashboard() {
     name: '',
     age: '',
     phone: '',
+    whatsapp_number: '',
+    sameAsPhone: true,
+    referral_source: '',
+    national_id_photo: '',
     address: ''
   })
   
@@ -322,7 +331,7 @@ export default function ReceptionDashboard() {
 
   // ========== حذف موعد (DELETE /api/v1/sessions/{id}) ==========
   const handleDeleteAppointment = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا الموعد؟')) return
+    if (!(await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من حذف هذا الموعد؟' }))) return
 
     try {
       if (isOnline) {
@@ -387,7 +396,7 @@ export default function ReceptionDashboard() {
 
   // ========== حذف مريض (DELETE /api/v1/patients/{id}) ==========
   const handleDeletePatient = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا المريض؟')) return
+    if (!(await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من حذف هذا المريض؟' }))) return
 
     try {
       if (isOnline) {
@@ -407,13 +416,16 @@ export default function ReceptionDashboard() {
     }
   }
 
-  // ========== تعديل مريض (PUT /api/v1/patients/{id}) ==========
   const handleEditPatient = (patient) => {
     setEditingPatient(patient)
     setEditPatientData({
       name: patient.name || patient.nameAr || patient.nameEn || patient.first_name || '',
       age: patient.age || '',
       phone: patient.phone || patient.phone_number || '',
+      whatsapp_number: patient.whatsapp_number || '',
+      sameAsPhone: !patient.whatsapp_number || patient.whatsapp_number === patient.phone,
+      referral_source: patient.referral_source || '',
+      national_id_photo: patient.national_id_photo || '',
       address: patient.address || ''
     })
     setShowEditPatientModal(true)
@@ -422,18 +434,25 @@ export default function ReceptionDashboard() {
   const handleSavePatientEdit = async () => {
     setIsSubmitting(true)
     try {
+      const patientData = {
+        first_name: editPatientData.name.split(' ')[0] || editPatientData.name,
+        last_name: editPatientData.name.split(' ').slice(1).join(' ') || editPatientData.name,
+        age: parseInt(editPatientData.age) || 0,
+        phone: editPatientData.phone,
+        whatsapp_number: editPatientData.sameAsPhone ? editPatientData.phone : editPatientData.whatsapp_number || editPatientData.phone,
+        referral_source: editPatientData.referral_source || '',
+        national_id_photo: editPatientData.national_id_photo || '',
+        address: editPatientData.address
+      }
+
       if (isOnline) {
-        await patientsService.updatePatient(editingPatient.id, {
-          name: editPatientData.name,
-          phone: editPatientData.phone,
-          age: parseInt(editPatientData.age) || 0,
-          address: editPatientData.address
-        })
+        await patientsService.updatePatient(editingPatient.id, patientData)
       }
       
       const updated = patientsList.map(p => 
         p.id === editingPatient.id ? {
           ...p,
+          ...patientData,
           name: editPatientData.name,
           nameAr: editPatientData.name,
           nameEn: editPatientData.name,
@@ -477,11 +496,13 @@ export default function ReceptionDashboard() {
     setIsSubmitting(true)
     try {
       const patientData = {
-        name: newPatient.name,
-        nameAr: newPatient.name,
-        nameEn: newPatient.name,
+        first_name: newPatient.name.split(' ')[0] || newPatient.name,
+        last_name: newPatient.name.split(' ').slice(1).join(' ') || newPatient.name,
         age: parseInt(newPatient.age) || 0,
         phone: newPatient.phone || '',
+        whatsapp_number: newPatient.sameAsPhone ? newPatient.phone : newPatient.whatsapp_number || newPatient.phone,
+        referral_source: newPatient.referral_source || '',
+        national_id_photo: newPatient.national_id_photo || '',
         address: newPatient.address || '',
         status: 'active',
         registeredBy: user?.name || 'موظف الاستقبال'
@@ -514,7 +535,7 @@ export default function ReceptionDashboard() {
       
       setRecentPatients([{
         id: newPatientData.id,
-        name: newPatientData.name || newPatientData.nameAr || newPatientData.name,
+        name: newPatientData.name || newPatientData.nameAr || newPatientData.name || `${patientData.first_name} ${patientData.last_name}`,
         phone: newPatientData.phone,
         time: new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
         registeredBy: user?.name || 'موظف'
@@ -526,7 +547,16 @@ export default function ReceptionDashboard() {
       }))
       
       toast.success(`تم تسجيل المريض ${newPatient.name} بنجاح`)
-      setNewPatient({ name: '', age: '', phone: '', address: '' })
+      setNewPatient({
+        name: '',
+        age: '',
+        phone: '',
+        whatsapp_number: '',
+        sameAsPhone: true,
+        referral_source: '',
+        national_id_photo: '',
+        address: ''
+      })
       setShowNewPatientModal(false)
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في تسجيل المريض')
@@ -835,10 +865,65 @@ export default function ReceptionDashboard() {
           <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">تسجيل مريض جديد</h2><button onClick={() => setShowNewPatientModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
             <div className="space-y-3">
-              <input type="text" placeholder="الاسم الكامل *" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.name} onChange={(e) => setNewPatient({...newPatient, name: e.target.value})} />
+               <input type="text" placeholder="الاسم الكامل *" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.name} onChange={(e) => setNewPatient({...newPatient, name: e.target.value})} />
               <input type="number" placeholder="العمر" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.age} onChange={(e) => setNewPatient({...newPatient, age: e.target.value})} />
               <input type="tel" placeholder="رقم الجوال" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.phone} onChange={(e) => setNewPatient({...newPatient, phone: e.target.value})} />
+              
+              {/* خيار رقم الواتساب هو نفسه رقم الجوال */}
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  id="dashAddSameAsPhone"
+                  className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-gray-700 border-gray-600"
+                  checked={newPatient.sameAsPhone}
+                  onChange={(e) => setNewPatient({ ...newPatient, sameAsPhone: e.target.checked })}
+                />
+                <label htmlFor="dashAddSameAsPhone" className="text-sm font-semibold text-gray-400 cursor-pointer">
+                  رقم الواتساب هو نفسه رقم الجوال
+                </label>
+              </div>
+              {!newPatient.sameAsPhone && (
+                <input type="tel" placeholder="رقم الواتساب" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.whatsapp_number} onChange={(e) => setNewPatient({...newPatient, whatsapp_number: e.target.value})} />
+              )}
+              
+              <input type="text" placeholder="جهة التحويل" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.referral_source} onChange={(e) => setNewPatient({...newPatient, referral_source: e.target.value})} />
               <input type="text" placeholder="العنوان" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.address} onChange={(e) => setNewPatient({...newPatient, address: e.target.value})} />
+
+              {/* صورة البطاقة */}
+              <div className="space-y-1">
+                <label className="block text-xs text-gray-400">صورة البطاقة</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-xs text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20"
+                  onChange={(e) => {
+                    const file = e.target.files[0]
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error('حجم الصورة يجب أن لا يتجاوز 5 ميجابايت')
+                        return
+                      }
+                      const reader = new FileReader()
+                      reader.onloadend = () => {
+                        setNewPatient({ ...newPatient, national_id_photo: reader.result })
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                />
+                {newPatient.national_id_photo && (
+                  <div className="relative w-24 h-16 rounded-lg overflow-hidden border border-gray-700 mt-1">
+                    <img src={newPatient.national_id_photo} alt="National ID" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setNewPatient({ ...newPatient, national_id_photo: '' })}
+                      className="absolute top-0.5 right-0.5 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="flex gap-3 pt-4">
                 <button onClick={handleRegisterPatient} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
                   {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : <Save size={16} className="inline ml-1" />}
@@ -946,7 +1031,62 @@ export default function ReceptionDashboard() {
               <input type="text" placeholder="الاسم الكامل" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.name} onChange={(e) => setEditPatientData({...editPatientData, name: e.target.value})} />
               <input type="number" placeholder="العمر" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.age} onChange={(e) => setEditPatientData({...editPatientData, age: e.target.value})} />
               <input type="tel" placeholder="رقم الجوال" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.phone} onChange={(e) => setEditPatientData({...editPatientData, phone: e.target.value})} />
+
+              {/* خيار رقم الواتساب هو نفسه رقم الجوال */}
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  id="dashEditSameAsPhone"
+                  className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-gray-700 border-gray-600"
+                  checked={editPatientData.sameAsPhone}
+                  onChange={(e) => setEditPatientData({ ...editPatientData, sameAsPhone: e.target.checked })}
+                />
+                <label htmlFor="dashEditSameAsPhone" className="text-sm font-semibold text-gray-400 cursor-pointer">
+                  رقم الواتساب هو نفسه رقم الجوال
+                </label>
+              </div>
+              {!editPatientData.sameAsPhone && (
+                <input type="tel" placeholder="رقم الواتساب" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.whatsapp_number} onChange={(e) => setEditPatientData({...editPatientData, whatsapp_number: e.target.value})} />
+              )}
+              
+              <input type="text" placeholder="جهة التحويل" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.referral_source} onChange={(e) => setEditPatientData({...editPatientData, referral_source: e.target.value})} />
               <input type="text" placeholder="العنوان" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.address} onChange={(e) => setEditPatientData({...editPatientData, address: e.target.value})} />
+
+              {/* صورة البطاقة */}
+              <div className="space-y-1">
+                <label className="block text-xs text-gray-400">صورة البطاقة</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-xs text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20"
+                  onChange={(e) => {
+                    const file = e.target.files[0]
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error('حجم الصورة يجب أن لا يتجاوز 5 ميجابايت')
+                        return
+                      }
+                      const reader = new FileReader()
+                      reader.onloadend = () => {
+                        setEditPatientData({ ...editPatientData, national_id_photo: reader.result })
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                />
+                {editPatientData.national_id_photo && (
+                  <div className="relative w-24 h-16 rounded-lg overflow-hidden border border-gray-700 mt-1">
+                    <img src={editPatientData.national_id_photo} alt="National ID" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setEditPatientData({ ...editPatientData, national_id_photo: '' })}
+                      className="absolute top-0.5 right-0.5 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="flex gap-3 pt-4">
                 <button onClick={handleSavePatientEdit} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
                   {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : <Save size={16} className="inline ml-1" />}
@@ -991,9 +1131,19 @@ export default function ReceptionDashboard() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-gray-400">العمر:</span><span className="text-white">{selectedPatient.age || '-'} سنة</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">رقم الجوال:</span><span className="text-white dir-ltr">{selectedPatient.phone || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">رقم الواتساب:</span><span className="text-white dir-ltr">{selectedPatient.whatsapp_number || selectedPatient.phone || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">جهة التحويل:</span><span className="text-white">{selectedPatient.referral_source || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">البريد الإلكتروني:</span><span className="text-white">{selectedPatient.email || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">العنوان:</span><span className="text-white">{selectedPatient.address || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">فصيلة الدم:</span><span className={getBloodTypeColor(selectedPatient.bloodType)}>{selectedPatient.bloodType || '-'}</span></div>
+                  {selectedPatient.national_id_photo && (
+                    <div className="mt-3 pt-3 border-t border-gray-700">
+                      <span className="text-gray-400 block mb-1">صورة البطاقة:</span>
+                      <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-700">
+                        <img src={selectedPatient.national_id_photo} alt="National ID" className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="bg-gray-700/30 rounded-xl p-4">

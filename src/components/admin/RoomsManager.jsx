@@ -1,5 +1,6 @@
 // src/components/admin/RoomsManager.jsx
 import { useState, useEffect } from 'react'
+import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { MapPin, Plus, Edit, Trash2, X, Save, Search, RefreshCw, Loader2, DoorOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -112,7 +113,7 @@ export default function RoomsManager() {
   }
 
   const handleDeleteRoom = async (id) => {
-    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذه الغرفة؟' : 'Are you sure you want to delete this room?')) {
+    if (!(await confirmAlert({ title: 'تأكيد', text: isRTL ? 'هل أنت متأكد من حذف هذه الغرفة؟' : 'Are you sure you want to delete this room?' }))) {
       return
     }
 

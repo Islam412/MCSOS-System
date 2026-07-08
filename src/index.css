@@ -173,7 +173,7 @@ html:not(.dark) .hover\:bg-gray-700\/50:hover,
 html:not(.dark) .hover\:bg-gray-700:hover {
   background-color: rgba(226, 232, 240, 0.6);
 }
-html:not(.dark) .hover\:text-white:hover {
+html:not(.dark) .hover\:text-white:not([class*="bg-gradient"]):hover {
   color: #0f172a;
 }
 
@@ -301,12 +301,12 @@ html:not(.dark) [class*=" divide-gray-700"] > * + * {
 }
 
 /* نص أبيض جوه/على كروت gray-700/800/900 → غامق واضح */
-html:not(.dark) [class*="bg-gray-700"] [class*="text-white"],
-html:not(.dark) [class*="bg-gray-800"] [class*="text-white"],
-html:not(.dark) [class*="bg-gray-900"] [class*="text-white"],
-html:not(.dark) [class*="bg-gray-700"][class*="text-white"],
-html:not(.dark) [class*="bg-gray-800"][class*="text-white"],
-html:not(.dark) [class*="bg-gray-900"][class*="text-white"] {
+html:not(.dark) [class*="bg-gray-700"] [class*="text-white"]:not([class*="bg-gradient"]),
+html:not(.dark) [class*="bg-gray-800"] [class*="text-white"]:not([class*="bg-gradient"]),
+html:not(.dark) [class*="bg-gray-900"] [class*="text-white"]:not([class*="bg-gradient"]),
+html:not(.dark) [class*="bg-gray-700"][class*="text-white"]:not([class*="bg-gradient"]),
+html:not(.dark) [class*="bg-gray-800"][class*="text-white"]:not([class*="bg-gradient"]),
+html:not(.dark) [class*="bg-gray-900"][class*="text-white"]:not([class*="bg-gradient"]) {
   color: #0f172a !important;
 }
 
@@ -315,9 +315,9 @@ html:not(.dark) [class*="hover\:bg-gray-700"],
 html:not(.dark) [class*="hover\:bg-gray-800"] {
   background-color: rgba(226, 232, 240, 0.6) !important;
 }
-html:not(.dark) [class*="bg-gray-700"] [class*="hover\:text-white"]:hover,
-html:not(.dark) [class*="bg-gray-800"] [class*="hover\:text-white"]:hover,
-html:not(.dark) [class*="bg-gray-900"] [class*="hover\:text-white"]:hover {
+html:not(.dark) [class*="bg-gray-700"] [class*="hover\:text-white"]:not([class*="bg-gradient"]):hover,
+html:not(.dark) [class*="bg-gray-800"] [class*="hover\:text-white"]:not([class*="bg-gradient"]):hover,
+html:not(.dark) [class*="bg-gray-900"] [class*="hover\:text-white"]:not([class*="bg-gradient"]):hover {
   color: #0f172a !important;
 }
 
