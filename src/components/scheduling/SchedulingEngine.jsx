@@ -13,6 +13,7 @@ import DailyCalendarGrid from './DailyCalendarGrid'
 import SessionDetailModal from './SessionDetailModal'
 import WaitlistSidebar from './WaitlistSidebar'
 import SchedulingPackages from './SchedulingPackages'
+import CapacityTab from './CapacityTab'
 
 // ========== عنوان الـ API ==========
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
@@ -224,7 +225,7 @@ export default function SchedulingEngine() {
 
       {/* Tab Navigation */}
       <div className="flex justify-center mb-2">
-        <div className="flex w-full max-w-lg bg-gray-100/80 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-800/50 rounded-2xl p-1.5 shadow-inner gap-2">
+        <div className="flex w-full max-w-2xl bg-gray-100/80 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-800/50 rounded-2xl p-1.5 shadow-inner gap-2">
           <button
             onClick={() => setActiveTab('grid')}
             className={`flex-1 py-2.5 px-6 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
@@ -246,6 +247,17 @@ export default function SchedulingEngine() {
           >
             <Zap size={16} />
             {isRTL ? 'باقات المرضى' : 'Packages'}
+          </button>
+          <button
+            onClick={() => setActiveTab('capacity')}
+            className={`flex-1 py-2.5 px-6 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+              activeTab === 'capacity'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 scale-[1.02]'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-150 hover:bg-white/50 dark:hover:bg-gray-800/30'
+            }`}
+          >
+            <Clock size={16} />
+            {isRTL ? 'متابعة السعة' : 'Capacity'}
           </button>
         </div>
       </div>
@@ -273,9 +285,12 @@ export default function SchedulingEngine() {
             />
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'packages' ? (
         /* Packages View */
         <SchedulingPackages />
+      ) : (
+        /* Capacity View */
+        <CapacityTab />
       )}
 
       {/* Session Detail Modal */}
