@@ -146,6 +146,26 @@ export default function CapacityTab() {
         }
       })
 
+      // Add any sessions that don't have matching slots (legacy or manual bookings)
+      sessionsData.forEach(session => {
+        if (!merged.find(m => m.session?.id === session.id)) {
+          merged.push({
+            id: session.slot_id || session.id,
+            start_time: session.session_date,
+            end_time: session.session_date,
+            doctor: session.doctor || doctors.find(d => d.id === session.doctor_id),
+            service: session.service || { name: isRTL ? 'جلسة علاجية' : 'Treatment Session' },
+            booked_count: 1,
+            capacity: 1,
+            is_available: false,
+            session: session
+          })
+        }
+      })
+
+      // Sort by start_time to keep the display chronological
+      merged.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+
       setSlots(merged)
     } catch (err) {
       console.error('Failed to fetch capacity data', err)
