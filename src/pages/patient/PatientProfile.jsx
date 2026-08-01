@@ -151,8 +151,15 @@ export default function PatientProfile() {
       if (apiPatients.length > 0) {
         const formattedPatients = apiPatients.map(patient => ({
           id: patient.id || 'P' + Date.now(),
-          nameAr: patient.first_name || patient.name || patient.nameAr || 'مريض',
-          nameEn: patient.last_name || patient.nameEn || patient.name || '',
+          nameAr: patient.full_name_ar || (patient.first_name ? `${patient.first_name} ${patient.last_name || ''}`.trim() : 'مريض'),
+          nameEn: (patient.first_name || '') + ' ' + (patient.last_name || ''),
+          full_name_ar: patient.full_name_ar || '',
+          nationality: patient.nationality || 'غير محدد',
+          occupation: patient.occupation || 'غير محدد',
+          profile_number: patient.profile_number || 'غير متوفر',
+          referral_source: patient.referral_source || 'غير محدد',
+          national_id_front: patient.national_id_front || patient.national_id_photo || '',
+          national_id_back: patient.national_id_back || '',
           age: patient.age || 0,
           phone: patient.phone || '',
           email: patient.email || '',

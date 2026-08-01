@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { confirmAlert } from '../../utils/confirmAlert'
+import BookingCalendar from '../../components/scheduling/BookingCalendar'
 
 // ========== استيراد الخدمات ==========
 import { appointmentsService } from '../../services/api'
@@ -25,6 +26,7 @@ export default function Appointments() {
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [viewMode, setViewMode] = useState('calendar') // 'list' | 'calendar'
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -326,22 +328,52 @@ export default function Appointments() {
             )}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center bg-gray-800/80 p-1 rounded-xl border border-gray-700/60 mr-2">
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                viewMode === 'calendar'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Calendar size={14} />
+              عرض الكالندر
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                viewMode === 'list'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <CalendarDays size={14} />
+              قائمة المواعيد
+            </button>
+          </div>
+
           <button
             onClick={refreshData}
-            className="px-4 py-2.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl transition flex items-center gap-2 border border-green-500/30"
+            className="px-4 py-2.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl transition flex items-center gap-2 border border-green-500/30 text-xs font-semibold"
           >
             تحديث
           </button>
           <button
             onClick={handleBookNewAppointment}
-            className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-500/25"
+            className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-500/25 text-xs font-semibold"
           >
             <Plus size={18} />
             <span>حجز موعد جديد</span>
           </button>
         </div>
       </div>
+
+      {viewMode === 'calendar' ? (
+        <BookingCalendar />
+      ) : (
+        <>
 
       {/* إحصائيات سريعة */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -538,6 +570,8 @@ export default function Appointments() {
           <button className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition text-sm">تحميل التطبيق</button>
         </div>
       </div>
+      </>
+      )}
 
       {/* Modal عرض تفاصيل الموعد */}
       {showDetailsModal && selectedAppointment && (
@@ -609,9 +643,9 @@ export default function Appointments() {
                 </button>
                 <button onClick={() => setShowDetailsModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إغلاق</button>
               </div>
-            </div>
           </div>
         </div>
+      </div>
       )}
     </div>
   )

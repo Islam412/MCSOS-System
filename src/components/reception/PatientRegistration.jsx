@@ -19,11 +19,15 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
+    full_name_ar: '',
+    nationality: 'مصر',
+    occupation: '',
     phone: '',
     whatsapp_number: '',
     sameAsPhone: true,
-    referral_source: '',
-    national_id_photo: '',
+    referral_source: 'Social Media',
+    national_id_front: '',
+    national_id_back: '',
     email: '',
     address: '',
     gender: 'male',
@@ -31,13 +35,27 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
   })
   const [loading, setLoading] = useState(false)
 
+  // حساب العمر تلقائياً
+  const calculateAge = (dob) => {
+    if (!dob) return null
+    const birthDate = new Date(dob)
+    if (isNaN(birthDate.getTime())) return null
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age >= 0 ? age : null
+  }
+
   // ========== معالجة تسجيل المريض ==========
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     // التحقق من الحقول المطلوبة
-    if (!form.first_name || !form.phone) {
-      toast.error('الرجاء ملء الحقول المطلوبة')
+    if (!form.first_name || !form.phone || !form.nationality) {
+      toast.error('الرجاء ملء الحقول المطلوبة (الاسم الأول، الهاتف، والجنسية)')
       return
     }
 
@@ -47,13 +65,18 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
       const patientData = {
         first_name: form.first_name,
         last_name: form.last_name || form.first_name,
+        full_name_ar: form.full_name_ar || '',
+        nationality: form.nationality,
+        occupation: form.occupation || '',
         gender: form.gender || 'male',
         date_of_birth: form.date_of_birth || new Date(Date.now() - 30 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         address: form.address || '',
         phone: form.phone,
         whatsapp_number: form.sameAsPhone ? form.phone : form.whatsapp_number || form.phone,
-        referral_source: form.referral_source || '',
-        national_id_photo: form.national_id_photo || '',
+        referral_source: form.referral_source || 'Social Media',
+        national_id_front: form.national_id_front || '',
+        national_id_back: form.national_id_back || '',
+        national_id_photo: form.national_id_front || '',
         emergency_contact: form.phone,
         email: form.email || '',
         notes: 'تم التسجيل عبر الاستقبال'
@@ -77,6 +100,7 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
         const newPatient = {
           ...patientData,
           id: 'P' + Math.floor(Math.random() * 10000),
+          profile_number: 'PRF-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
           _syncPending: true,
           registerDate: new Date().toISOString()
         }
@@ -97,11 +121,15 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
       setForm({
         first_name: '',
         last_name: '',
+        full_name_ar: '',
+        nationality: 'مصر',
+        occupation: '',
         phone: '',
         whatsapp_number: '',
         sameAsPhone: true,
-        referral_source: '',
-        national_id_photo: '',
+        referral_source: 'Social Media',
+        national_id_front: '',
+        national_id_back: '',
         email: '',
         address: '',
         gender: 'male',
@@ -142,38 +170,96 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* الاسم الأول */}
+        {/* الاسم الأول واحترافي بالإنجليزي */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              الاسم الأول (إنجليزي) <span className="text-red-500">*</span>
+            </label>
+            <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
+              <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+              <input
+                type="text"
+                required
+                placeholder="First Name"
+                className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
+                value={form.first_name}
+                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              اسم العائلة (إنجليزي)
+            </label>
+            <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
+              <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+              <input
+                type="text"
+                placeholder="Last Name"
+                className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
+                value={form.last_name}
+                onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* الاسم رباعي بالعربي */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            الاسم الأول <span className="text-red-500">*</span>
+            الاسم رباعي (بالعربي)
           </label>
           <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
             <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
             <input
               type="text"
-              required
-              placeholder="أدخل الاسم الأول"
+              placeholder="أدخل الاسم رباعي باللغة العربية"
               className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
-              value={form.first_name}
-              onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+              value={form.full_name_ar}
+              onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })}
               disabled={loading}
             />
           </div>
         </div>
 
-        {/* اسم العائلة */}
-        <div>
-          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            اسم العائلة
-          </label>
-          <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
-            <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+        {/* الجنسية والمهنة */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              الجنسية <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              className="w-full py-3 px-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all"
+              value={form.nationality}
+              onChange={(e) => setForm({ ...form, nationality: e.target.value })}
+              disabled={loading}
+            >
+              <option value="مصر">مصري (مصر)</option>
+              <option value="السعودية">سعودي (السعودية)</option>
+              <option value="الإمارات">إماراتي (الإمارات)</option>
+              <option value="الكويت">كويتي (الكويت)</option>
+              <option value="قطر">قطري (قطر)</option>
+              <option value="الأردن">أردني (الأردن)</option>
+              <option value="السودان">سوداني (السودان)</option>
+              <option value="أخرى">أخرى</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              المهنة / الوظيفة
+            </label>
             <input
               type="text"
-              placeholder="أدخل اسم العائلة"
-              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
-              value={form.last_name}
-              onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+              placeholder="مثال: مهندس، معلم، طبيب..."
+              className="w-full py-3 px-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all"
+              value={form.occupation}
+              onChange={(e) => setForm({ ...form, occupation: e.target.value })}
               disabled={loading}
             />
           </div>
@@ -232,53 +318,54 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
           </div>
         )}
 
-        {/* جهة التحويل */}
+        {/* كيف عرفتنا؟ (Referral Source Dropdown) */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            جهة التحويل
+            كيف عرفتنا؟ (مصدر التعرف علينا)
           </label>
-          <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
-            <Sparkles className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
-            <input
-              type="text"
-              placeholder="جهة التحويل (مثال: دكتور محول، فيسبوك...)"
-              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
-              value={form.referral_source}
-              onChange={(e) => setForm({ ...form, referral_source: e.target.value })}
-              disabled={loading}
-            />
-          </div>
+          <select
+            className="w-full py-3 px-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all"
+            value={form.referral_source}
+            onChange={(e) => setForm({ ...form, referral_source: e.target.value })}
+            disabled={loading}
+          >
+            <option value="Social Media">سوشيال ميديا (Social Media)</option>
+            <option value="Google Search">بحث جوجل (Google Search)</option>
+            <option value="Friend">ترشيح صديق (Friend)</option>
+            <option value="Doctor Referral">تحويل طبيب (Doctor Referral)</option>
+            <option value="Advertisement">إعلانات (Advertisement)</option>
+            <option value="Walk-in">زيارة مباشرة (Walk-in)</option>
+            <option value="Other">أخرى (Other)</option>
+          </select>
         </div>
 
-        {/* البريد الإلكتروني */}
-        <div>
-          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            البريد الإلكتروني
-          </label>
-          <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
-            <Mail className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
-            <input
-              type="email"
-              placeholder="أدخل البريد الإلكتروني"
-              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              disabled={loading}
-            />
+        {/* البريد الإلكتروني والعنوان */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              البريد الإلكتروني
+            </label>
+            <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
+              <Mail className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+              <input
+                type="email"
+                placeholder="أدخل البريد الإلكتروني"
+                className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                disabled={loading}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* العنوان */}
-        <div>
-          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            العنوان
-          </label>
-          <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
-            <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              العنوان
+            </label>
             <input
               type="text"
               placeholder="أدخل العنوان"
-              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all`}
+              className="w-full py-3 px-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               disabled={loading}
@@ -286,31 +373,34 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
           </div>
         </div>
 
-        {/* النوع */}
-        <div>
-          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            النوع
-          </label>
-          <select
-            className={`w-full py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all ${isRTL ? 'pr-4 pl-4' : 'pr-4 pl-4'}`}
-            value={form.gender}
-            onChange={(e) => setForm({ ...form, gender: e.target.value })}
-            disabled={loading}
-          >
-            <option value="male">ذكر</option>
-            <option value="female">أنثى</option>
-          </select>
-        </div>
+        {/* النوع وتاريخ الميلاد والعمر المحسوب */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              النوع
+            </label>
+            <select
+              className="w-full py-3 px-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all"
+              value={form.gender}
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              disabled={loading}
+            >
+              <option value="male">ذكر</option>
+              <option value="female">أنثى</option>
+            </select>
+          </div>
 
-        {/* تاريخ الميلاد */}
-        <div>
-          <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            تاريخ الميلاد
-          </label>
-          <div className={`relative ${isRTL ? 'rtl' : 'ltr'}`}>
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              تاريخ الميلاد {calculateAge(form.date_of_birth) !== null && (
+                <span className="text-blue-600 dark:text-blue-400 font-bold mr-2">
+                  (العمر: {calculateAge(form.date_of_birth)} سنة)
+                </span>
+              )}
+            </label>
             <input
               type="date"
-              className={`w-full py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all ${isRTL ? 'pr-4 pl-4' : 'pr-4 pl-4'}`}
+              className="w-full py-3 px-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all"
               value={form.date_of_birth}
               onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
               disabled={loading}
@@ -318,44 +408,85 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
           </div>
         </div>
 
-        {/* صورة البطاقة */}
+        {/* رفع صور البطاقة الشخصية (وجه وظهر) */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            صورة البطاقة
+            صورة الهوية الوطنية / البطاقة الشخصية
           </label>
-          <div className="flex flex-col gap-2">
-            <input
-              type="file"
-              accept="image/*"
-              className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20"
-              onChange={(e) => {
-                const file = e.target.files[0]
-                if (file) {
-                  if (file.size > 5 * 1024 * 1024) {
-                    toast.error('حجم الصورة يجب أن لا يتجاوز 5 ميجابايت')
-                    return
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* الوجه الأمامي */}
+            <div className="p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl">
+              <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">الوجه الأمامي (Front)</span>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                className="w-full text-xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-500 hover:file:bg-blue-500/20"
+                onChange={(e) => {
+                  const file = e.target.files[0]
+                  if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error('حجم الملف يجب أن لا يتجاوز 5 ميجابايت')
+                      return
+                    }
+                    const reader = new FileReader()
+                    reader.onloadend = () => {
+                      setForm({ ...form, national_id_front: reader.result })
+                    }
+                    reader.readAsDataURL(file)
                   }
-                  const reader = new FileReader()
-                  reader.onloadend = () => {
-                    setForm({ ...form, national_id_photo: reader.result })
+                }}
+                disabled={loading}
+              />
+              {form.national_id_front && (
+                <div className="relative w-full h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2">
+                  <img src={form.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, national_id_front: '' })}
+                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* الوجه الخلفي */}
+            <div className="p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl">
+              <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">الوجه الخلفي (Back - اختياري)</span>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                className="w-full text-xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-500 hover:file:bg-blue-500/20"
+                onChange={(e) => {
+                  const file = e.target.files[0]
+                  if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error('حجم الملف يجب أن لا يتجاوز 5 ميجابايت')
+                      return
+                    }
+                    const reader = new FileReader()
+                    reader.onloadend = () => {
+                      setForm({ ...form, national_id_back: reader.result })
+                    }
+                    reader.readAsDataURL(file)
                   }
-                  reader.readAsDataURL(file)
-                }
-              }}
-              disabled={loading}
-            />
-            {form.national_id_photo && (
-              <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-1">
-                <img src={form.national_id_photo} alt="National ID" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, national_id_photo: '' })}
-                  className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            )}
+                }}
+                disabled={loading}
+              />
+              {form.national_id_back && (
+                <div className="relative w-full h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2">
+                  <img src={form.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, national_id_back: '' })}
+                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

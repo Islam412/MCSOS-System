@@ -28,6 +28,7 @@ import RoomsManager from './components/admin/RoomsManager'
 import ServicesManager from './components/admin/ServicesManager'
 import Appointments from './pages/patient/Appointments' 
 import BookAppointment from './pages/patient/BookAppointment'
+import DailyFollowUp from './pages/DailyFollowUp'
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
           {/* المسارات المشتركة */}
           <Route path="finance" element={<FinanceManager />} />
           <Route path="operations" element={<OperationsDashboard />} />
+          <Route path="daily-followup" element={<DailyFollowUp />} />
           <Route path="scheduling" element={<SchedulingEngine />} />
           <Route path="packages" element={<PackagesManager />} />
           <Route path="whatsapp" element={<WhatsAppManager />} />

@@ -113,13 +113,76 @@ export const appointmentsService = {
   // ========== تسجيل حضور ==========
   checkInAppointment: async (id) => {
     try {
-      const response = await post(`/api/v1/sessions/${id}/attendance`, { 
-        status: 'ATTENDED',
-        reason: 'تم تسجيل الحضور'
-      })
+      const response = await post(`/api/v1/sessions/${id}/check-in`)
       return response.attendance || response
     } catch (error) {
       console.warn('⚠️ checkInAppointment failed:', error.message)
+      throw error
+    }
+  },
+
+  // ========== تسجيل خروج ==========
+  checkOutAppointment: async (id) => {
+    try {
+      const response = await post(`/api/v1/sessions/${id}/check-out`)
+      return response.attendance || response
+    } catch (error) {
+      console.warn('⚠️ checkOutAppointment failed:', error.message)
+      throw error
+    }
+  },
+
+  // ========== الحصول على المتابعة اليومية (Daily Follow-Up) ==========
+  getDailyFollowUp: async (date = '') => {
+    try {
+      const endpoint = date ? `/api/v1/sessions/daily-followup?date=${date}` : '/api/v1/sessions/daily-followup'
+      const response = await get(endpoint)
+      return response || {}
+    } catch (error) {
+      console.warn('⚠️ getDailyFollowUp failed:', error.message)
+      return null
+    }
+  },
+
+  // ========== تسجيل الحضور والغياب (Mark Attendance) ==========
+  markAttendance: async (sessionId, attendanceData) => {
+    try {
+      const payload = {
+        status: attendanceData.status,
+        reason: attendanceData.reason || ''
+      }
+      const response = await post(`/api/v1/sessions/${sessionId}/attendance`, payload)
+      return response.attendance || response
+    } catch (error) {
+      console.warn('⚠️ markAttendance failed:', error.message)
+      throw error
+    }
+  },
+
+  // ========== الحصول على مواعيد الكالندر (Calendar View) ==========
+  getCalendarView: async (from, to, doctorId = '', roomId = '') => {
+    try {
+      let endpoint = `/api/v1/sessions/calendar-view?from=${from}&to=${to}`
+      if (doctorId) endpoint += `&doctor_id=${doctorId}`
+      if (roomId) endpoint += `&room_id=${roomId}`
+      const response = await get(endpoint)
+      return response || []
+    } catch (error) {
+      console.warn('⚠️ getCalendarView failed:', error.message)
+      return []
+    }
+  },
+
+  // ========== إعادة جدولة موعد (Reschedule Session / Drag & Drop) ==========
+  rescheduleAppointment: async (id, sessionDate, roomId = '') => {
+    try {
+      const response = await put(`/api/v1/sessions/${id}/reschedule`, {
+        session_date: sessionDate,
+        room_id: roomId
+      })
+      return response.session || response
+    } catch (error) {
+      console.warn('⚠️ rescheduleAppointment failed:', error.message)
       throw error
     }
   },

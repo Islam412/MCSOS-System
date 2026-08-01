@@ -51,6 +51,7 @@ export default function DashboardLayout() {
       return [
         { to: '/admin', label: 'sidebar.admin_dashboard', icon: Shield },
         { to: '/dashboard', label: 'sidebar.hospital_dashboard', icon: Hospital },
+        { to: '/daily-followup', label: 'المتابعة اليومية', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
         { to: '/doctors-manager', label: 'sidebar.doctors_manager', icon: Stethoscope },
         { to: '/doctor', label: 'sidebar.doctor', icon: Stethoscope },
@@ -68,6 +69,7 @@ export default function DashboardLayout() {
     } else if (userRole === 'doctor') {
       return [
         { to: '/doctor-dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        { to: '/daily-followup', label: 'المتابعة اليومية', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
@@ -77,6 +79,7 @@ export default function DashboardLayout() {
     } else if (userRole === 'reception') {
       return [
         { to: '/reception-dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        { to: '/daily-followup', label: 'المتابعة اليومية', icon: Clock },
         { to: '/reception', label: 'sidebar.reception', icon: Users },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
@@ -95,6 +98,7 @@ export default function DashboardLayout() {
     } else {
       return [
         { to: '/dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
+        { to: '/daily-followup', label: 'المتابعة اليومية', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
         { to: '/appointments', label: 'sidebar.appointments', icon: Calendar },
         profileItem
