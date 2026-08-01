@@ -178,11 +178,23 @@ export default function PatientSearch({ onSelectPatient }) {
                   </span>
                 </div>
               </div>
-              <div className={`flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                <Phone size={14} />
-                <span>{p.phone || p.phone_number || '-'}</span>
-                <span className="text-gray-300 mx-2">|</span>
-                <span className="text-xs">ID: {p.id}</span>
+              <div className={`flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mt-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className="flex items-center gap-1.5">
+                  <Phone size={13} className="text-gray-400" />
+                  <span>{p.phone || p.phone_number || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono">
+                  {p.patient_code && (
+                    <span className="bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded font-semibold">
+                      كود: {p.patient_code}
+                    </span>
+                  )}
+                  {p.profile_number && (
+                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-semibold">
+                      ملف: {p.profile_number}
+                    </span>
+                  )}
+                </div>
               </div>
               {p._syncPending && (
                 <span className="text-xs text-yellow-400 mt-1 block">⏳ في انتظار المزامنة</span>

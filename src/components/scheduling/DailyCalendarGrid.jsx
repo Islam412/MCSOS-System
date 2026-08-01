@@ -5,6 +5,8 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, P
 import toast from 'react-hot-toast'
 import DirectBookingModal from './DirectBookingModal'
 import AddPatientModal from '../common/AddPatientModal'
+import BookingCalendar from './BookingCalendar'
+import { appointmentsService } from '../../services/api'
 
 export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignComplete, onViewSession, refreshTrigger }) {
   const { t, i18n } = useTranslation()
@@ -20,6 +22,9 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   const [directBookingSlot, setDirectBookingSlot] = useState(null)
   const [showAddPatientModal, setShowAddPatientModal] = useState(false)
   
+  // View Mode: 'grid' (Daily Grid) | 'calendar' (Interactive Calendar with Drag & Drop Week/Month)
+  const [viewMode, setViewMode] = useState('grid')
+
   // Filter States
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSpecialization, setSelectedSpecialization] = useState('')
@@ -216,16 +221,77 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     }
   }
 
+  // Drag and Drop Cell Handler
+  const handleCellDrop = async (e, doc, timeStr) => {
+    e.preventDefault()
+    try {
+      const rawData = e.dataTransfer.getData('application/json')
+      if (!rawData) return
+      const payload = JSON.parse(rawData)
+
+      if (payload.type === 'WAITLIST') {
+        const entry = payload.entry || selectedWaitlistEntry
+        if (entry) {
+          setAssigningSlot({
+            doctor: doc,
+            timeStr,
+            dateTime: `${selectedDate}T${timeStr}:00`,
+            entry
+          })
+          if (rooms.length > 0) {
+            setSelectedRoomId(rooms[0].id)
+          }
+        }
+      } else if (payload.type === 'SESSION') {
+        const session = payload.session
+        if (session) {
+          const newDateTime = `${selectedDate}T${timeStr}:00`
+          await appointmentsService.rescheduleAppointment(session.id, newDateTime)
+          toast.success(isRTL ? `تم نقل موعد المريض إلى ${timeStr} عند ${doc.name} 🗓️` : `Rescheduled session to ${timeStr}`)
+          fetchSessions()
+        }
+      }
+    } catch (err) {
+      console.warn('Cell drop error:', err)
+    }
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden flex flex-col h-full">
       {/* Grid Header Controls */}
       <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="text-indigo-500" size={20} />
-            <span className="font-extrabold text-gray-800 dark:text-white text-base">
-              {isRTL ? 'الجدول اليومي للمركز' : 'Medical Center Daily Schedule'}
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="text-indigo-500" size={20} />
+              <span className="font-extrabold text-gray-800 dark:text-white text-base">
+                {isRTL ? 'جدول المواعيد والتقويم' : 'Medical Center Schedule'}
+              </span>
+            </div>
+
+            {/* View Mode Switcher: Daily Grid vs Calendar (Week/Month) */}
+            <div className="flex items-center bg-gray-200/80 dark:bg-gray-900 p-1 rounded-xl text-xs font-bold mr-2 border border-gray-300/40 dark:border-gray-700">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                }`}
+              >
+                {isRTL ? '📅 الجدول اليومي' : 'Daily Grid'}
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  viewMode === 'calendar'
+                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                }`}
+              >
+                {isRTL ? '🗓️ التقويم (Day/Week/Month & Drag&Drop)' : 'Calendar (Day/Week/Month)'}
+              </button>
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -273,128 +339,142 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
         </div>
 
         {/* Filter controls */}
-        <div className="flex flex-wrap gap-3 items-center pt-3 border-t border-gray-200/40 dark:border-gray-700/50">
-          {/* Search Doctor */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute right-3 top-2.5 text-gray-400" size={16} />
-            <input 
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={isRTL ? 'البحث عن طبيب بالاسم...' : 'Search doctor by name...'}
-              className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm"
-            />
-          </div>
+        {viewMode === 'grid' && (
+          <div className="flex flex-wrap gap-3 items-center pt-3 border-t border-gray-200/40 dark:border-gray-700/50">
+            {/* Search Doctor */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-2.5 text-gray-400" size={16} />
+              <input 
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={isRTL ? 'البحث عن طبيب بالاسم...' : 'Search doctor by name...'}
+                className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm"
+              />
+            </div>
 
-          {/* Specialization Filter */}
-          <div className="relative min-w-[200px]">
-            <Filter className="absolute right-3 top-2.5 text-gray-400" size={16} />
-            <select
-              value={selectedSpecialization}
-              onChange={(e) => setSelectedSpecialization(e.target.value)}
-              className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
-            >
-              <option value="">{isRTL ? 'كل التخصصات' : 'All Specializations'}</option>
-              {specializations.map(spec => (
-                <option key={spec} value={spec}>{spec}</option>
-              ))}
-            </select>
-          </div>
+            {/* Specialization Filter */}
+            <div className="relative min-w-[200px]">
+              <Filter className="absolute right-3 top-2.5 text-gray-400" size={16} />
+              <select
+                value={selectedSpecialization}
+                onChange={(e) => setSelectedSpecialization(e.target.value)}
+                className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
+              >
+                <option value="">{isRTL ? 'كل التخصصات' : 'All Specializations'}</option>
+                {specializations.map(spec => (
+                  <option key={spec} value={spec}>{spec}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* Shift Filter */}
-          <div className="relative min-w-[200px]">
-            <Clock className="absolute right-3 top-2.5 text-gray-400" size={16} />
-            <select
-              value={selectedShift}
-              onChange={(e) => setSelectedShift(e.target.value)}
-              className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
-            >
-              <option value="all">{isRTL ? 'اليوم بالكامل' : 'Full Day'}</option>
-              <option value="morning">{isRTL ? 'شيفت صباحي' : 'Morning Shift'}</option>
-              <option value="evening">{isRTL ? 'شيفت مسائي' : 'Evening Shift'}</option>
-            </select>
+            {/* Shift Filter */}
+            <div className="relative min-w-[200px]">
+              <Clock className="absolute right-3 top-2.5 text-gray-400" size={16} />
+              <select
+                value={selectedShift}
+                onChange={(e) => setSelectedShift(e.target.value)}
+                className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
+              >
+                <option value="all">{isRTL ? 'اليوم بالكامل' : 'Full Day'}</option>
+                <option value="morning">{isRTL ? 'شيفت صباحي' : 'Morning Shift'}</option>
+                <option value="evening">{isRTL ? 'شيفت مسائي' : 'Evening Shift'}</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Grid Container */}
-      <div className="flex-1 overflow-auto relative max-h-[65vh]">
-        {filteredDoctors.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-gray-800">
-            <User size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-gray-500 dark:text-gray-400 text-sm font-semibold">
-              {isRTL ? 'لم يتم العثور على أطباء يطابقون خيارات التصفية' : 'No doctors matching the filter criteria found'}
-            </p>
-          </div>
-        ) : (
-          <table 
-            className="w-full border-collapse border-spacing-0 table-fixed"
-            style={{ minWidth: `${80 + filteredDoctors.length * 180}px` }}
-          >
-            {/* Header row (Doctors) */}
-            <thead>
-              <tr className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-600">
-                <th className="w-[80px] min-w-[80px] p-3 text-xs font-bold text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-100 dark:bg-gray-900 z-30 text-center">
-                  {isRTL ? 'الوقت' : 'Time'}
-                </th>
-                {filteredDoctors.map(doc => (
-                  <th key={doc.id} className="w-[180px] min-w-[180px] p-3 text-center border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
-                    <div className="flex items-center justify-center gap-1.5 mb-0.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm animate-pulse"></div>
-                      <span className="text-xs font-extrabold text-gray-800 dark:text-gray-150 block truncate max-w-[150px]">
-                        {doc.name}
-                      </span>
-                    </div>
-                    {doc.specialization && (
-                      <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-full inline-block truncate max-w-[160px] mt-0.5 border border-indigo-100/50 dark:border-indigo-900/30">
-                        {doc.specialization}
-                      </span>
-                    )}
+      {/* Main Content Area */}
+      {viewMode === 'calendar' ? (
+        <div className="p-4">
+          <BookingCalendar />
+        </div>
+      ) : (
+        /* Grid Container */
+        <div className="flex-1 overflow-auto relative max-h-[65vh]">
+          {filteredDoctors.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-gray-800">
+              <User size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-semibold">
+                {isRTL ? 'لم يتم العثور على أطباء يطابقون خيارات التصفية' : 'No doctors matching the filter criteria found'}
+              </p>
+            </div>
+          ) : (
+            <table 
+              className="w-full border-collapse border-spacing-0 table-fixed"
+              style={{ minWidth: `${80 + filteredDoctors.length * 180}px` }}
+            >
+              {/* Header row (Doctors) */}
+              <thead>
+                <tr className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-600">
+                  <th className="w-[80px] min-w-[80px] p-3 text-xs font-bold text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-100 dark:bg-gray-900 z-30 text-center">
+                    {isRTL ? 'الوقت' : 'Time'}
                   </th>
-                ))}
-              </tr>
-            </thead>
+                  {filteredDoctors.map(doc => (
+                    <th key={doc.id} className="w-[180px] min-w-[180px] p-3 text-center border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                      <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm animate-pulse"></div>
+                        <span className="text-xs font-extrabold text-gray-800 dark:text-gray-150 block truncate max-w-[150px]">
+                          {doc.name}
+                        </span>
+                      </div>
+                      {doc.specialization && (
+                        <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-full inline-block truncate max-w-[160px] mt-0.5 border border-indigo-100/50 dark:border-indigo-900/30">
+                          {doc.specialization}
+                        </span>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
 
-            {/* Time Rows */}
-            <tbody>
-              {timeSlots.map(timeStr => (
-                <tr key={timeStr} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50/40 dark:hover:bg-gray-800/10">
-                  {/* Time header */}
-                  <td className="p-3 text-center text-xs font-mono font-extrabold text-gray-600 dark:text-gray-300 border-r border-gray-300 dark:border-gray-600 sticky left-0 bg-white dark:bg-gray-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                    {timeStr}
-                  </td>
+              {/* Time Rows */}
+              <tbody>
+                {timeSlots.map(timeStr => (
+                  <tr key={timeStr} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50/40 dark:hover:bg-gray-800/10">
+                    {/* Time header */}
+                    <td className="p-3 text-center text-xs font-mono font-extrabold text-gray-600 dark:text-gray-300 border-r border-gray-300 dark:border-gray-600 sticky left-0 bg-white dark:bg-gray-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                      {timeStr}
+                    </td>
 
-                  {/* Doctor cells */}
-                  {filteredDoctors.map(doc => {
-                    const session = findSession(doc.id, timeStr)
-                    
-                    return (
-                      <td 
-                        key={doc.id}
-                        onClick={() => !session && handleCellClick(doc, timeStr)}
-                        className={`w-[180px] min-w-[180px] p-2 border-r border-gray-200 dark:border-gray-700 text-center relative ${
-                          !session 
-                            ? selectedWaitlistEntry
-                              ? 'hover:bg-indigo-50/40 dark:hover:bg-indigo-950/5 cursor-pointer bg-indigo-50/5 dark:bg-indigo-950/2'
-                              : 'cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/10'
-                            : ''
-                        }`}
-                      >
-                        {session ? (
-                          /* Booked session card */
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onViewSession(session)
-                            }}
-                            className={`p-2.5 rounded-xl text-right border text-xs shadow-sm cursor-pointer transition duration-300 transform hover:scale-[1.02] hover:shadow-md flex flex-col justify-between border-l-4 h-full min-h-[55px] ${
-                              session.confirm_status === 'CONFIRMED' 
-                                ? 'bg-emerald-50/90 border-emerald-200/80 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-300 border-l-emerald-500' 
-                                : session.confirm_status === 'DECLINED'
-                                ? 'bg-rose-50/90 border-rose-200/80 text-rose-900 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300 border-l-rose-500'
-                                : 'bg-amber-50/90 border-amber-200/80 text-amber-900 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-300 border-l-amber-500'
-                            }`}
-                          >
+                    {/* Doctor cells */}
+                    {filteredDoctors.map(doc => {
+                      const session = findSession(doc.id, timeStr)
+                      
+                      return (
+                        <td 
+                          key={doc.id}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => handleCellDrop(e, doc, timeStr)}
+                          onClick={() => !session && handleCellClick(doc, timeStr)}
+                          className={`w-[180px] min-w-[180px] p-2 border-r border-gray-200 dark:border-gray-700 text-center relative ${
+                            !session 
+                              ? selectedWaitlistEntry
+                                ? 'hover:bg-indigo-50/40 dark:hover:bg-indigo-950/5 cursor-pointer bg-indigo-50/5 dark:bg-indigo-950/2'
+                                : 'cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/10'
+                              : ''
+                          }`}
+                        >
+                          {session ? (
+                            /* Booked session card with drag support */
+                            <div 
+                              draggable={true}
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('application/json', JSON.stringify({ type: 'SESSION', session }))
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onViewSession(session)
+                              }}
+                              className={`p-2.5 rounded-xl text-right border text-xs shadow-sm cursor-grab active:cursor-grabbing transition duration-300 transform hover:scale-[1.02] hover:shadow-md flex flex-col justify-between border-l-4 h-full min-h-[55px] ${
+                                session.confirm_status === 'CONFIRMED' 
+                                  ? 'bg-emerald-50/90 border-emerald-200/80 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-300 border-l-emerald-500' 
+                                  : session.confirm_status === 'DECLINED'
+                                  ? 'bg-rose-50/90 border-rose-200/80 text-rose-900 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300 border-l-rose-500'
+                                  : 'bg-amber-50/90 border-amber-200/80 text-amber-900 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-300 border-l-amber-500'
+                              }`}
+                            >
                             <div className="flex items-center gap-2">
                               <div className="w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[9px] font-bold flex items-center justify-center shrink-0">
                                 {getInitials(session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N A')}
@@ -435,6 +515,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
           </table>
         )}
       </div>
+      )}
 
       {/* Room Selection Popup Modal during assignment */}
       {assigningSlot && (

@@ -104,8 +104,14 @@ export default function WaitlistSidebar({ onSelectEntry, selectedEntryId, refres
             return (
               <div 
                 key={entry.id}
+                draggable={true}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/json', JSON.stringify({ type: 'WAITLIST', entry }))
+                  e.dataTransfer.setData('text/plain', entry.id)
+                  onSelectEntry(entry)
+                }}
                 onClick={() => onSelectEntry(isSelected ? null : entry)}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all duration-300 flex flex-col gap-2 hover:shadow-md ${
+                className={`p-4 rounded-2xl border cursor-grab active:cursor-grabbing transition-all duration-300 flex flex-col gap-2 hover:shadow-md ${
                   isSelected 
                     ? 'bg-gradient-to-br from-indigo-50/50 to-indigo-100/30 border-indigo-400 dark:from-indigo-950/20 dark:to-indigo-950/40 dark:border-indigo-700 shadow-md ring-1 ring-indigo-500/25 scale-[1.01]' 
                     : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-900 hover:bg-gray-50/50 dark:hover:bg-gray-800/20 shadow-[0_2px_4px_rgba(0,0,0,0.01)]'
