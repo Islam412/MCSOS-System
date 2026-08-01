@@ -1,7 +1,7 @@
 // src/components/scheduling/BookingCalendar.jsx
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
-import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
+import withDragAndDropRaw from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay, addDays, subDays, startOfMonth, endOfMonth, isSameDay } from 'date-fns'
 import { ar, enUS } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
@@ -43,7 +43,12 @@ const localizer = dateFnsLocalizer({
   locales
 })
 
-const DnDCalendar = withDragAndDrop(Calendar)
+// حل مشكلة CJS/ESM Interop لـ withDragAndDrop في Vite/Rollup
+const withDragAndDrop = typeof withDragAndDropRaw === 'function'
+  ? withDragAndDropRaw
+  : (withDragAndDropRaw?.default || withDragAndDropRaw)
+
+const DnDCalendar = typeof withDragAndDrop === 'function' ? withDragAndDrop(Calendar) : Calendar
 
 // ألوان الحالات الموحدة (Standardized Color Mapping)
 const STATUS_COLORS = {
