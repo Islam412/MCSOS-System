@@ -264,17 +264,19 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden flex flex-col h-full">
       {/* Grid Header Controls */}
       <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="text-indigo-500" size={20} />
-              <span className="font-extrabold text-gray-800 dark:text-white text-base">
-                {isRTL ? 'جدول المواعيد والتقويم' : 'Medical Center Schedule'}
-              </span>
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Title */}
+          <div className="flex items-center gap-2 shrink-0">
+            <CalendarIcon className="text-indigo-500" size={20} />
+            <span className="font-extrabold text-gray-800 dark:text-white text-base">
+              {isRTL ? 'جدول المواعيد والتقويم' : 'Medical Center Schedule'}
+            </span>
+          </div>
 
+          {/* Controls Group (View switcher, date selector, refresh, add patient) - aligned to the right in LTR */}
+          <div className="flex flex-wrap items-center justify-end gap-3 flex-1">
             {/* View Mode Switcher: Daily Grid vs Calendar (Week/Month) */}
-            <div className="flex items-center bg-gray-200/80 dark:bg-gray-900 p-1 rounded-xl text-xs font-bold mr-2 border border-gray-300/40 dark:border-gray-700">
+            <div className="flex items-center bg-gray-200/80 dark:bg-gray-900 p-1 rounded-xl text-xs font-bold border border-gray-300/40 dark:border-gray-700 shrink-0">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
@@ -293,52 +295,56 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
                 }`}
               >
-                {isRTL ? '🗓️ التقويم (Day/Week/Month & Drag&Drop)' : 'Calendar (Day/Week/Month)'}
+                {isRTL ? '🗓️ التقويم التفاعلي (Day/Week/Month)' : 'Calendar (Day/Week/Month)'}
               </button>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {/* Date Selector */}
-            <div className="flex items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
-              <button 
-                onClick={handlePrevDay} 
-                className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700"
-              >
-                <ChevronRight size={16} />
-              </button>
-              
-              <input 
-                type="date" 
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="p-2 border-0 bg-transparent text-sm font-bold dark:text-white focus:ring-0 outline-none cursor-pointer"
-              />
+            
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Date Selector and Refresh only shown for Daily Grid View */}
+              {viewMode === 'grid' && (
+                <>
+                  <div className="flex items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                    <button 
+                      onClick={handlePrevDay} 
+                      className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                    
+                    <input 
+                      type="date" 
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="p-2 border-0 bg-transparent text-sm font-bold dark:text-white focus:ring-0 outline-none cursor-pointer"
+                    />
+
+                    <button 
+                      onClick={handleNextDay} 
+                      className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={fetchSessions} 
+                    disabled={loading}
+                    className="p-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1.5 transition text-xs font-bold shadow-sm"
+                  >
+                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                    {isRTL ? 'تحديث' : 'Refresh'}
+                  </button>
+                </>
+              )}
 
               <button 
-                onClick={handleNextDay} 
-                className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700"
+                onClick={() => setShowAddPatientModal(true)} 
+                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 rounded-xl hover:shadow-indigo-500/50 flex items-center gap-2 transition-all duration-300 text-xs font-bold"
               >
-                <ChevronLeft size={16} />
+                <UserPlus size={16} />
+                <span>{isRTL ? 'مريض جديد' : 'Add new Patient'}</span>
               </button>
             </div>
-
-            <button 
-              onClick={fetchSessions} 
-              disabled={loading}
-              className="p-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-1.5 transition text-xs font-bold shadow-sm"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              {isRTL ? 'تحديث' : 'Refresh'}
-            </button>
-
-            <button 
-              onClick={() => setShowAddPatientModal(true)} 
-              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 rounded-xl hover:shadow-indigo-500/50 flex items-center gap-2 transition-all duration-300 text-xs font-bold"
-            >
-              <UserPlus size={16} />
-              <span>{isRTL ? 'مريض جديد' : 'Add new Patient'}</span>
-            </button>
           </div>
         </div>
 

@@ -19,8 +19,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
   
   // Registration Form States
   const [regForm, setRegForm] = useState({
-    first_name: '',
-    last_name: '',
+    fullName: '',
     phone: '',
     whatsapp_number: '',
     sameAsPhone: true,
@@ -87,17 +86,23 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
 
   // Handle register and submit
   const handleRegisterPatient = async () => {
-    if (!regForm.first_name || !regForm.last_name) {
-      toast.error(isRTL ? 'الرجاء إدخال الاسم الأول والأخير للمريض' : 'Please enter the first and last name of the patient')
+    if (!regForm.fullName.trim()) {
+      toast.error(isRTL ? 'الرجاء إدخال اسم المريض بالكامل' : 'Please enter the full name of the patient')
       return null
     }
+    
+    const nameParts = regForm.fullName.trim().split(/\s+/)
+    const firstName = nameParts[0] || 'مريض'
+    const lastName = nameParts.slice(1).join(' ') || nameParts[0]
     
     const token = localStorage.getItem('mcsos_token')
     try {
       setLoading(true)
       const payload = {
-        first_name: regForm.first_name,
-        last_name: regForm.last_name,
+        first_name: firstName,
+        last_name: lastName,
+        full_name_ar: regForm.fullName,
+        name: regForm.fullName,
         phone: regForm.phone,
         whatsapp_number: regForm.sameAsPhone ? regForm.phone : regForm.whatsapp_number || regForm.phone,
         referral_source: regForm.referral_source || '',
@@ -176,11 +181,13 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
       setSelectedPatient(null)
       setSearchQuery('')
       setReceptionNotes('')
-      setMode('select')
       setRegForm({
-        first_name: '',
-        last_name: '',
+        fullName: '',
         phone: '',
+        whatsapp_number: '',
+        sameAsPhone: true,
+        referral_source: '',
+        national_id_photo: '',
         gender: 'male',
         date_of_birth: ''
       })
@@ -329,27 +336,15 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                 {isRTL ? 'بيانات المريض الجديد' : 'New Patient Info'}
               </label>
               
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <input
-                    type="text"
-                    required
-                    placeholder={isRTL ? 'الاسم الأول *' : 'First Name *'}
-                    value={regForm.first_name}
-                    onChange={(e) => setRegForm({ ...regForm, first_name: e.target.value })}
-                    className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    required
-                    placeholder={isRTL ? 'الاسم الأخير *' : 'Last Name *'}
-                    value={regForm.last_name}
-                    onChange={(e) => setRegForm({ ...regForm, last_name: e.target.value })}
-                    className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
+              <div>
+                <input
+                  type="text"
+                  required
+                  placeholder={isRTL ? 'الاسم الكامل *' : 'Full Name *'}
+                  value={regForm.fullName}
+                  onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
+                  className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-gray-800 dark:text-white"
+                />
               </div>
 
               <div>

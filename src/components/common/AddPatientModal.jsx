@@ -9,8 +9,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
   
   const [loading, setLoading] = useState(false)
   const [regForm, setRegForm] = useState({
-    first_name: '',
-    last_name: '',
+    fullName: '',
     phone: '',
     whatsapp_number: '',
     sameAsPhone: true,
@@ -27,17 +26,23 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!regForm.first_name || !regForm.last_name || !regForm.phone) {
-      toast.error(isRTL ? 'الرجاء إدخال الاسم الأول والأخير ورقم الهاتف' : 'Please enter first name, last name, and phone')
+    if (!regForm.fullName.trim() || !regForm.phone) {
+      toast.error(isRTL ? 'الرجاء إدخال الاسم الكامل ورقم الهاتف' : 'Please enter full name and phone number')
       return
     }
+    
+    const nameParts = regForm.fullName.trim().split(/\s+/)
+    const firstName = nameParts[0] || 'مريض'
+    const lastName = nameParts.slice(1).join(' ') || nameParts[0]
     
     const token = localStorage.getItem('mcsos_token')
     try {
       setLoading(true)
       const payload = {
-        first_name: regForm.first_name,
-        last_name: regForm.last_name,
+        first_name: firstName,
+        last_name: lastName,
+        full_name_ar: regForm.fullName,
+        name: regForm.fullName,
         phone: regForm.phone,
         whatsapp_number: regForm.sameAsPhone ? regForm.phone : regForm.whatsapp_number || regForm.phone,
         referral_source: regForm.referral_source || '',
@@ -60,8 +65,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
       toast.success(isRTL ? 'تم تسجيل المريض بنجاح!' : 'Patient registered successfully!')
       
       setRegForm({
-        first_name: '',
-        last_name: '',
+        fullName: '',
         phone: '',
         whatsapp_number: '',
         sameAsPhone: true,
@@ -99,27 +103,16 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto max-h-[70vh]">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'الاسم الأول *' : 'First Name *'}</label>
-              <input
-                type="text"
-                required
-                value={regForm.first_name}
-                onChange={(e) => setRegForm({ ...regForm, first_name: e.target.value })}
-                className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'الاسم الأخير *' : 'Last Name *'}</label>
-              <input
-                type="text"
-                required
-                value={regForm.last_name}
-                onChange={(e) => setRegForm({ ...regForm, last_name: e.target.value })}
-                className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'الاسم الكامل *' : 'Full Name *'}</label>
+            <input
+              type="text"
+              required
+              placeholder={isRTL ? 'أدخل اسم المريض بالكامل...' : 'Enter patient full name...'}
+              value={regForm.fullName}
+              onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
+              className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-800 dark:text-white"
+            />
           </div>
 
           <div>

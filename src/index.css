@@ -21,6 +21,156 @@ th, td {
   white-space: nowrap;
 }
 
+/* =========================================================
+   تنسيقات فاخرة وعصرية لـ react-big-calendar (Modern Calendar Theme)
+   ========================================================= */
+.rbc-calendar {
+  font-family: 'Cairo', system-ui, sans-serif !important;
+  color: inherit;
+}
+
+.rbc-header {
+  padding: 12px 6px !important;
+  font-weight: 800 !important;
+  font-size: 13px !important;
+  color: #374151 !important;
+  background-color: #f8fafc !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  text-align: center !important;
+}
+
+.dark .rbc-header {
+  color: #e2e8f0 !important;
+  background-color: #0f172a !important;
+  border-bottom-color: #334155 !important;
+}
+
+.rbc-time-view, .rbc-month-view {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.dark .rbc-time-view, .dark .rbc-month-view {
+  border-color: #334155 !important;
+  background: #1e293b;
+}
+
+.rbc-time-header-content {
+  border-left: 1px solid #e2e8f0 !important;
+}
+
+.dark .rbc-time-header-content {
+  border-left-color: #334155 !important;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+.dark .rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid #1e293b !important;
+}
+
+.rbc-time-gutter .rbc-time-slot {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #64748b !important;
+  padding: 0 8px !important;
+}
+
+.dark .rbc-time-gutter .rbc-time-slot {
+  color: #94a3b8 !important;
+}
+
+.rbc-toolbar {
+  margin-bottom: 18px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.rbc-toolbar-label {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  color: #1e293b !important;
+}
+
+.dark .rbc-toolbar-label {
+  color: #f8fafc !important;
+}
+
+.rbc-btn-group button {
+  font-family: inherit !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  padding: 8px 18px !important;
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+  transition: all 0.2s ease !important;
+  margin-right: 4px !important;
+}
+
+.dark .rbc-btn-group button {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+.rbc-btn-group button:hover {
+  background: #f1f5f9 !important;
+  color: #2563eb !important;
+}
+
+.dark .rbc-btn-group button:hover {
+  background: #1e293b !important;
+  color: #60a5fa !important;
+}
+
+.rbc-btn-group button.rbc-active {
+  background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
+  color: white !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35) !important;
+}
+
+/* =========================================================
+   تخصيص كروت المواعيد (Events Styling)
+   ========================================================= */
+/* إخفاء التسمية الافتراضية للوقت التي تستهلك كل مساحة الكارت في المواعيد القصيرة */
+.rbc-event-label {
+  display: none !important;
+}
+
+.rbc-event {
+  padding: 4px 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 10px !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  overflow: hidden !important;
+}
+
+.rbc-event:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35) !important;
+  z-index: 50 !important;
+}
+
+.rbc-event-content {
+  height: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
 @media (max-width: 768px) {
   th, td {
     white-space: normal;
