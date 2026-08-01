@@ -352,6 +352,8 @@ export default function BookingCalendar() {
           draggableAccessor={() => true}
           resizable={false}
           eventPropGetter={eventStyleGetter}
+          min={minTime}
+          max={maxTime}
           culture={i18n.language}
           messages={{
             next: 'التالي',

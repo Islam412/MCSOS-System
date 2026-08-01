@@ -174,11 +174,12 @@ export const appointmentsService = {
   },
 
   // ========== إعادة جدولة موعد (Reschedule Session / Drag & Drop) ==========
-  rescheduleAppointment: async (id, sessionDate, roomId = '') => {
+  rescheduleAppointment: async (id, sessionDate, roomId = '', doctorId = '') => {
     try {
       const response = await put(`/api/v1/sessions/${id}/reschedule`, {
         session_date: sessionDate,
-        room_id: roomId
+        room_id: roomId,
+        doctor_id: doctorId
       })
       return response.session || response
     } catch (error) {

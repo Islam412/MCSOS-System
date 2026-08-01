@@ -164,16 +164,20 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     }
   }
 
+  // Helper to get exact local ISO string without UTC shift bug
+  const createLocalIsoString = (dateStr, timeStr) => {
+    const [h, m] = timeStr.split(':')
+    const d = new Date(`${dateStr}T00:00:00`)
+    d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0)
+    return d.toISOString()
+  }
+
   const handleConfirmAssignment = async () => {
     if (!assigningSlot || !selectedWaitlistEntry) return
     
     const { doctor, timeStr } = assigningSlot
     const token = localStorage.getItem('mcsos_token')
-    
-    // Build slot date-time
-    const [hours, minutes] = timeStr.split(':')
-    const sessionDate = new Date(selectedDate)
-    sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+    const isoSessionDate = createLocalIsoString(selectedDate, timeStr)
 
     try {
       setLoading(true)
@@ -187,7 +191,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
         },
         body: JSON.stringify({
           slot_id: null,
-          session_date: sessionDate.toISOString(),
+          session_date: isoSessionDate,
           doctor_id: doctor.id
         })
       })
@@ -205,7 +209,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
           },
           body: JSON.stringify({
             room_id: selectedRoomId,
-            doctor_id: doctor.id // update preferred doctor if needed
+            doctor_id: doctor.id
           })
         })
       }
@@ -228,6 +232,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
       const rawData = e.dataTransfer.getData('application/json')
       if (!rawData) return
       const payload = JSON.parse(rawData)
+      const isoSessionDate = createLocalIsoString(selectedDate, timeStr)
 
       if (payload.type === 'WAITLIST') {
         const entry = payload.entry || selectedWaitlistEntry
@@ -235,7 +240,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
           setAssigningSlot({
             doctor: doc,
             timeStr,
-            dateTime: `${selectedDate}T${timeStr}:00`,
+            dateTime: isoSessionDate,
             entry
           })
           if (rooms.length > 0) {
@@ -245,9 +250,8 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
       } else if (payload.type === 'SESSION') {
         const session = payload.session
         if (session) {
-          const newDateTime = `${selectedDate}T${timeStr}:00`
-          await appointmentsService.rescheduleAppointment(session.id, newDateTime)
-          toast.success(isRTL ? `تم نقل موعد المريض إلى ${timeStr} عند ${doc.name} 🗓️` : `Rescheduled session to ${timeStr}`)
+          await appointmentsService.rescheduleAppointment(session.id, isoSessionDate, '', doc.id)
+          toast.success(isRTL ? `تم نقل موعد المريض إلى الساعة ${timeStr} عند ${doc.name} 🗓️` : `Rescheduled session to ${timeStr}`)
           fetchSessions()
         }
       }
