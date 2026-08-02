@@ -23,6 +23,8 @@
     "book_appointment": "Book Appointment",
     "rooms_manager": "Rooms Manager",
     "services_manager": "Services Manager",
+    "reports": "Reports & Analytics",
+    "daily_followup": "Daily Follow-Up",
     "logout": "Logout"
   },
   "reception": {

@@ -119,7 +119,7 @@ export default function DailyFollowUp() {
       loadDailyFollowUp(selectedDate)
     } catch (error) {
       console.error('Check-in error:', error)
-      toast.error('حدث خطأ في تسجيل الدخول')
+      toast.error(error?.message?.includes('payment') || error?.message?.includes('تأكيد الدفع') ? '⛔ لا يمكن بدء جلسة التقييم إلا بعد اعتماد الدفع من الحسابات' : 'حدث خطأ في تسجيل الدخول')
     } finally {
       setActionLoading(null)
     }
@@ -137,6 +137,23 @@ export default function DailyFollowUp() {
     } catch (error) {
       console.error('Check-out error:', error)
       toast.error('حدث خطأ في تسجيل الخروج')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // ========== تأكيد دفعة التقييم (Finance Payment Verification) ==========
+  const handleVerifyPayment = async (sessionId) => {
+    setActionLoading(sessionId)
+    try {
+      if (isOnline) {
+        await appointmentsService.verifyPayment(sessionId)
+      }
+      toast.success('تم اعتماد وتأكيد دفعة جلسة التقييم مالياً 💳🟢')
+      loadDailyFollowUp(selectedDate)
+    } catch (error) {
+      console.error('Verify payment error:', error)
+      toast.error('حدث خطأ أثناء اعتماد الدفعة')
     } finally {
       setActionLoading(null)
     }
@@ -197,10 +214,10 @@ export default function DailyFollowUp() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Clock className="text-blue-600 dark:text-blue-400" size={28} />
-            شاشة المتابعة اليومية للجلسات
+            {isRTL ? 'شاشة المتابعة اليومية للجلسات' : 'Daily Sessions Follow-Up'}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            إدارة الحضور والغياب، تسجيل وقت الدخول والخروج، وإجراءات المتابعة الميدانية
+            {isRTL ? 'إدارة الحضور والغياب، تسجيل وقت الدخول والخروج، وإجراءات المتابعة الميدانية' : 'Manage attendance, check-in/out records, and field operational tracking'}
           </p>
         </div>
 
@@ -424,14 +441,25 @@ export default function DailyFollowUp() {
                     {/* الأزرار والإجراءات */}
                     <div className="flex items-center gap-2 self-end md:self-center">
                       {!isAttended && !isMissed && (
-                        <button
-                          onClick={() => handleCheckIn(session.id)}
-                          disabled={actionLoading === session.id}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 shadow-sm"
-                        >
-                          <CheckCircle2 size={14} />
-                          تسجيل دخول
-                        </button>
+                        session.session_type === 'ASSESSMENT' && !session.payment_verified ? (
+                          <button
+                            onClick={() => handleVerifyPayment(session.id)}
+                            disabled={actionLoading === session.id}
+                            className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md animate-pulse"
+                            title="يتطلب تأكيد الدفع من الإدارة المالية قبل تسجيل الدخول"
+                          >
+                            💳 تأكيد دفع التقييم
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleCheckIn(session.id)}
+                            disabled={actionLoading === session.id}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 shadow-sm"
+                          >
+                            <CheckCircle2 size={14} />
+                            تسجيل دخول
+                          </button>
+                        )
                       )}
 
                       {isAttended && !session.attendance?.check_out_time && (

@@ -59,26 +59,31 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
       return
     }
 
+    if (!form.national_id_front) {
+      toast.error('الرجاء رفع صورة الوجه الأمامي للهوية الوطنية (إلزامي)')
+      return
+    }
+
     setLoading(true)
     try {
       // ✅ البيانات بالشكل المطلوب من الـ API
       const patientData = {
         first_name: form.first_name,
         last_name: form.last_name || form.first_name,
-        full_name_ar: form.full_name_ar || '',
-        nationality: form.nationality,
-        occupation: form.occupation || '',
+        full_name_ar: form.full_name_ar || undefined,
+        nationality: form.nationality || undefined,
+        occupation: form.occupation || undefined,
         gender: form.gender || 'male',
-        date_of_birth: form.date_of_birth || new Date(Date.now() - 30 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        address: form.address || '',
+        date_of_birth: form.date_of_birth || undefined,
+        address: form.address || undefined,
         phone: form.phone,
         whatsapp_number: form.sameAsPhone ? form.phone : form.whatsapp_number || form.phone,
         referral_source: form.referral_source || 'Social Media',
-        national_id_front: form.national_id_front || '',
-        national_id_back: form.national_id_back || '',
-        national_id_photo: form.national_id_front || '',
+        national_id_front: form.national_id_front || undefined,
+        national_id_back: form.national_id_back || undefined,
+        national_id_photo: form.national_id_front || undefined,
         emergency_contact: form.phone,
-        email: form.email || '',
+        email: form.email || undefined,
         notes: 'تم التسجيل عبر الاستقبال'
       }
 
@@ -416,7 +421,9 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* الوجه الأمامي */}
             <div className="p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl">
-              <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">الوجه الأمامي (Front)</span>
+              <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                الوجه الأمامي (Front) <span className="text-red-500 font-bold">* (إلزامي)</span>
+              </span>
               <input
                 type="file"
                 accept="image/*,.pdf"

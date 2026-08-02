@@ -29,6 +29,7 @@ import ServicesManager from './components/admin/ServicesManager'
 import Appointments from './pages/patient/Appointments' 
 import BookAppointment from './pages/patient/BookAppointment'
 import DailyFollowUp from './pages/DailyFollowUp'
+import ReportsDashboard from './pages/reports/ReportsDashboard'
 
 function App() {
   return (
@@ -75,6 +76,7 @@ function App() {
           <Route path="patients" element={<PatientProfile />} />
           <Route path="profile" element={<Profile />} />
           <Route path="book-appointment" element={<BookAppointment />} />
+          <Route path="reports" element={<ReportsDashboard />} />
           
           {/* الصفحة الرئيسية الافتراضية */}
           <Route index element={<AdminDashboard />} />

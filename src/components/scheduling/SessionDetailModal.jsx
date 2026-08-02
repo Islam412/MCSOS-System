@@ -1,7 +1,7 @@
 // src/components/scheduling/SessionDetailModal.jsx
 import { useState, useEffect } from 'react'
 import { confirmAlert } from '../../utils/confirmAlert'
-import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard } from 'lucide-react'
+import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 
@@ -23,6 +23,13 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
     time: '',
     roomId: ''
   })
+  
+  const [evaluationData, setEvaluationData] = useState({
+    diagnosis: '',
+    goals: '',
+    recommended_package: '12_sessions',
+    weekly_sessions: '3'
+  })
 
   useEffect(() => {
     if (session) {
@@ -35,6 +42,19 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
         time: `${hours}:${minutes}`,
         roomId: session.room?.id || session.room_id || ''
       })
+
+      if (session.evaluation_report) {
+        try {
+          const parsed = JSON.parse(session.evaluation_report)
+          if (parsed && typeof parsed === 'object') {
+            setEvaluationData(parsed)
+          } else {
+            setEvaluationData({ diagnosis: session.evaluation_report, goals: '', recommended_package: '12_sessions', weekly_sessions: '3' })
+          }
+        } catch (e) {
+          setEvaluationData({ diagnosis: session.evaluation_report, goals: '', recommended_package: '12_sessions', weekly_sessions: '3' })
+        }
+      }
     }
   }, [session])
 
@@ -118,6 +138,10 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
     } else if (actionType === 'delete') {
       url = `${API_BASE}/sessions/${session.id}`
       method = 'DELETE'
+    } else if (actionType === 'verify-payment') {
+      url = `${API_BASE}/sessions/${session.id}/verify-payment`
+      method = 'POST'
+      body = { verifier_name: currentUser?.name || (isRTL ? 'مسؤول الإدارة المالية' : 'Finance Officer') }
     }
 
     try {
@@ -153,6 +177,131 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
       reception_notes: notes.receptionNotes
     })
   }
+
+  const handleSaveEvaluation = async () => {
+    setSubmitting(true)
+    const token = localStorage.getItem('mcsos_token')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${session.id}/evaluation-report`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ evaluation_report: JSON.stringify(evaluationData) })
+      })
+      if (!res.ok) throw new Error('فشلت العملية')
+      toast.success(isRTL ? 'تم حفظ واعتماد تقرير التقييم الطبي بنجاح 📋✨' : 'Evaluation report saved successfully!')
+      const updated = await res.json()
+      if (onUpdate) onUpdate(updated)
+    } catch (err) {
+      toast.error(isRTL ? 'حدث خطأ أثناء حفظ التقرير' : 'Failed to save evaluation report')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handlePrintEvaluation = () => {
+    const pName = session.patient ? (session.patient.full_name_ar || session.patient.name || `${session.patient.first_name || ''} ${session.patient.last_name || ''}`.trim() || 'مريض') : 'N/A';
+    const docName = session.doctor?.name || (isRTL ? 'طبيب التأهيل' : 'Rehab Doctor');
+    const dateFormatted = new Date(session.session_date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const packageMap = {
+      '6_sessions': isRTL ? 'باقة التأهيل السريع (6 جلسات)' : 'Quick Rehab Package (6 Sessions)',
+      '12_sessions': isRTL ? 'باقة التميز العلاجي (12 جلسة - مكثف)' : 'Premium Rehab Package (12 Sessions)',
+      '24_sessions': isRTL ? 'باقة التأهيل الشامل والمتكامل (24 جلسة)' : 'Comprehensive Rehab Package (24 Sessions)',
+      'hydrotherapy': isRTL ? 'باقة العلاج المائي الرياضي (Hydrotherapy)' : 'Hydrotherapy Sports Package',
+      'spine_special': isRTL ? 'باقة علاج آلام الظهر والعمود الفقري المتخصصة' : 'Spinal Pain Specialized Therapy'
+    };
+
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <title>${isRTL ? 'تقرير تقييم طبي' : 'Medical Assessment Report'} - ${pName}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap');
+          body { font-family: 'Cairo', sans-serif; padding: 40px; color: #1e293b; background: #fff; line-height: 1.6; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0284c7; padding-bottom: 20px; margin-bottom: 30px; }
+          .logo { font-size: 22px; font-weight: 800; color: #0284c7; }
+          .subtitle { font-size: 13px; color: #64748b; }
+          .box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 25px; background: #f8fafc; }
+          .title { font-size: 16px; font-weight: 800; color: #0f172a; border-bottom: 2px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 12px; }
+          .field { margin-bottom: 15px; }
+          .label { font-size: 13px; color: #475569; font-weight: 600; }
+          .value { font-size: 15px; font-weight: 700; color: #0f172a; margin-top: 4px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+          .package-badge { background: #dcfce7; color: #166534; font-size: 16px; font-weight: 800; padding: 12px 18px; border-radius: 8px; border: 1px solid #bbf7d0; display: inline-block; margin-top: 8px; }
+          .footer { display: flex; justify-content: space-between; margin-top: 60px; padding-top: 20px; border-top: 1px solid #cbd5e1; text-align: center; }
+          .sig-box { width: 220px; }
+          .sig-line { border-bottom: 1px solid #334155; margin: 40px 0 10px 0; }
+          @media print { button { display: none; } body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="logo">🏥 Medical Center Specialist Orthopedic Services</div>
+            <div class="subtitle">المستشفى المتخصص للتأهيل والعلاج الطبيعي وجراحة العظام</div>
+          </div>
+          <div style="text-align: ${isRTL ? 'left' : 'right'}">
+            <h2 style="margin:0; color:#0284c7;">${isRTL ? '📋 تقرير التقييم والخطة العلاجية' : 'Assessment & Treatment Plan'}</h2>
+            <div class="subtitle" style="margin-top:4px;">التاريخ: ${dateFormatted}</div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="title">👤 ${isRTL ? 'بيانات المريض والموعد' : 'Patient & Session Information'}</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div><span class="label">${isRTL ? 'الاسم الكامل:' : 'Full Name:'}</span> <div class="value">${pName}</div></div>
+            <div><span class="label">${isRTL ? 'الطبيب المعالج:' : 'Doctor:'}</span> <div class="value">د. ${docName}</div></div>
+            <div><span class="label">${isRTL ? 'كود المريض:' : 'Patient ID:'}</span> <div class="value">${session.patient?.patient_code || 'N/A'}</div></div>
+            <div><span class="label">${isRTL ? 'نوع الجلسة:' : 'Session Type:'}</span> <div class="value" style="color:#0284c7;">${isRTL ? 'تقييم وتشخيص شامل (Assessment)' : 'Comprehensive Assessment'}</div></div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="title">🩺 ${isRTL ? 'التشخيص المبدئي والحالة الوظيفية' : 'Diagnosis & Functional Assessment'}</div>
+          <div class="field">
+            <div class="label">${isRTL ? 'ملخص الفحص السريري والشكوى:' : 'Clinical Findings & Chief Complaint:'}</div>
+            <div class="value" style="min-height: 60px;">${evaluationData.diagnosis || (isRTL ? 'لا يوجد تفاصيل إضافية' : 'No diagnosis recorded')}</div>
+          </div>
+          <div class="field">
+            <div class="label">${isRTL ? 'الأهداف العلاجية والتوصيات:' : 'Treatment Goals & Recommendations:'}</div>
+            <div class="value" style="min-height: 60px;">${evaluationData.goals || (isRTL ? 'تم وضع الخطة المتكاملة للتأهيل' : 'Comprehensive rehab plan set')}</div>
+          </div>
+        </div>
+
+        <div class="box" style="background:#f0fdf4; border-color:#bbf7d0;">
+          <div class="title" style="color:#166534; border-color:#86efac;">🎯 ${isRTL ? 'الباقة العلاجية المقترحة للمريض' : 'Recommended Treatment Package'}</div>
+          <div style="margin-bottom: 10px;">
+            <div class="label" style="color:#15803d;">${isRTL ? 'توصية الطبيب للباقة الأنسب:' : 'Doctor Recommended Package:'}</div>
+            <div class="package-badge">✨ ${packageMap[evaluationData.recommended_package] || evaluationData.recommended_package}</div>
+          </div>
+          <div style="margin-top: 15px;">
+            <span class="label" style="color:#15803d;">${isRTL ? 'معدل الجلسات المقترح:' : 'Recommended Frequency:'}</span> 
+            <strong style="font-size:16px; margin: 0 5px; color:#166534;">${evaluationData.weekly_sessions} ${isRTL ? 'جلسات أسبوعياً' : 'sessions per week'}</strong>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="sig-box">
+            <div><strong>${isRTL ? 'توقيع الطبيب المعالج' : "Doctor's Signature"}</strong></div>
+            <div class="sig-line"></div>
+            <div>د. ${docName}</div>
+          </div>
+          <div class="sig-box">
+            <div><strong>${isRTL ? 'اعتماد إدارة العلاج الطبيعي' : 'Department Approval'}</strong></div>
+            <div class="sig-line"></div>
+            <div>ختم المستشفى / الإدارة</div>
+          </div>
+        </div>
+        <script>setTimeout(() => window.print(), 600);</script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const formatTime = (dateStr) => {
     if (!dateStr) return '-'
@@ -190,7 +339,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                 {isRTL ? 'المريض' : 'Patient'}
               </span>
               <h4 className="text-lg font-bold text-gray-800 dark:text-white mt-0.5">
-                {session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N/A'}
+                {session.patient ? (session.patient.full_name_ar || session.patient.name || `${session.patient.first_name || ''} ${session.patient.last_name || ''}`.trim() || 'مريض') : 'N/A'}
               </h4>
               <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">
                 {session.patient?.patient_code}
@@ -324,13 +473,48 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                   <div>
                     <p className="text-xs text-gray-400">{isRTL ? 'حالة الدفع' : 'Payment Status'}</p>
                     <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1 ${
-                      session.is_deducted ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' :
+                      session.is_deducted || session.payment_verified ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' :
                       'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400'
                     }`}>
-                      {session.is_deducted ? (isRTL ? 'مخصوم من الباقة' : 'Deducted') : (isRTL ? 'معلق' : 'Pending')}
+                      {session.is_deducted ? (isRTL ? 'مخصوم من الباقة' : 'Deducted') : session.payment_verified ? (isRTL ? 'تم تأكيد الدفع 🟢' : 'Verified') : (isRTL ? 'معلق 🟡' : 'Pending')}
                     </span>
                   </div>
                 </div>
+
+                {/* Assessment Payment Workflow Verification Banner */}
+                {session.session_type === 'ASSESSMENT' && !session.payment_verified && (
+                  <div className="col-span-2 p-3.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800/80 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                    <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300">
+                      <AlertTriangle size={20} className="shrink-0 text-amber-600 dark:text-amber-400 animate-pulse" />
+                      <span className="text-xs font-bold leading-relaxed">
+                        {isRTL 
+                          ? '⛔ جلسة التقييم الطبي تتطلب اعتماد الدفع من الإدارة المالية قبل البدء' 
+                          : '⛔ Assessment session requires payment verification before starting'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => handleAction('verify-payment')}
+                      className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-extrabold text-xs rounded-lg shadow-md hover:shadow-lg transition shrink-0 flex items-center gap-1.5"
+                    >
+                      <Check size={15} />
+                      {isRTL ? 'تأكيد الدفع (المالية / الحسابات)' : 'Verify Payment (Finance)'}
+                    </button>
+                  </div>
+                )}
+
+                {session.session_type === 'ASSESSMENT' && session.payment_verified && (
+                  <div className="col-span-2 p-3 bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 font-semibold shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>{isRTL ? '✅ تم اعتماد وتأكيد دفعة جلسة التقييم مالياً ومبينة للبأ' : '✅ Assessment session payment verified & ready to start'}</span>
+                    </div>
+                    {session.payment_verified_by && (
+                      <span className="text-[11px] opacity-80 font-mono">({session.payment_verified_by})</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Time Tracking */}
@@ -353,6 +537,23 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                     </span>
                   </div>
                 </div>
+
+                {/* Phase 5: Early Termination Warning Alert */}
+                {(session.duration_warning_generated || (session.actual_duration_minutes && session.actual_duration_minutes < (session.scheduled_duration_minutes || 60) - 15)) && (
+                  <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800/70 rounded-xl text-rose-900 dark:text-rose-200 flex items-start gap-3 mt-2 shadow-sm">
+                    <AlertTriangle size={20} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5 animate-bounce" />
+                    <div>
+                      <h6 className="text-xs font-extrabold uppercase tracking-wide text-rose-700 dark:text-rose-400">
+                        {isRTL ? '⚠️ تنبيه رقابة الجلسات: انتهاء الجلسة بوقت مبكر غير معتاد' : '⚠️ Duration Alert: Early Session Termination'}
+                      </h6>
+                      <p className="text-xs opacity-95 mt-1 leading-relaxed">
+                        {isRTL 
+                          ? `المدة المجدولة لهذه الجلسة هي (${session.scheduled_duration_minutes || 60} دقيقة) ولكن تم إنهاؤها فعلياً خلال (${session.actual_duration_minutes} دقيقة) فقط. يرجى المراجعة مع الطبيب المختص لضمان استيفاء المعايير العلاجية.` 
+                          : `Session was scheduled for (${session.scheduled_duration_minutes || 60} minutes) but completed after only (${session.actual_duration_minutes} minutes).`}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -381,9 +582,14 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
 
               {!session.start_time && session.status !== 'CANCELED' && session.confirm_status === 'CONFIRMED' && (
                 <button
-                  disabled={submitting}
+                  disabled={submitting || (session.session_type === 'ASSESSMENT' && !session.payment_verified)}
                   onClick={() => handleAction('start')}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1"
+                  title={session.session_type === 'ASSESSMENT' && !session.payment_verified ? (isRTL ? 'مغلق: يتطلب تأكيد الدفع أولاً' : 'Locked: Requires payment verification') : ''}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1 ${
+                    session.session_type === 'ASSESSMENT' && !session.payment_verified 
+                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed border border-gray-300 dark:border-gray-600' 
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20'
+                  }`}
                 >
                   <Play size={16} />
                   {isRTL ? 'بدء الجلسة' : 'Start Session'}
@@ -432,6 +638,100 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                 )}
               </div>
             )}
+
+          {/* Phase 6: Doctor Assessment Evaluation & Recommended Packages Report */}
+          {session.session_type === 'ASSESSMENT' && (
+            <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/80 dark:from-gray-900/90 dark:to-indigo-950/40 rounded-2xl border-2 border-blue-200 dark:border-indigo-800/80 shadow-md space-y-4">
+              <div className="flex flex-wrap items-center justify-between border-b pb-3 border-blue-200 dark:border-indigo-800/60 gap-2">
+                <h5 className="text-xs font-extrabold text-blue-950 dark:text-indigo-200 flex items-center gap-2">
+                  <ClipboardCheck className="text-blue-600 dark:text-blue-400 shrink-0" size={18} />
+                  {isRTL ? '📋 تقرير التقييم الطبي والباقات المقترحة (Phase 6)' : 'Doctor Assessment & Recommended Plan'}
+                </h5>
+                <button
+                  type="button"
+                  onClick={handlePrintEvaluation}
+                  className="px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-blue-600 hover:text-white text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 rounded-xl text-xs font-extrabold shadow-xs transition flex items-center gap-1.5 shrink-0"
+                >
+                  <Printer size={14} />
+                  {isRTL ? '🖨️ طباعة / تصدير PDF' : 'Print / Export PDF'}
+                </button>
+              </div>
+
+              <div className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    {isRTL ? '🩺 التشخيص المبدئي وملاحظات الفحص السريري:' : '🩺 Initial Diagnosis & Findings:'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={evaluationData.diagnosis}
+                    onChange={(e) => setEvaluationData({ ...evaluationData, diagnosis: e.target.value })}
+                    placeholder={isRTL ? 'أدخل تفاصيل الحالة الحركية والتشخيص الطبي المبدئي...' : 'Enter clinical diagnosis and mobility status...'}
+                    className="w-full p-2.5 bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    {isRTL ? '🎯 الأهداف العلاجية وخطة التأهيل المقترحة:' : '🎯 Recommended Rehab Goals:'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={evaluationData.goals}
+                    onChange={(e) => setEvaluationData({ ...evaluationData, goals: e.target.value })}
+                    placeholder={isRTL ? 'مثال: تقوية عضلات أسفل الظهر، زيادة المدي الحركي للركبة...' : 'e.g. Strengthening lower back muscles, increasing knee range...'}
+                    className="w-full p-2.5 bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-800 dark:text-emerald-400 uppercase mb-1 flex items-center gap-1">
+                      <Award size={14} className="text-emerald-600 shrink-0" />
+                      {isRTL ? 'الباقة العلاجية الموصى بها:' : 'Recommended Package:'}
+                    </label>
+                    <select
+                      value={evaluationData.recommended_package}
+                      onChange={(e) => setEvaluationData({ ...evaluationData, recommended_package: e.target.value })}
+                      className="w-full p-2 bg-white dark:bg-gray-800 border-2 border-emerald-400 dark:border-emerald-700 rounded-xl text-xs font-bold text-emerald-950 dark:text-emerald-300 outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="6_sessions">{isRTL ? 'باقة التأهيل السريع (6 جلسات)' : 'Quick Rehab (6 Sessions)'}</option>
+                      <option value="12_sessions">{isRTL ? 'باقة التميز العلاجي (12 جلسة - مكثف)' : 'Premium Rehab (12 Sessions)'}</option>
+                      <option value="24_sessions">{isRTL ? 'باقة التأهيل الشامل (24 جلسة)' : 'Comprehensive (24 Sessions)'}</option>
+                      <option value="hydrotherapy">{isRTL ? 'باقة العلاج المائي الرياضي' : 'Hydrotherapy Sports'}</option>
+                      <option value="spine_special">{isRTL ? 'باقة علاج العمود الفقري المتخصصة' : 'Spinal Specialized Therapy'}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">
+                      {isRTL ? 'عدد الجلسات الأسبوعية:' : 'Weekly Frequency:'}
+                    </label>
+                    <select
+                      value={evaluationData.weekly_sessions}
+                      onChange={(e) => setEvaluationData({ ...evaluationData, weekly_sessions: e.target.value })}
+                      className="w-full p-2 bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-200"
+                    >
+                      <option value="2">{isRTL ? 'جلستان أسبوعياً (2)' : '2 Sessions / Week'}</option>
+                      <option value="3">{isRTL ? '3 جلسات أسبوعياً (قياسي)' : '3 Sessions / Week'}</option>
+                      <option value="4">{isRTL ? '4 جلسات أسبوعياً (مكثف)' : '4 Sessions / Week'}</option>
+                      <option value="5">{isRTL ? 'يومياً (5 جلسات في الأسبوع)' : 'Daily (5 / Week)'}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveEvaluation}
+                  disabled={submitting}
+                  className="w-full mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                >
+                  <ClipboardCheck size={16} />
+                  {isRTL ? 'حفظ واعتماد التقييم والخطة الموصى بها 💾' : 'Save & Submit Assessment Plan 💾'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Notes Fields */}
           <div className="space-y-4">

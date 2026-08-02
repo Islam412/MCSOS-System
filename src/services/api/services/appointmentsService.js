@@ -132,6 +132,28 @@ export const appointmentsService = {
     }
   },
 
+  // ========== تأكيد الدفعة المالية (Finance Payment Verification) ==========
+  verifyPayment: async (id, verifierName = 'Finance Staff') => {
+    try {
+      const response = await post(`/api/v1/sessions/${id}/verify-payment`, { verifier_name: verifierName })
+      return response
+    } catch (error) {
+      console.warn('⚠️ verifyPayment failed:', error.message)
+      throw error
+    }
+  },
+
+  // ========== حفظ تقرير التقييم الطبي (Evaluation Report) ==========
+  updateEvaluationReport: async (id, evaluationReport) => {
+    try {
+      const response = await put(`/api/v1/sessions/${id}/evaluation-report`, { evaluation_report: evaluationReport })
+      return response
+    } catch (error) {
+      console.warn('⚠️ updateEvaluationReport failed:', error.message)
+      throw error
+    }
+  },
+
   // ========== الحصول على المتابعة اليومية (Daily Follow-Up) ==========
   getDailyFollowUp: async (date = '') => {
     try {
@@ -174,12 +196,22 @@ export const appointmentsService = {
   },
 
   // ========== إعادة جدولة موعد (Reschedule Session / Drag & Drop) ==========
-  rescheduleAppointment: async (id, sessionDate, roomId = '', doctorId = '') => {
+  rescheduleAppointment: async (id, sessionDateOrObj, roomIdParam = '', doctorIdParam = '') => {
     try {
+      let session_date, room_id, doctor_id
+      if (typeof sessionDateOrObj === 'object' && sessionDateOrObj !== null) {
+        session_date = sessionDateOrObj.session_date || sessionDateOrObj.sessionDate || sessionDateOrObj.start
+        room_id = sessionDateOrObj.room_id || sessionDateOrObj.roomId || roomIdParam
+        doctor_id = sessionDateOrObj.doctor_id || sessionDateOrObj.doctorId || doctorIdParam
+      } else {
+        session_date = sessionDateOrObj
+        room_id = roomIdParam
+        doctor_id = doctorIdParam
+      }
       const response = await put(`/api/v1/sessions/${id}/reschedule`, {
-        session_date: sessionDate,
-        room_id: roomId,
-        doctor_id: doctorId
+        session_date,
+        room_id: room_id || undefined,
+        doctor_id: doctor_id || undefined
       })
       return response.session || response
     } catch (error) {

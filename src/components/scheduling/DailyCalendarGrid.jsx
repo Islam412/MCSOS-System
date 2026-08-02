@@ -7,6 +7,7 @@ import DirectBookingModal from './DirectBookingModal'
 import AddPatientModal from '../common/AddPatientModal'
 import BookingCalendar from './BookingCalendar'
 import { appointmentsService } from '../../services/api'
+import { validateAppointmentReschedule } from '../../utils/schedulingValidation'
 
 export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignComplete, onViewSession, refreshTrigger }) {
   const { t, i18n } = useTranslation()
@@ -139,7 +140,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   const findSession = (doctorId, timeStr) => {
     return sessions.find(s => {
       const sDocId = s.doctor_id || s.doctor?.id
-      if (sDocId !== doctorId) return false
+      if (!sDocId || String(sDocId) !== String(doctorId)) return false
       
       const sessionDateObj = new Date(s.session_date)
       const hours = sessionDateObj.getHours().toString().padStart(2, '0')
@@ -228,8 +229,12 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   // Drag and Drop Cell Handler
   const handleCellDrop = async (e, doc, timeStr) => {
     e.preventDefault()
+    e.stopPropagation()
     try {
-      const rawData = e.dataTransfer.getData('application/json')
+      let rawData = e.dataTransfer.getData('application/json')
+      if (!rawData) {
+        rawData = e.dataTransfer.getData('text/plain')
+      }
       if (!rawData) return
       const payload = JSON.parse(rawData)
       const isoSessionDate = createLocalIsoString(selectedDate, timeStr)
@@ -250,9 +255,46 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
       } else if (payload.type === 'SESSION') {
         const session = payload.session
         if (session) {
-          await appointmentsService.rescheduleAppointment(session.id, isoSessionDate, '', doc.id)
-          toast.success(isRTL ? `تم نقل موعد المريض إلى الساعة ${timeStr} عند ${doc.name} 🗓️` : `Rescheduled session to ${timeStr}`)
-          fetchSessions()
+          const startTime = new Date(isoSessionDate)
+          const endTime = new Date(startTime.getTime() + 45 * 60 * 1000)
+
+          const validation = validateAppointmentReschedule({
+            sessionId: session.id,
+            doctorId: doc.id,
+            roomId: session.room_id || session.room?.id,
+            startTime,
+            endTime,
+            sessions,
+            rooms
+          })
+
+          if (!validation.isValid) {
+            toast.error(validation.errors[0] || (isRTL ? 'توجد تعارضات تمنع نقل الموعد' : 'Schedule conflicts prevent moving appointment'))
+            return
+          }
+
+          // Optimistic local state update
+          setSessions(prev => prev.map(s => {
+            if (String(s.id) === String(session.id)) {
+              return {
+                ...s,
+                doctor_id: doc.id,
+                doctor: doc,
+                session_date: isoSessionDate
+              }
+            }
+            return s
+          }))
+
+          try {
+            await appointmentsService.rescheduleAppointment(session.id, isoSessionDate, session.room_id || session.room?.id || '', doc.id)
+            toast.success(isRTL ? `تم نقل موعد المريض إلى الساعة ${timeStr} عند ${doc.name} 🗓️` : `Rescheduled session to ${timeStr}`)
+          } catch (err) {
+            console.error('Error rescheduling session:', err)
+            toast.error(isRTL ? 'حدث خطأ في نقل الموعد بالسيرفر' : 'Failed to reschedule on server')
+          } finally {
+            fetchSessions()
+          }
         }
       }
     } catch (err) {
@@ -471,7 +513,9 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                             <div 
                               draggable={true}
                               onDragStart={(e) => {
-                                e.dataTransfer.setData('application/json', JSON.stringify({ type: 'SESSION', session }))
+                                const data = JSON.stringify({ type: 'SESSION', session })
+                                e.dataTransfer.setData('application/json', data)
+                                e.dataTransfer.setData('text/plain', data)
                               }}
                               onClick={(e) => {
                                 e.stopPropagation()

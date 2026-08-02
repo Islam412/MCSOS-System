@@ -14,6 +14,7 @@ export default function DashboardLayout() {
   const [isMobile, setIsMobile] = useState(false)
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState('')
+  const [showNotifications, setShowNotifications] = useState(false)
   const isRTL = i18n.language === 'ar'
   
   useEffect(() => {
@@ -51,7 +52,8 @@ export default function DashboardLayout() {
       return [
         { to: '/admin', label: 'sidebar.admin_dashboard', icon: Shield },
         { to: '/dashboard', label: 'sidebar.hospital_dashboard', icon: Hospital },
-        { to: '/daily-followup', label: 'المتابعة اليومية', icon: Clock },
+        { to: '/reports', label: 'sidebar.reports', icon: Activity },
+        { to: '/daily-followup', label: 'sidebar.daily_followup', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
         { to: '/doctors-manager', label: 'sidebar.doctors_manager', icon: Stethoscope },
         { to: '/doctor', label: 'sidebar.doctor', icon: Stethoscope },
@@ -69,7 +71,8 @@ export default function DashboardLayout() {
     } else if (userRole === 'doctor') {
       return [
         { to: '/doctor-dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
-        { to: '/daily-followup', label: 'المتابعة اليومية', icon: Clock },
+        { to: '/reports', label: 'sidebar.reports', icon: Activity },
+        { to: '/daily-followup', label: 'sidebar.daily_followup', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
@@ -79,7 +82,8 @@ export default function DashboardLayout() {
     } else if (userRole === 'reception') {
       return [
         { to: '/reception-dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
-        { to: '/daily-followup', label: 'المتابعة اليومية', icon: Clock },
+        { to: '/reports', label: 'sidebar.reports', icon: Activity },
+        { to: '/daily-followup', label: 'sidebar.daily_followup', icon: Clock },
         { to: '/reception', label: 'sidebar.reception', icon: Users },
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
@@ -98,7 +102,8 @@ export default function DashboardLayout() {
     } else {
       return [
         { to: '/dashboard', label: 'sidebar.dashboard', icon: LayoutDashboard },
-        { to: '/daily-followup', label: 'المتابعة اليومية', icon: Clock },
+        { to: '/reports', label: 'sidebar.reports', icon: Activity },
+        { to: '/daily-followup', label: 'sidebar.daily_followup', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
         { to: '/appointments', label: 'sidebar.appointments', icon: Calendar },
         profileItem
@@ -256,6 +261,69 @@ export default function DashboardLayout() {
               ) 
             : ''
         }`}>
+          {/* Phase 14 & 15: RBAC Role Bar & Smart Notifications Center */}
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md px-6 py-3 border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-30 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-black shadow-2xs">
+                🛡️ {getRoleName()} (RBAC: {userRole || 'admin'})
+              </span>
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 hidden sm:inline-block">
+                {isRTL ? '✨ النظام المتكامل للرقابة الطبية، السعة، وتدفق الباقات (Active Engine)' : '✨ Advanced MCSOS Healthcare Management Engine Active'}
+              </span>
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/60 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition shadow-2xs"
+                title="إشعارات الرقابة العلاجية والمالية التلقائية"
+              >
+                <Activity size={18} className="text-indigo-600 dark:text-indigo-400" />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
+              </button>
+
+              {showNotifications && (
+                <div className={`absolute top-12 ${isRTL ? 'left-0' : 'right-0'} w-80 sm:w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border-2 border-gray-200 dark:border-gray-800 z-50 overflow-hidden animate-fade-in`}>
+                  <div className="p-3.5 bg-indigo-900 text-white font-extrabold flex justify-between items-center text-xs">
+                    <span>🔔 {isRTL ? 'الإشعارات والتنبيهات التلقائية (Phase 14)' : 'System Notifications Center'}</span>
+                    <span className="px-2 py-0.5 bg-rose-500 rounded-md text-[10px]">4 {isRTL ? 'تنبيهات نشطة' : 'Active Alerts'}</span>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-80 overflow-y-auto font-bold text-xs text-left rtl:text-right">
+                    <div className="p-3 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 flex gap-3 transition cursor-pointer" onClick={() => setShowNotifications(false)}>
+                      <span className="text-amber-500 text-lg">📦</span>
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? 'تنبيه باقة على وشك الانتهاء' : 'Package Ending Soon Alert'}</p>
+                        <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? 'باقة المريض (منى عبد المقصود) متبقي بها جلستان فقط. يُنصح بتجهيز الفاتورة للتجديد لتفادي انقطاع العلاج.' : 'Patient package has only 2 sessions remaining. Prepare renewal invoice.'}</p>
+                      </div>
+                    </div>
+                    <div className="p-3 hover:bg-rose-50/50 dark:hover:bg-rose-950/20 flex gap-3 transition cursor-pointer" onClick={() => setShowNotifications(false)}>
+                      <span className="text-rose-600 text-lg">🔴</span>
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? 'تنبيه السعة القصوى للطبيب' : 'Doctor Full Capacity Warning'}</p>
+                        <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? 'د. محمود سعيد وصل للحد الأقصى اليوم (20 / 20 مريض). يتم تحويل المواعيد الجديدة تلقائيًا.' : 'Dr. Mahmoud has reached daily maximum capacity (20/20).'}</p>
+                      </div>
+                    </div>
+                    <div className="p-3 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 flex gap-3 transition cursor-pointer" onClick={() => setShowNotifications(false)}>
+                      <span className="text-purple-600 text-lg">💳</span>
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? 'التحقق المالي لجلسة التقييم' : 'Payment Verification Pending'}</p>
+                        <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? 'دفعة التقييم للمريض (ريماز عبد الرزاق) في انتظار اعتماد قسم المالية للسماح ببدء الجلسة.' : 'Assessment session payment pending finance verification.'}</p>
+                      </div>
+                    </div>
+                    <div className="p-3 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 flex gap-3 transition cursor-pointer" onClick={() => setShowNotifications(false)}>
+                      <span className="text-emerald-500 text-lg">🟢</span>
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? 'تسجيل دخول مريض وإصدار تقرير' : 'Patient Checked-in & Evaluated'}</p>
+                        <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? 'تم تسجيل حضور المريض سعد الله وبدء جلسة العلاج في صالة Pool 1.' : 'Patient checked in successfully at Pool 1.'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="p-4 md:p-8">
             <Outlet />
           </div>

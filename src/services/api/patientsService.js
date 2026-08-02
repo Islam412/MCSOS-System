@@ -7,10 +7,11 @@ export const patientsService = {
   // الحصول على قائمة المرضى
   getPatients: async (params = {}) => {
     try {
-      const queryString = new URLSearchParams(params).toString()
-      const endpoint = queryString ? `${ENDPOINTS.PATIENTS.LIST}?${queryString}` : ENDPOINTS.PATIENTS.LIST
+      const queryParams = { limit: 500, ...params }
+      const queryString = new URLSearchParams(queryParams).toString()
+      const endpoint = `${ENDPOINTS.PATIENTS.LIST}?${queryString}`
       const response = await get(endpoint)
-      return response.patients || []
+      return response.data || response.patients || (Array.isArray(response) ? response : [])
     } catch (error) {
       throw error
     }
@@ -20,7 +21,7 @@ export const patientsService = {
   getPatient: async (id) => {
     try {
       const response = await get(`${ENDPOINTS.PATIENTS.LIST}/${id}`)
-      return response.patient
+      return response.patient || response.data || response
     } catch (error) {
       throw error
     }
@@ -60,7 +61,7 @@ export const patientsService = {
   searchPatients: async (query) => {
     try {
       const response = await get(`${ENDPOINTS.PATIENTS.SEARCH}?q=${encodeURIComponent(query)}`)
-      return response.patients || []
+      return response.data || response.patients || (Array.isArray(response) ? response : [])
     } catch (error) {
       throw error
     }

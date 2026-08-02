@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 // ========== استيراد الخدمات ==========
 import { appointmentsService, patientsService, prescriptionsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+import SessionDetailModal from '../../components/scheduling/SessionDetailModal'
 
 // ✅ عنوان الـ API
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
@@ -30,6 +31,7 @@ export default function DoctorDashboard() {
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false)
   const [showCheckInModal, setShowCheckInModal] = useState(false)
   const [selectedPatientForCheckIn, setSelectedPatientForCheckIn] = useState(null)
+  const [selectedSessionForDetails, setSelectedSessionForDetails] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   // إحصائيات الطبيب
@@ -206,15 +208,16 @@ export default function DoctorDashboard() {
         // تحويل البيانات إلى شكل متوافق مع الواجهة
         const formattedSessions = sessions.map(s => ({
           id: s.id,
-          time: s.time || s.startTime || '09:00',
+          time: s.time || s.startTime || (s.session_date ? new Date(s.session_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:00'),
           patient: s.patientName || 
-                   (s.patient ? (typeof s.patient === 'object' ? `${s.patient.first_name || ''} ${s.patient.last_name || ''}`.trim() : s.patient) : null) || 
+                   (s.patient ? (typeof s.patient === 'object' ? (s.patient.full_name_ar || s.patient.name || `${s.patient.first_name || ''} ${s.patient.last_name || ''}`.trim()) : s.patient) : null) || 
                    'مريض',
-          patientId: s.patientId,
+          patientId: s.patient_id || s.patientId,
           age: s.patientAge || s.age || 30,
-          type: s.type || s.sessionType || 'كشف',
+          type: s.type || s.sessionType || s.session_type || 'ASSESSMENT',
           status: s.status || 'scheduled',
-          date: s.date
+          date: s.date || s.session_date,
+          raw: s
         }))
         
         setTodaySchedule(formattedSessions)
@@ -576,12 +579,25 @@ export default function DoctorDashboard() {
               <div className="text-center py-6 text-gray-400 text-sm">لا توجد مواعيد اليوم</div>
             ) : (
               todaySchedule.map((app) => (
-                <div key={app.id} className="flex items-center justify-between p-2 bg-gray-700/30 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <div className="w-14 text-white text-sm font-medium">{app.time}</div>
-                    <div><p className="text-white text-sm">{app.patient}</p><p className="text-xs text-gray-400">{app.type}</p></div>
+                <div key={app.id} className="flex items-center justify-between p-2.5 bg-gray-700/30 hover:bg-gray-700/50 transition rounded-lg border border-gray-700/40">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 text-white text-sm font-bold text-center bg-gray-800/80 py-1 rounded-md">{app.time}</div>
+                    <div>
+                      <p className="text-white text-sm font-bold">{app.patient}</p>
+                      <span className="text-[11px] font-semibold text-blue-300 bg-blue-950/40 px-2 py-0.5 rounded border border-blue-800/50 inline-block mt-0.5">{app.type}</span>
+                    </div>
                   </div>
-                  {getStatusBadge(app.status)}
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(app.status)}
+                    <button
+                      onClick={() => setSelectedSessionForDetails(app.raw || app)}
+                      className="px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1 transition"
+                      title="فتح التقييم الطبي وتفاصيل الجلسة"
+                    >
+                      <FileText size={13} />
+                      {isRTL ? 'التقييم والتقرير' : 'Assessment'}
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -734,6 +750,19 @@ export default function DoctorDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* نافذة تقرير التقييم وتفاصيل الجلسة (Phase 6) */}
+      {selectedSessionForDetails && (
+        <SessionDetailModal
+          isOpen={!!selectedSessionForDetails}
+          onClose={() => setSelectedSessionForDetails(null)}
+          session={selectedSessionForDetails}
+          onUpdate={(updated) => {
+            loadAllData();
+            setSelectedSessionForDetails(updated);
+          }}
+        />
       )}
     </div>
   )

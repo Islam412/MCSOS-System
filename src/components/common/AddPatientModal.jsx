@@ -14,6 +14,8 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
     whatsapp_number: '',
     sameAsPhone: true,
     referral_source: '',
+    national_id_front: '',
+    national_id_back: '',
     national_id_photo: '',
     gender: 'male',
     date_of_birth: ''
@@ -30,6 +32,11 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
       toast.error(isRTL ? 'الرجاء إدخال الاسم الكامل ورقم الهاتف' : 'Please enter full name and phone number')
       return
     }
+
+    if (!regForm.national_id_front) {
+      toast.error(isRTL ? 'الرجاء رفع صورة الوجه الأمامي للهوية الوطنية (إلزامي)' : 'Please upload Front view of National ID (Required)')
+      return
+    }
     
     const nameParts = regForm.fullName.trim().split(/\s+/)
     const firstName = nameParts[0] || 'مريض'
@@ -41,13 +48,14 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
       const payload = {
         first_name: firstName,
         last_name: lastName,
-        full_name_ar: regForm.fullName,
-        name: regForm.fullName,
-        phone: regForm.phone,
-        whatsapp_number: regForm.sameAsPhone ? regForm.phone : regForm.whatsapp_number || regForm.phone,
-        referral_source: regForm.referral_source || '',
-        national_id_photo: regForm.national_id_photo || '',
-        gender: regForm.gender,
+        full_name_ar: regForm.fullName.trim(),
+        phone: regForm.phone.trim(),
+        whatsapp_number: regForm.sameAsPhone ? regForm.phone.trim() : (regForm.whatsapp_number.trim() || regForm.phone.trim()),
+        referral_source: regForm.referral_source || undefined,
+        national_id_front: regForm.national_id_front || undefined,
+        national_id_back: regForm.national_id_back || undefined,
+        national_id_photo: regForm.national_id_front || regForm.national_id_photo || undefined,
+        gender: regForm.gender || 'male',
         date_of_birth: regForm.date_of_birth || undefined
       }
       
@@ -70,6 +78,8 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
         whatsapp_number: '',
         sameAsPhone: true,
         referral_source: '',
+        national_id_front: '',
+        national_id_back: '',
         national_id_photo: '',
         gender: 'male',
         date_of_birth: ''
@@ -181,6 +191,93 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
                 onChange={(e) => setRegForm({ ...regForm, date_of_birth: e.target.value })}
                 className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
               />
+            </div>
+          </div>
+
+          {/* National ID Copy Upload Section (Front & Back) */}
+          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-750">
+            <label className="block text-xs font-bold text-gray-400">
+              {isRTL ? 'صورة الهوية الوطنية / البطاقة الشخصية' : 'National ID Copy'}
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Front */}
+              <div className="p-3 border-2 border-dashed border-gray-250 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">
+                <span className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1">
+                  <span>{isRTL ? '• الوجه الأمامي (Front)' : '• Front View'}</span>
+                  <span className="text-red-500 font-bold">* ({isRTL ? 'إلزامي' : 'Required'})</span>
+                </span>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="w-full text-xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-indigo-500/10 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer"
+                  onChange={(e) => {
+                    const file = e.target.files[0]
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error(isRTL ? 'حجم الملف يجب أن لا يتجاوز 5 ميجابايت' : 'File size must not exceed 5MB')
+                        return
+                      }
+                      const reader = new FileReader()
+                      reader.onloadend = () => {
+                        setRegForm({ ...regForm, national_id_front: reader.result })
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                  disabled={loading}
+                />
+                {regForm.national_id_front && (
+                  <div className="relative w-full h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2">
+                    <img src={regForm.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setRegForm({ ...regForm, national_id_front: '' })}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Back (Optional) */}
+              <div className="p-3 border-2 border-dashed border-gray-250 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">
+                <span className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+                  {isRTL ? '• الوجه الخلفي (Back - اختياري)' : '• Back View (Optional)'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="w-full text-xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-indigo-500/10 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer"
+                  onChange={(e) => {
+                    const file = e.target.files[0]
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error(isRTL ? 'حجم الملف يجب أن لا يتجاوز 5 ميجابايت' : 'File size must not exceed 5MB')
+                        return
+                      }
+                      const reader = new FileReader()
+                      reader.onloadend = () => {
+                        setRegForm({ ...regForm, national_id_back: reader.result })
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                  disabled={loading}
+                />
+                {regForm.national_id_back && (
+                  <div className="relative w-full h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2">
+                    <img src={regForm.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setRegForm({ ...regForm, national_id_back: '' })}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

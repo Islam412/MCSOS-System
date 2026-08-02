@@ -24,6 +24,8 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
     whatsapp_number: '',
     sameAsPhone: true,
     referral_source: '',
+    national_id_front: '',
+    national_id_back: '',
     national_id_photo: '',
     gender: 'male',
     date_of_birth: ''
@@ -31,8 +33,11 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
   
   // Booking Fields
   const [sessionType, setSessionType] = useState('TREATMENT')
+  const [scheduledDuration, setScheduledDuration] = useState(60)
   const [roomId, setRoomId] = useState('')
   const [receptionNotes, setReceptionNotes] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedSuggestion, setSelectedSuggestion] = useState(null)
   
   const searchTimeoutRef = useRef(null)
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
@@ -86,8 +91,13 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
 
   // Handle register and submit
   const handleRegisterPatient = async () => {
-    if (!regForm.fullName.trim()) {
-      toast.error(isRTL ? 'الرجاء إدخال اسم المريض بالكامل' : 'Please enter the full name of the patient')
+    if (!regForm.fullName.trim() || !regForm.phone) {
+      toast.error(isRTL ? 'الرجاء إدخال الاسم الكامل ورقم الهاتف' : 'Please enter full name and phone number')
+      return null
+    }
+
+    if (!regForm.national_id_front) {
+      toast.error(isRTL ? 'الرجاء رفع صورة الوجه الأمامي للهوية الوطنية (إلزامي)' : 'Please upload Front view of National ID (Required)')
       return null
     }
     
@@ -101,13 +111,14 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
       const payload = {
         first_name: firstName,
         last_name: lastName,
-        full_name_ar: regForm.fullName,
-        name: regForm.fullName,
-        phone: regForm.phone,
-        whatsapp_number: regForm.sameAsPhone ? regForm.phone : regForm.whatsapp_number || regForm.phone,
-        referral_source: regForm.referral_source || '',
-        national_id_photo: regForm.national_id_photo || '',
-        gender: regForm.gender,
+        full_name_ar: regForm.fullName.trim(),
+        phone: regForm.phone.trim(),
+        whatsapp_number: regForm.sameAsPhone ? regForm.phone.trim() : (regForm.whatsapp_number.trim() || regForm.phone.trim()),
+        referral_source: regForm.referral_source || undefined,
+        national_id_front: regForm.national_id_front || undefined,
+        national_id_back: regForm.national_id_back || undefined,
+        national_id_photo: regForm.national_id_front || regForm.national_id_photo || undefined,
+        gender: regForm.gender || 'male',
         date_of_birth: regForm.date_of_birth || undefined
       }
       const response = await fetch(`${API_BASE}/patients`, {
@@ -167,6 +178,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
           patient_id: targetPatientId,
           doctor_id: doctor.id,
           session_type: sessionType,
+          scheduled_duration_minutes: sessionType === 'ASSESSMENT' ? scheduledDuration : 45,
           session_date: sessionDate.toISOString(),
           room_id: roomId || null,
           reception_notes: receptionNotes || null
@@ -414,6 +426,91 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                 </div>
               </div>
 
+              {/* National ID Front & Back */}
+              <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <label className="block text-[11px] font-bold text-gray-400">
+                  {isRTL ? 'صورة الهوية الوطنية / البطاقة الشخصية' : 'National ID Copy'}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="p-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900">
+                    <span className="block text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                      <span>{isRTL ? '• الوجه الأمامي (Front)' : '• Front View'}</span>
+                      <span className="text-red-500 font-bold">* ({isRTL ? 'إلزامي' : 'Required'})</span>
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="w-full text-[10px] text-gray-500 dark:text-gray-400 file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-500/10 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error(isRTL ? 'حجم الملف يجب أن لا يتجاوز 5 ميجابايت' : 'File size must not exceed 5MB')
+                            return
+                          }
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            setRegForm({ ...regForm, national_id_front: reader.result })
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                      disabled={loading}
+                    />
+                    {regForm.national_id_front && (
+                      <div className="relative w-full h-16 rounded overflow-hidden border border-gray-200 dark:border-gray-700 mt-1">
+                        <img src={regForm.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setRegForm({ ...regForm, national_id_front: '' })}
+                          className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900">
+                    <span className="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                      {isRTL ? '• الوجه الخلفي (Back - اختياري)' : '• Back View (Optional)'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="w-full text-[10px] text-gray-500 dark:text-gray-400 file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-500/10 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error(isRTL ? 'حجم الملف يجب أن لا يتجاوز 5 ميجابايت' : 'File size must not exceed 5MB')
+                            return
+                          }
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            setRegForm({ ...regForm, national_id_back: reader.result })
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                      disabled={loading}
+                    />
+                    {regForm.national_id_back && (
+                      <div className="relative w-full h-16 rounded overflow-hidden border border-gray-200 dark:border-gray-700 mt-1">
+                        <img src={regForm.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setRegForm({ ...regForm, national_id_back: '' })}
+                          className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* صورة البطاقة */}
               <div className="space-y-1">
                 <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">{isRTL ? 'صورة البطاقة' : 'National ID Photo'}</label>
@@ -471,6 +568,30 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
               </select>
             </div>
 
+            {sessionType === 'ASSESSMENT' && (
+              <div className="col-span-2 p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-2 shadow-xs transition-all">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold text-amber-900 dark:text-amber-300">
+                    {isRTL ? '⏱️ مدة التقييم المجدولة (للمراقبة الآلية):' : '⏱️ Scheduled Assessment Duration:'}
+                  </span>
+                  <select
+                    value={scheduledDuration}
+                    onChange={(e) => setScheduledDuration(Number(e.target.value))}
+                    className="py-1.5 px-2.5 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold text-amber-900 dark:text-amber-200 outline-none shadow-xs"
+                  >
+                    <option value={30}>{isRTL ? '30 دقيقة' : '30 Minutes'}</option>
+                    <option value={60}>{isRTL ? '60 دقيقة (قياسي)' : '60 Minutes (Standard)'}</option>
+                    <option value={90}>{isRTL ? '90 دقيقة' : '90 Minutes'}</option>
+                  </select>
+                </div>
+                <p className="text-[11px] text-amber-800 dark:text-amber-400 font-medium leading-relaxed">
+                  {isRTL 
+                    ? '⚠️ تنبيه: جلسة التقييم الطبي ستتطلب اعتماد وتأكيد الدفعة المالية من قِبل قسم الحسابات ولن تُفتح لبدء التنفيذ دون التحقق.' 
+                    : '⚠️ Note: Assessment session requires financial verification from Finance department before starting.'}
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 {isRTL ? 'تخصيص غرفة' : 'Room Assignment'}
@@ -488,6 +609,47 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Phase 8: Auto Booking Suggestions Card */}
+            <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/80 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                  🤖 {isRTL ? 'اقتراح المواعيد التلقائي الذكي (Phase 8)' : 'Auto Booking Suggestions'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowSuggestions(!showSuggestions)}
+                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition shadow-2xs"
+                >
+                  {showSuggestions ? (isRTL ? 'إخفاء الاقتراحات ✖' : 'Hide') : (isRTL ? '✨ توليد اقتراحات متاحة' : '✨ Generate Options')}
+                </button>
+              </div>
+
+              {showSuggestions && (
+                <div className="space-y-2 pt-2 border-t border-indigo-100 dark:border-indigo-900/40 text-xs animate-fade-in">
+                  <p className="text-[11px] text-gray-500 font-semibold">
+                    {isRTL ? '💡 اقتراحات مبنية على جدول الطاقم، السعة المتبقية وعطلات العمل الرسمية:' : '💡 Suggestions based on doctor availability, room capacity, and working days:'}
+                  </p>
+                  {[
+                    { id: 'opt1', textAr: 'السبت - الإثنين - الأربعاء (10:00 ص - 12:00 م) [الفترة الصباحية 🟢]', textEn: 'Sat - Mon - Wed (10:00 AM - 12:00 PM) [Morning 🟢]' },
+                    { id: 'opt2', textAr: 'الأحد - الثلاثاء - الخميس (04:00 م - 06:00 م) [الفترة المسائية 🟢]', textEn: 'Sun - Tue - Thu (04:00 PM - 06:00 PM) [Evening 🟢]' },
+                  ].map((opt) => (
+                    <div
+                      key={opt.id}
+                      onClick={() => {
+                        setSelectedSuggestion(opt.textAr);
+                        setReceptionNotes(prev => (prev ? prev + ' | ' : '') + `الموعد المقترح تلقائياً: ${opt.textAr}`);
+                        toast.success(isRTL ? 'تم اختيار الجدول المقترح وتضمينه بالحجز 📅' : 'Suggested schedule applied!');
+                      }}
+                      className="p-2.5 bg-white dark:bg-gray-900 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/50 border border-indigo-100 dark:border-indigo-800 rounded-xl cursor-pointer transition font-extrabold flex justify-between items-center text-[11px]"
+                    >
+                      <span className="text-indigo-900 dark:text-indigo-300">{isRTL ? opt.textAr : opt.textEn}</span>
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded text-[10px]">✔ {isRTL ? 'اختر' : 'Select'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>

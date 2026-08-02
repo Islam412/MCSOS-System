@@ -28,6 +28,7 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 
 import { appointmentsService, doctorsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+import { validateAppointmentReschedule } from '../../utils/schedulingValidation'
 
 // إعداد localizer المواعيد واللغة
 const locales = {
@@ -256,25 +257,44 @@ export default function BookingCalendar() {
 
   // ========== معالجة Drag and Drop ==========
   const handleEventDrop = ({ event, start, end }) => {
+    const targetDoctorId = event.resource?.doctor_id || event.resource?.doctor?.id || doctorId
+    const targetRoomId = event.resource?.room_id || event.resource?.room?.id
+
+    const validation = validateAppointmentReschedule({
+      sessionId: event.id,
+      doctorId: targetDoctorId,
+      roomId: targetRoomId,
+      startTime: start,
+      endTime: end,
+      sessions,
+      rooms: []
+    })
+
     setDragConfirmModal({
       isOpen: true,
       event,
       start,
-      end
+      end,
+      validation
     })
   }
 
   // تأكيد السحب والإفلات
   const confirmReschedule = async () => {
-    const { event, start } = dragConfirmModal
+    const { event, start, validation } = dragConfirmModal
     if (!event || !start) return
+
+    if (validation && !validation.isValid) {
+      toast.error(validation.errors[0] || 'توجد تعارضات في الموعد الجديد')
+      return
+    }
 
     try {
       if (isOnline) {
         await appointmentsService.rescheduleAppointment(event.id, start.toISOString())
       }
       toast.success(`تم نقل الموعد إلى ${format(start, 'yyyy-MM-dd HH:mm')} بنجاح 🗓️`)
-      setDragConfirmModal({ isOpen: false, event: null, start: null, end: null })
+      setDragConfirmModal({ isOpen: false, event: null, start: null, end: null, validation: null })
       loadCalendarSessions()
     } catch (error) {
       console.error('Reschedule error:', error)
@@ -461,28 +481,66 @@ export default function BookingCalendar() {
               <p>
                 {isRTL ? 'هل أنت تأكد من نقل موعد المريض:' : 'Are you sure you want to reschedule appointment for:'} <strong className="text-gray-900 dark:text-white">{dragConfirmModal.event?.title}</strong>؟
               </p>
-              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl space-y-1 text-xs">
-                <p>
-                  📅 <span className="font-semibold">{isRTL ? 'الموعد الجديد:' : 'New Date & Time:'}</span> {dragConfirmModal.start && format(dragConfirmModal.start, 'yyyy-MM-dd HH:mm')}
+              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl space-y-2 text-xs border border-gray-200 dark:border-gray-700">
+                <p className="font-semibold text-gray-800 dark:text-gray-200">
+                  📅 {isRTL ? 'الموعد الجديد:' : 'New Date & Time:'} <span className="text-blue-500 font-bold">{dragConfirmModal.start && format(dragConfirmModal.start, 'yyyy-MM-dd HH:mm')}</span>
                 </p>
+
+                {/* شارات الفحص الثلاثة (Doctor, Room, Capacity) */}
+                {dragConfirmModal.validation && (
+                  <div className="space-y-1.5 pt-2 border-t border-gray-200 dark:border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">{isRTL ? 'تفرغ الطبيب (Doctor):' : 'Doctor Availability:'}</span>
+                      {dragConfirmModal.validation.checks.doctor.isValid ? (
+                        <span className="text-green-500 font-bold flex items-center gap-1">✓ {isRTL ? 'متاح' : 'Available'}</span>
+                      ) : (
+                        <span className="text-red-500 font-bold flex items-center gap-1">❌ {isRTL ? 'تعارض' : 'Conflict'}</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">{isRTL ? 'تفرغ الغرفة (Room):' : 'Room Availability:'}</span>
+                      {dragConfirmModal.validation.checks.room.isValid ? (
+                        <span className="text-green-500 font-bold flex items-center gap-1">✓ {isRTL ? 'شاغرة' : 'Free'}</span>
+                      ) : (
+                        <span className="text-red-500 font-bold flex items-center gap-1">❌ {isRTL ? 'محجوزة' : 'Booked'}</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">{isRTL ? 'الطاقة الاستيعابية (Capacity):' : 'Clinic Capacity:'}</span>
+                      {dragConfirmModal.validation.checks.capacity.isValid ? (
+                        <span className="text-green-500 font-bold flex items-center gap-1">✓ {isRTL ? 'ضمن الحد المسموح' : 'Capacity OK'} ({dragConfirmModal.validation.checks.capacity.currentCount}/{dragConfirmModal.validation.checks.capacity.maxCapacity})</span>
+                      ) : (
+                        <span className="text-red-500 font-bold flex items-center gap-1">❌ {isRTL ? 'تجاوز الحد' : 'Full'}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                {isRTL ? '⚡ سيقوم النظام بالتحقق من تفرغ الطبيب والغرفة تلقائياً قبل التثبيت.' : '⚡ System will verify doctor and room availability before saving.'}
-              </p>
+
+              {dragConfirmModal.validation && !dragConfirmModal.validation.isValid && (
+                <div className="p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-500 space-y-1">
+                  {dragConfirmModal.validation.errors.map((err, idx) => (
+                    <p key={idx}>⚠️ {err}</p>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setDragConfirmModal({ isOpen: false, event: null, start: null, end: null })}
+                onClick={() => setDragConfirmModal({ isOpen: false, event: null, start: null, end: null, validation: null })}
                 className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
               >
                 {isRTL ? 'إلغاء' : 'Cancel'}
               </button>
               <button
                 type="button"
+                disabled={dragConfirmModal.validation && !dragConfirmModal.validation.isValid}
                 onClick={confirmReschedule}
-                className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1"
+                className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1"
               >
                 <CheckCircle2 size={14} />
                 {isRTL ? 'تأكيد النقل' : 'Confirm'}

@@ -202,27 +202,6 @@ export default function SchedulingEngine() {
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header section remains the same */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/50 dark:bg-gray-800/50 p-6 rounded-2xl backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
-        <div>
-          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-            {t('scheduling.title') || 'Scheduling System'}
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 font-medium">
-            {t('scheduling.subtitle') || 'Smart appointment scheduling'}
-          </p>
-        </div>
-        
-        <button 
-          onClick={refreshData}
-          disabled={loading}
-          className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-indigo-500/20 transition-all font-semibold"
-        >
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-          {isRTL ? 'تحديث البيانات' : 'Refresh'}
-        </button>
-      </div>
-
       {/* Tab Navigation */}
       <div className="flex justify-center mb-2">
         <div className="flex w-full max-w-2xl bg-gray-100/80 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200/50 dark:border-gray-800/50 rounded-2xl p-1.5 shadow-inner gap-2">

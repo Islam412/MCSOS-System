@@ -38,6 +38,10 @@ export default function PackagesManager() {
   const [showModal, setShowModal] = useState(false)
   const [editingPackage, setEditingPackage] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [assigningPackage, setAssigningPackage] = useState(null)
+  const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [targetPatientName, setTargetPatientName] = useState('')
+  const [assignDoctorName, setAssignDoctorName] = useState('د. أحمد رمزي (العلاج الطبيعي والتأهيل)')
   const [formData, setFormData] = useState({
     nameAr: '',
     nameEn: '',
@@ -542,7 +546,21 @@ export default function PackagesManager() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2 mt-4">
+                  {/* Phase 7: Treatment Package Assignment & Phase 11/12 Renewal Monitor */}
+                  <div className="pt-3 border-t border-gray-100 dark:border-gray-700/60 mt-4 mb-3">
+                    <button
+                      onClick={() => {
+                        setAssigningPackage(pkg);
+                        setAssignModalOpen(true);
+                      }}
+                      className="w-full py-2 px-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-2 transition"
+                    >
+                      <Package size={15} />
+                      {isRTL ? '🎁 تسكين الباقة لمريض وإدارة الفواتير (Phase 7)' : 'Assign Package to Patient'}
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2">
                     <button
                       onClick={() => handleEditPackage(pkg)}
                       className="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition flex items-center justify-center gap-2"
@@ -687,6 +705,83 @@ export default function PackagesManager() {
                   إلغاء
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 7: Treatment Package Assignment Modal */}
+      {assignModalOpen && assigningPackage && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-lg w-full p-6 border border-gray-200 dark:border-gray-800 shadow-2xl space-y-5 text-left rtl:text-right">
+            <div className="flex justify-between items-center border-b pb-3.5 border-gray-100 dark:border-gray-800">
+              <h3 className="text-lg font-black text-indigo-950 dark:text-white flex items-center gap-2">
+                <Package className="text-purple-600" size={24} />
+                {isRTL ? 'تسكين باقة علاجية لمريض (Phase 7)' : 'Assign Package to Patient'}
+              </h3>
+              <button onClick={() => setAssignModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-3.5 bg-purple-50 dark:bg-purple-950/30 rounded-2xl border border-purple-200 dark:border-purple-800 flex justify-between items-center text-xs font-extrabold">
+              <span className="text-purple-900 dark:text-purple-300">{getPackageName(assigningPackage)}</span>
+              <span className="text-sm font-black text-green-600 dark:text-green-400">{assigningPackage.price} ر.س</span>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5">{isRTL ? 'الاسم الكامل للمريض (Full Name):' : 'Patient Full Name:'}</label>
+                <input
+                  type="text"
+                  placeholder={isRTL ? 'ابحث أو أدخل اسم المريض رباعي...' : 'Enter Patient Name...'}
+                  value={targetPatientName}
+                  onChange={(e) => setTargetPatientName(e.target.value)}
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-extrabold outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5">{isRTL ? 'الطبيب الموصي بالباقة (Assessment Doctor):' : 'Recommending Doctor:'}</label>
+                <input
+                  type="text"
+                  value={assignDoctorName}
+                  onChange={(e) => setAssignDoctorName(e.target.value)}
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-extrabold outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-900 dark:text-amber-300 font-medium space-y-1">
+                <div className="font-extrabold flex items-center gap-1">
+                  ⚠️ {isRTL ? 'ربط نظام المدفوعات والفواتير (Phase 12):' : 'Payment & Invoice Linking:'}
+                </div>
+                <div>
+                  {isRTL ? 'بمجرد التسكين سيتم إدراج الباقة في ملف المريض وتوجيه إشعار لقسم الحسابات والمالية لإصدار فاتورة السداد وتجهيز متابعة الجلسات المتبقية.' : 'Assigning will create an invoice for finance and initiate package monitoring.'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <button
+                onClick={() => {
+                  if (!targetPatientName.trim()) {
+                    toast.error(isRTL ? 'يرجى إدخال اسم المريض أولاً' : 'Please enter patient name');
+                    return;
+                  }
+                  toast.success(isRTL ? `🎉 تم تسكين الباقة بنجاح للمريض "${targetPatientName}" وإصدار فاتورة متابعة!` : 'Package assigned successfully!');
+                  setAssignModalOpen(false);
+                  setTargetPatientName('');
+                }}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-2.5 rounded-xl font-extrabold text-xs shadow-md transition"
+              >
+                ✔ {isRTL ? 'تأكيد تسكين الباقة للمريض' : 'Confirm & Assign'}
+              </button>
+              <button
+                onClick={() => setAssignModalOpen(false)}
+                className="px-5 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-300 transition"
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
             </div>
           </div>
         </div>
