@@ -845,17 +845,17 @@ export default function ReceptionDashboard() {
                           onClick={() => handleCheckIn(app.id)} 
                           disabled={isSubmitting} 
                           className="px-2 py-1 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 disabled:opacity-50 transition"
-                          title="تسجيل وصول (Check-in)"
+                          title={t('attendance_mgmt.check_in', 'تسجيل وصول (Check-in)')}
                         >
-                          ✓ حضور
+                          ✓ {t('attendance_mgmt.check_in', 'حضور')}
                         </button>
                         <button 
                           onClick={() => setAbsentModal({ isOpen: true, id: app.id, patient: app.patient || app.patientName || app.patient_name || 'مريض', reason: 'No Show' })} 
                           disabled={isSubmitting} 
                           className="px-2 py-1 rounded-lg text-xs font-semibold bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 disabled:opacity-50 transition"
-                          title="تسجيل عدم الحضور (Absent)"
+                          title={t('attendance_mgmt.mark_absent', 'تسجيل عدم الحضور')}
                         >
-                          ✕ غياب
+                          ✕ {t('attendance_mgmt.mark_absent', 'غياب')}
                         </button>
                       </>
                     )}
@@ -864,9 +864,9 @@ export default function ReceptionDashboard() {
                         onClick={() => handleCheckOut(app.id)} 
                         disabled={isSubmitting} 
                         className="px-2 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 disabled:opacity-50 transition"
-                        title="تسجيل مغادرة المريض وإنهاء الجلسة"
+                        title={t('attendance_mgmt.check_out', 'تسجيل مغادرة المريض')}
                       >
-                        🏁 انصراف
+                        🏁 {t('attendance_mgmt.check_out', 'انصراف')}
                       </button>
                     )}
                     {(app.status === 'scheduled' || app.status === 'SCHEDULED') && (

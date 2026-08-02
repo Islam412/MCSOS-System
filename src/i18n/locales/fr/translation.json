@@ -289,5 +289,28 @@
     "enter_sessions": "Nombre séances",
     "enter_diagnosis": "Diagnostic",
     "enter_recommendations": "Recommandations"
+  },
+  "attendance_mgmt": {
+    "check_in": "Présent",
+    "check_out": "Départ",
+    "mark_absent": "Absent",
+    "absence_modal_title": "Enregistrer l'absence du patient",
+    "absence_reason_label": "Raison de l'absence",
+    "no_show": "Absence non signalée",
+    "patient_cancelled": "Annulé par le patient",
+    "emergency": "Urgence",
+    "doctor_unavailable": "Médecin indisponible",
+    "confirm_absent": "Confirmer l'absence",
+    "cancel": "Annuler",
+    "previous": "← Précédent",
+    "next": "Suivant →",
+    "page_info": "Page {{current}} sur {{total}} ({{count}} rendez-vous)",
+    "verify_payment_btn": "Vérifier le paiement 💳",
+    "payment_verified_status": "💳 Paiement vérifié",
+    "payment_pending_status": "⏳ En attente de vérification du paiement",
+    "assessment_payments_title": "Vérification du paiement des séances d'évaluation",
+    "no_pending_assessments": "🎉 Aucun paiement d'évaluation en attente aujourd'hui",
+    "duration_alert_title": "⚠️ Alerte fin anticipée",
+    "duration_alert_desc": "Séance terminée après {{actual}} minutes (Prévu: {{scheduled}} minutes)"
   }
 }

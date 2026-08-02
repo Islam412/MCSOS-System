@@ -289,5 +289,28 @@
     "enter_sessions": "Enter number of sessions",
     "enter_diagnosis": "Enter diagnosis",
     "enter_recommendations": "Enter medical recommendations"
+  },
+  "attendance_mgmt": {
+    "check_in": "Check-in",
+    "check_out": "Check-out",
+    "mark_absent": "Absent",
+    "absence_modal_title": "Record Patient Absence",
+    "absence_reason_label": "Reason for Absence",
+    "no_show": "No Show without notice",
+    "patient_cancelled": "Patient Cancelled prior to session",
+    "emergency": "Patient Emergency",
+    "doctor_unavailable": "Doctor Unavailable",
+    "confirm_absent": "Confirm Absence",
+    "cancel": "Cancel",
+    "previous": "← Prev",
+    "next": "Next →",
+    "page_info": "Showing page {{current}} of {{total}} ({{count}} total appointments)",
+    "verify_payment_btn": "Verify Assessment Payment 💳",
+    "payment_verified_status": "💳 Payment Verified",
+    "payment_pending_status": "⏳ Pending Payment Verification by Finance",
+    "assessment_payments_title": "Assessment Sessions Payment Verification",
+    "no_pending_assessments": "🎉 No pending assessment payments today",
+    "duration_alert_title": "⚠️ Early Termination Alert",
+    "duration_alert_desc": "Session finished in {{actual}} mins (scheduled for: {{scheduled}} mins)"
   }
 }

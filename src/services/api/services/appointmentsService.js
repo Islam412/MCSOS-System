@@ -155,14 +155,17 @@ export const appointmentsService = {
   },
 
   // ========== الحصول على المتابعة اليومية (Daily Follow-Up) ==========
-  getDailyFollowUp: async (date = '') => {
+  getDailyFollowUp: async (date = '', page = 1, limit = 10) => {
     try {
-      const endpoint = date ? `/api/v1/sessions/daily-followup?date=${date}` : '/api/v1/sessions/daily-followup'
-      const response = await get(endpoint)
-      return response || {}
+      const params = new URLSearchParams()
+      if (date) params.append('date', date)
+      params.append('page', page)
+      params.append('limit', limit)
+      const response = await get(`/api/v1/sessions/daily-followup?${params.toString()}`)
+      return response || null
     } catch (error) {
       console.warn('⚠️ getDailyFollowUp failed:', error.message)
-      return null
+      throw error
     }
   },
 

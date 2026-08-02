@@ -1,10 +1,11 @@
 // src/pages/FinanceDashboard.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DollarSign, CreditCard, Package, FileText, Percent, TrendingUp, Loader2, RefreshCw } from 'lucide-react'
+import { DollarSign, CreditCard, Package, FileText, Percent, TrendingUp, Loader2, RefreshCw, CheckCircle2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
-import { invoicesService } from '../services/api'
+import { invoicesService, appointmentsService } from '../services/api'
 import { useServices } from '../context/ServiceContext'
 
 export default function FinanceDashboard() {
@@ -23,6 +24,8 @@ export default function FinanceDashboard() {
     paymentRate: 0
   })
   const [recentTransactions, setRecentTransactions] = useState([])
+  const [assessmentSessions, setAssessmentSessions] = useState([])
+  const [verifyingId, setVerifyingId] = useState(null)
 
   // ========== تحميل البيانات ==========
   useEffect(() => {
@@ -32,6 +35,18 @@ export default function FinanceDashboard() {
   const loadFinanceData = async () => {
     setLoading(true)
     try {
+      try {
+        const sessionsRes = await appointmentsService.getDailyFollowUp(new Date().toISOString().split('T')[0], 1, 50)
+        const allSessions = [
+          ...(sessionsRes?.today_sessions?.pending || []),
+          ...(sessionsRes?.today_sessions?.attended || []),
+          ...(sessionsRes?.today_sessions?.missed || [])
+        ].filter(s => s.session_type === 'ASSESSMENT')
+        setAssessmentSessions(allSessions)
+      } catch (e) {
+        console.warn('Could not load assessment sessions for finance review:', e)
+      }
+
       if (isOnline) {
         const response = await executeWithOfflineSupport(
           () => invoicesService.getInvoices({ limit: 10 }),
@@ -73,6 +88,19 @@ export default function FinanceDashboard() {
       toast.error('حدث خطأ في تحميل البيانات المالية')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleVerifyAssessmentPayment = async (sessionId) => {
+    setVerifyingId(sessionId)
+    try {
+      await appointmentsService.verifyPayment(sessionId, 'Finance Staff')
+      toast.success(t('attendance_mgmt.payment_verified_status', 'تمت مراجعة الدفع بنجاح'))
+      await loadFinanceData()
+    } catch (err) {
+      toast.error(err.message || 'خطأ في تأكيد الدفعة')
+    } finally {
+      setVerifyingId(null)
     }
   }
 
@@ -239,6 +267,86 @@ export default function FinanceDashboard() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* مراجعة واعتماد دفعة جلسات التقييم (Assessment Payment Verification) */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-500/10 rounded-xl">
+              <CreditCard className="text-amber-500" size={24} />
+            </div>
+            <div>
+              <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">
+                {t('attendance_mgmt.assessment_payments_title', 'مراجعة واعتماد دفع جلسات التقييم')}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {t('attendance_mgmt.payment_pending_status', 'بانتظار تأكيد الدفع من الحسابات قبل البدء بالتقييم')}
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold rounded-full text-xs">
+            {assessmentSessions.length} {t('attendance_mgmt.sessions', 'جلسات')}
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          {assessmentSessions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+              {t('attendance_mgmt.no_pending_assessments', '🎉 لا توجد جلسات تقييم بانتظار اعتماد الدفع اليوم')}
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs">
+                  <th className="py-3 px-4 text-start">{t('placeholders.enter_name', 'المريض')}</th>
+                  <th className="py-3 px-4 text-start">الوقت</th>
+                  <th className="py-3 px-4 text-start">الحالة</th>
+                  <th className="py-3 px-4 text-end">الإجراء</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
+                {assessmentSessions.map(sess => (
+                  <tr key={sess.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
+                    <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">
+                      {sess.patient || sess.patient_name || sess.patientName || 'مريض تقييم'}
+                    </td>
+                    <td className="py-3 px-4 text-gray-500 dark:text-gray-400">
+                      {new Date(sess.session_date).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="py-3 px-4">
+                      {sess.payment_verified ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {t('attendance_mgmt.payment_verified_status', '💳 دفعة التقييم معتمدة')}
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse">
+                          {t('attendance_mgmt.payment_pending_status', '⏳ بانتظار الاعتماد')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-end">
+                      {!sess.payment_verified ? (
+                        <button
+                          onClick={() => handleVerifyAssessmentPayment(sess.id)}
+                          disabled={verifyingId === sess.id}
+                          className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow cursor-pointer disabled:opacity-50"
+                        >
+                          {verifyingId === sess.id ? <Loader2 className="animate-spin" size={14} /> : t('attendance_mgmt.verify_payment_btn', 'اعتماد دفعة التقييم 💳')}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400 font-semibold flex items-center justify-end gap-1">
+                          <CheckCircle2 size={14} className="text-emerald-500" />
+                          {sess.payment_verified_by || 'Finance'}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

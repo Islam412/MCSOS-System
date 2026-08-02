@@ -23,7 +23,7 @@ import { appointmentsService } from '../services/api'
 import { useServices } from '../context/ServiceContext'
 
 export default function DailyFollowUp() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   const { isOnline } = useServices()
 
@@ -34,6 +34,11 @@ export default function DailyFollowUp() {
   const [searchTerm, setSearchTerm] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
 
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [limit] = useState(10)
+
   // حالة modal تسجيل الغياب
   const [absentModal, setAbsentModal] = useState({
     isOpen: false,
@@ -42,70 +47,40 @@ export default function DailyFollowUp() {
     reason: 'No Show'
   })
 
-  // ========== تحميل بيانات المتابعة اليومية ==========
-  const loadDailyFollowUp = async (date) => {
+  // ========== تحميل بيانات المتابعة اليومية (مع Pagination بدون Local Storage Fallback) ==========
+  const loadDailyFollowUp = async (date = selectedDate, page = currentPage) => {
     setLoading(true)
     try {
-      if (isOnline) {
-        const res = await appointmentsService.getDailyFollowUp(date)
-        if (res) {
-          setData(res)
-        } else {
-          loadLocalData(date)
-        }
+      const res = await appointmentsService.getDailyFollowUp(date, page, limit)
+      if (res) {
+        setData(res)
+        setTotalPages(res.totalPages || 1)
+        setCurrentPage(res.page || page)
       } else {
-        loadLocalData(date)
+        setData({
+          summary: { total_sessions: 0, attended_count: 0, pending_count: 0, missed_count: 0, follow_up_needed: 0 },
+          sessions: [],
+          follow_up_actions: []
+        })
+        setTotalPages(1)
       }
     } catch (error) {
       console.error('Error loading daily follow up:', error)
-      loadLocalData(date)
+      toast.error('تعذر جلب البيانات من الخادم')
+      setData({
+        summary: { total_sessions: 0, attended_count: 0, pending_count: 0, missed_count: 0, follow_up_needed: 0 },
+        sessions: [],
+        follow_up_actions: []
+      })
+      setTotalPages(1)
     } finally {
       setLoading(false)
     }
   }
 
-  // fallback بيانات محلياً
-  const loadLocalData = (date) => {
-    const localPatients = JSON.parse(localStorage.getItem('mcsos_patients_v2') || '[]')
-    const mockSessions = localPatients.map((p, idx) => ({
-      id: p.id || `S-${idx}`,
-      session_date: `${date}T10:00:00`,
-      status: idx % 3 === 0 ? 'ATTENDED' : idx % 3 === 1 ? 'SCHEDULED' : 'MISSED',
-      patient_id: p.id,
-      patient: {
-        first_name: p.first_name || p.nameAr || 'مريض',
-        last_name: p.last_name || '',
-        phone: p.phone,
-        whatsapp_number: p.whatsapp_number || p.phone,
-        profile_number: p.profile_number || `PRF-00${idx + 1}`
-      },
-      doctor: { name: 'د. أحمد علي' },
-      attendance: idx % 3 === 0 ? { status: 'ATTENDED', check_in_time: new Date().toISOString() } : null
-    }))
-
-    setData({
-      date,
-      summary: {
-        total_sessions: mockSessions.length,
-        attended_count: mockSessions.filter(s => s.status === 'ATTENDED').length,
-        pending_count: mockSessions.filter(s => s.status === 'SCHEDULED').length,
-        missed_count: mockSessions.filter(s => s.status === 'MISSED').length,
-        follow_up_needed: mockSessions.filter(s => s.status === 'MISSED').length
-      },
-      sessions: mockSessions,
-      follow_up_actions: mockSessions.filter(s => s.status === 'MISSED').map(s => ({
-        session_id: s.id,
-        patient_id: s.patient_id,
-        patient_name: `${s.patient.first_name} ${s.patient.last_name}`.trim(),
-        patient_phone: s.patient.phone,
-        absence_reason: 'عدم حضور (No Show)',
-        recommended_action: 'الاتصال بالمريض لإعادة الجدولة وتحديد سبب عدم الحضور'
-      }))
-    })
-  }
-
   useEffect(() => {
-    loadDailyFollowUp(selectedDate)
+    setCurrentPage(1)
+    loadDailyFollowUp(selectedDate, 1)
   }, [selectedDate])
 
   // ========== تسجيل دخول (Check-in) ==========
@@ -422,17 +397,32 @@ export default function DailyFollowUp() {
                         {(session.attendance?.check_in_time || session.attendance?.check_out_time) && (
                           <div className="flex items-center gap-3 text-[11px] text-gray-400 mt-1.5 bg-gray-100 dark:bg-gray-900/60 px-2.5 py-1 rounded-lg w-fit">
                             {session.attendance?.check_in_time && (
-                              <span>🟢 دخول: {new Date(session.attendance.check_in_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>🟢 دخول: {new Date(session.attendance.check_in_time).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             )}
                             {session.attendance?.check_out_time && (
-                              <span>🏁 خروج: {new Date(session.attendance.check_out_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>🏁 خروج: {new Date(session.attendance.check_out_time).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             )}
+                          </div>
+                        )}
+
+                        {/* تنبيه الانتهاء المبكر للجلسة (Assessment Duration Monitoring) */}
+                        {(session.duration_warning_generated || (session.session_type === 'ASSESSMENT' && session.actual_duration_minutes && session.actual_duration_minutes < (session.scheduled_duration_minutes || 60) - 15)) && (
+                          <div className="mt-2 px-3 py-1.5 bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 rounded-lg flex items-center gap-2">
+                            <span className="text-amber-500 text-base">⚠️</span>
+                            <div>
+                              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                                {t('attendance_mgmt.duration_alert_title', '⚠️ تنبيه انتهاء مبكر للجلسة')}
+                              </p>
+                              <p className="text-[10px] text-amber-600 dark:text-amber-300">
+                                {t('attendance_mgmt.duration_alert_desc', { actual: session.actual_duration_minutes || 0, scheduled: session.scheduled_duration_minutes || 60 })}
+                              </p>
+                            </div>
                           </div>
                         )}
 
                         {isMissed && (
                           <div className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold mt-1">
-                            سبب الغياب: {session.attendance?.reason || session.absence_reason || 'عدم حضور (No Show)'}
+                            سبب الغياب: {session.attendance?.reason || session.absence_reason || t('attendance_mgmt.no_show', 'لم يحضر بدون إشعار')}
                           </div>
                         )}
                       </div>
@@ -446,9 +436,9 @@ export default function DailyFollowUp() {
                             onClick={() => handleVerifyPayment(session.id)}
                             disabled={actionLoading === session.id}
                             className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md animate-pulse"
-                            title="يتطلب تأكيد الدفع من الإدارة المالية قبل تسجيل الدخول"
+                            title={t('attendance_mgmt.payment_pending_status', 'بانتظار تأكيد الدفع من الحسابات')}
                           >
-                            💳 تأكيد دفع التقييم
+                            {t('attendance_mgmt.verify_payment_btn', 'اعتماد دفعة التقييم 💳')}
                           </button>
                         ) : (
                           <button
@@ -457,7 +447,7 @@ export default function DailyFollowUp() {
                             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 shadow-sm"
                           >
                             <CheckCircle2 size={14} />
-                            تسجيل دخول
+                            {t('attendance_mgmt.check_in', 'حضور')}
                           </button>
                         )
                       )}
@@ -469,7 +459,7 @@ export default function DailyFollowUp() {
                           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 shadow-sm"
                         >
                           <LogOut size={14} />
-                          تسجيل خروج
+                          {t('attendance_mgmt.check_out', 'انصراف')}
                         </button>
                       )}
 
@@ -485,7 +475,7 @@ export default function DailyFollowUp() {
                           className="px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
                         >
                           <UserX size={14} />
-                          تسجيل غياب
+                          {t('attendance_mgmt.mark_absent', 'غياب')}
                         </button>
                       )}
                     </div>
@@ -527,6 +517,58 @@ export default function DailyFollowUp() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* شريط أزرار التنقل والصفحات - Pagination */}
+        {activeTab !== 'FOLLOW_UP' && totalPages >= 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100 dark:border-gray-700/60 pt-4 mt-4">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              {t('attendance_mgmt.page_info', { current: currentPage, total: totalPages, count: summary.total_sessions })}
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  const p = Math.max(1, currentPage - 1)
+                  setCurrentPage(p)
+                  loadDailyFollowUp(selectedDate, p)
+                }}
+                disabled={currentPage === 1 || loading}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 transition-all cursor-pointer"
+              >
+                {t('attendance_mgmt.previous', '← السابق')}
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => {
+                    setCurrentPage(page)
+                    loadDailyFollowUp(selectedDate, page)
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const p = Math.min(totalPages, currentPage + 1)
+                  setCurrentPage(p)
+                  loadDailyFollowUp(selectedDate, p)
+                }}
+                disabled={currentPage === totalPages || loading}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 transition-all cursor-pointer"
+              >
+                {t('attendance_mgmt.next', 'التالي →')}
+              </button>
+            </div>
           </div>
         )}
       </div>

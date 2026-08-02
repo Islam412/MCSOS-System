@@ -289,5 +289,28 @@
     "enter_sessions": "أدخل عدد الجلسات",
     "enter_diagnosis": "أدخل التشخيص",
     "enter_recommendations": "أدخل التوصيات الطبية"
+  },
+  "attendance_mgmt": {
+    "check_in": "حضور",
+    "check_out": "انصراف",
+    "mark_absent": "غياب",
+    "absence_modal_title": "تسجيل غياب المريض",
+    "absence_reason_label": "سبب عدم الحضور",
+    "no_show": "لم يحضر بدون إشعار (No Show)",
+    "patient_cancelled": "اعتذار المريض قبل الجلسة (Patient Cancelled)",
+    "emergency": "ظرف طارئ للمريض (Emergency)",
+    "doctor_unavailable": "عدم تفرغ الطبيب (Doctor Unavailable)",
+    "confirm_absent": "تأكيد الغياب",
+    "cancel": "إلغاء",
+    "previous": "← السابق",
+    "next": "التالي →",
+    "page_info": "عرض الصفحة {{current}} من أصل {{total}} ({{count}} إجمالي المواعيد)",
+    "verify_payment_btn": "اعتماد دفعة التقييم 💳",
+    "payment_verified_status": "💳 دفعة التقييم معتمدة",
+    "payment_pending_status": "⏳ بانتظار اعتماد الدفعة من الحسابات",
+    "assessment_payments_title": "مراجعة واعتماد دفع جلسات التقييم",
+    "no_pending_assessments": "🎉 لا توجد جلسات تقييم بانتظار اعتماد الدفع لهذا اليوم",
+    "duration_alert_title": "⚠️ تنبيه انتهاء مبكر للجلسة",
+    "duration_alert_desc": "انتهت الجلسة فعلياً بعد {{actual}} دقيقة (مقارنة بالجدولة: {{scheduled}} دقيقة)"
   }
 }
