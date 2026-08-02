@@ -459,12 +459,19 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
                 disabled={loading}
               />
               {form.national_id_front && (
-                <div className="relative w-full h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2">
-                  <img src={form.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                <div className="relative w-full h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  {form.national_id_front.includes('application/pdf') ? (
+                    <div className="text-center p-2">
+                      <span className="text-2xl block">📄</span>
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400">مُرفق ملف PDF (هوية أمامية)</span>
+                    </div>
+                  ) : (
+                    <img src={form.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                  )}
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, national_id_front: '' })}
-                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow"
                   >
                     <X size={12} />
                   </button>
@@ -496,12 +503,19 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
                 disabled={loading}
               />
               {form.national_id_back && (
-                <div className="relative w-full h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2">
-                  <img src={form.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                <div className="relative w-full h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  {form.national_id_back.includes('application/pdf') ? (
+                    <div className="text-center p-2">
+                      <span className="text-2xl block">📄</span>
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400">مُرفق ملف PDF (هوية خلفية)</span>
+                    </div>
+                  ) : (
+                    <img src={form.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                  )}
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, national_id_back: '' })}
-                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow"
                   >
                     <X size={12} />
                   </button>

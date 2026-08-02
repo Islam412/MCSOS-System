@@ -92,6 +92,14 @@ export default function ReceptionDashboard() {
   const [patientsList, setPatientsList] = useState([])
   const [doctors, setDoctors] = useState([])
 
+  // حالة نافذة تسجيل الغياب مع اختيار السبب
+  const [absentModal, setAbsentModal] = useState({
+    isOpen: false,
+    id: null,
+    patient: '',
+    reason: 'No Show'
+  })
+
   // ========== تحميل البيانات ==========
   useEffect(() => {
     const userData = localStorage.getItem('mcsos_user')
@@ -276,7 +284,10 @@ export default function ReceptionDashboard() {
       case 'cancelled':
         return <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">✗ ملغي</span>
       case 'completed':
-        return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">✓ مكتمل</span>
+        return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">✓ مكتمل / انصراف</span>
+      case 'missed':
+      case 'absent':
+        return <span className="px-2 py-1 rounded-full text-xs bg-rose-500/20 text-rose-400 border border-rose-500/30">❌ لم يحضر</span>
       default:
         return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400 border border-gray-500/30">{status || 'غير محدد'}</span>
     }
@@ -324,6 +335,45 @@ export default function ReceptionDashboard() {
       toast.success('تم تسجيل حضور المريض')
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في تسجيل الحضور')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ========== تسجيل انصراف (Check-out) ==========
+  const handleCheckOut = async (id) => {
+    setIsSubmitting(true)
+    try {
+      if (isOnline) {
+        await appointmentsService.checkOutAppointment(id)
+      }
+      setTodayAppointments(todayAppointments.map(app => 
+        app.id === id ? { ...app, status: 'completed', check_out_time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) } : app
+      ))
+      toast.success('تم تسجيل انصراف المريض وإنهاء الجلسة 🏁')
+    } catch (error) {
+      toast.error(error?.message || 'حدث خطأ في تسجيل الانصراف')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ========== تسجيل غياب (Mark Absent) ==========
+  const handleConfirmAbsent = async () => {
+    const { id, reason } = absentModal
+    if (!id) return
+    setIsSubmitting(true)
+    try {
+      if (isOnline) {
+        await appointmentsService.markAttendance(id, { status: 'ABSENT', reason })
+      }
+      setTodayAppointments(todayAppointments.map(app => 
+        app.id === id ? { ...app, status: 'missed', absence_reason: reason } : app
+      ))
+      toast.success('تم تسجيل غياب المريض وإدراجه في شاشة المتابعة اليومية 🔴')
+      setAbsentModal({ isOpen: false, id: null, patient: '', reason: 'No Show' })
+    } catch (error) {
+      toast.error(error?.message || 'حدث خطأ في تسجيل الغياب')
     } finally {
       setIsSubmitting(false)
     }
@@ -787,15 +837,36 @@ export default function ReceptionDashboard() {
                       <p className="text-xs text-gray-400">{app.doctor || app.doctorName || app.doctor_name || 'طبيب'}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
                     {getStatusBadge(app.status)}
                     {(app.status === 'scheduled' || app.status === 'waiting' || app.status === 'SCHEDULED') && (
+                      <>
+                        <button 
+                          onClick={() => handleCheckIn(app.id)} 
+                          disabled={isSubmitting} 
+                          className="px-2 py-1 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 disabled:opacity-50 transition"
+                          title="تسجيل وصول (Check-in)"
+                        >
+                          ✓ حضور
+                        </button>
+                        <button 
+                          onClick={() => setAbsentModal({ isOpen: true, id: app.id, patient: app.patient || app.patientName || app.patient_name || 'مريض', reason: 'No Show' })} 
+                          disabled={isSubmitting} 
+                          className="px-2 py-1 rounded-lg text-xs font-semibold bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 disabled:opacity-50 transition"
+                          title="تسجيل عدم الحضور (Absent)"
+                        >
+                          ✕ غياب
+                        </button>
+                      </>
+                    )}
+                    {(app.status === 'checked-in' || app.status === 'attended') && !app.check_out_time && (
                       <button 
-                        onClick={() => handleCheckIn(app.id)} 
+                        onClick={() => handleCheckOut(app.id)} 
                         disabled={isSubmitting} 
-                        className="px-2 py-1 rounded-lg text-xs bg-green-500/20 text-green-400 hover:bg-green-500/30 disabled:opacity-50"
+                        className="px-2 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 disabled:opacity-50 transition"
+                        title="تسجيل مغادرة المريض وإنهاء الجلسة"
                       >
-                        تسجيل حضور
+                        🏁 انصراف
                       </button>
                     )}
                     {(app.status === 'scheduled' || app.status === 'SCHEDULED') && (
@@ -1196,6 +1267,53 @@ export default function ReceptionDashboard() {
               </button>
               <button onClick={() => setShowPatientDetailsModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
                 إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة تسجيل سبب الغياب */}
+      {absentModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-gray-700">
+            <h3 className="font-bold text-lg text-white mb-3 flex items-center gap-2">
+              <span className="text-rose-500">❌</span>
+              تسجيل غياب المريض
+            </h3>
+            <p className="text-sm text-gray-300 mb-4">
+              المريض: <strong className="text-white font-bold">{absentModal.patient}</strong>
+            </p>
+            <div className="space-y-2 mb-6">
+              <label className="block text-xs font-semibold text-gray-300">
+                سبب عدم الحضور <span className="text-rose-500">*</span>
+              </label>
+              <select
+                className="w-full py-2.5 px-3 bg-gray-900 border border-gray-700 rounded-xl text-xs text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                value={absentModal.reason}
+                onChange={(e) => setAbsentModal({ ...absentModal, reason: e.target.value })}
+              >
+                <option value="No Show">لم يحضر بدون إشعار (No Show)</option>
+                <option value="Patient Cancelled">اعتذار المريض قبل الجلسة (Patient Cancelled)</option>
+                <option value="Emergency">ظرف طارئ للمريض (Emergency)</option>
+                <option value="Doctor Unavailable">عدم تفرغ الطبيب (Doctor Unavailable)</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setAbsentModal({ isOpen: false, id: null, patient: '', reason: 'No Show' })}
+                className="px-4 py-2 text-xs font-semibold text-gray-400 hover:bg-gray-700 rounded-xl transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAbsent}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg shadow-rose-600/30 transition-all disabled:opacity-50"
+              >
+                تأكيد الغياب
               </button>
             </div>
           </div>

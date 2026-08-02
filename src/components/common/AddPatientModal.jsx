@@ -18,8 +18,25 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
     national_id_back: '',
     national_id_photo: '',
     gender: 'male',
-    date_of_birth: ''
+    date_of_birth: '',
+    nationality: 'مصري - Egypt',
+    occupation: ''
   })
+
+  const calculateAge = (dob) => {
+    if (!dob) return null
+    const birthDate = new Date(dob)
+    if (isNaN(birthDate.getTime())) return null
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const m = today.getMonth() - birthDate.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age > 0 ? age : 0
+  }
+
+  const currentAge = calculateAge(regForm.date_of_birth)
 
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
@@ -56,7 +73,10 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
         national_id_back: regForm.national_id_back || undefined,
         national_id_photo: regForm.national_id_front || regForm.national_id_photo || undefined,
         gender: regForm.gender || 'male',
-        date_of_birth: regForm.date_of_birth || undefined
+        date_of_birth: regForm.date_of_birth || undefined,
+        nationality: regForm.nationality || 'Egypt',
+        occupation: regForm.occupation || undefined,
+        age: currentAge !== null ? currentAge : undefined
       }
       
       const response = await fetch(`${API_BASE}/patients`, {
@@ -82,7 +102,9 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
         national_id_back: '',
         national_id_photo: '',
         gender: 'male',
-        date_of_birth: ''
+        date_of_birth: '',
+        nationality: 'مصري - Egypt',
+        occupation: ''
       })
       
       if (onPatientAdded) onPatientAdded(newPatient)
@@ -114,11 +136,11 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto max-h-[70vh]">
           <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'الاسم الكامل *' : 'Full Name *'}</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'الاسم الكامل (رباعي) *' : 'Full Name (4 parts) *'}</label>
             <input
               type="text"
               required
-              placeholder={isRTL ? 'أدخل اسم المريض بالكامل...' : 'Enter patient full name...'}
+              placeholder={isRTL ? 'مثال: أحمد محمد علي حسن...' : 'e.g., Ahmed Mohamed Ali Hassan...'}
               value={regForm.fullName}
               onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
               className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-800 dark:text-white"
@@ -162,13 +184,60 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
           )}
 
           <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'جهة التحويل' : 'Referral Source'}</label>
-            <input
-              type="text"
-              value={regForm.referral_source}
+            <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'جهة التحويل (كيف عرفتنا؟)' : 'Referral Source'}</label>
+            <select
+              value={regForm.referral_source || ''}
               onChange={(e) => setRegForm({ ...regForm, referral_source: e.target.value })}
-              className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+              className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700 dark:text-gray-200"
+            >
+              <option value="">{isRTL ? '-- اختر مصدر التعرف علينا --' : '-- Select Referral Source --'}</option>
+              <option value="Social Media">{isRTL ? 'سوشيال ميديا (Social Media)' : 'Social Media'}</option>
+              <option value="Google Search">{isRTL ? 'بحث جوجل (Google Search)' : 'Google Search'}</option>
+              <option value="Friend">{isRTL ? 'ترشيح صديق / أقارب' : 'Friend / Family'}</option>
+              <option value="Doctor Referral">{isRTL ? 'تحويل طبيب' : 'Doctor Referral'}</option>
+              <option value="Advertisement">{isRTL ? 'إعلانات' : 'Advertisement'}</option>
+              <option value="Walk-in">{isRTL ? 'زيارة مباشرة' : 'Walk-in'}</option>
+              <option value="Other">{isRTL ? 'أخرى' : 'Other'}</option>
+            </select>
+          </div>
+
+          {/* Nationality & Occupation */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'الجنسية (إلزامي)' : 'Nationality *'}</label>
+              <input
+                type="text"
+                required
+                list="modal_nationalities"
+                placeholder={isRTL ? 'ابحث أو اختر الجنسية...' : 'Search nationality...'}
+                value={regForm.nationality || ''}
+                onChange={(e) => setRegForm({ ...regForm, nationality: e.target.value })}
+                className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-800 dark:text-white"
+              />
+              <datalist id="modal_nationalities">
+                <option value="مصري - Egypt" />
+                <option value="سعودي - Saudi Arabia" />
+                <option value="إماراتي - UAE" />
+                <option value="كويتي - Kuwait" />
+                <option value="قطري - Qatar" />
+                <option value="أردني - Jordan" />
+                <option value="سوري - Syria" />
+                <option value="لبناني - Lebanon" />
+                <option value="عراقي - Iraq" />
+                <option value="فلسطيني - Palestine" />
+                <option value="أجنبي / آخر - Other" />
+              </datalist>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1">{isRTL ? 'الوظيفة (اختياري)' : 'Occupation'}</label>
+              <input
+                type="text"
+                placeholder={isRTL ? 'مثال: مهندس، معلم...' : 'e.g., Engineer...'}
+                value={regForm.occupation || ''}
+                onChange={(e) => setRegForm({ ...regForm, occupation: e.target.value })}
+                className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-white"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -191,6 +260,11 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
                 onChange={(e) => setRegForm({ ...regForm, date_of_birth: e.target.value })}
                 className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
               />
+              {currentAge !== null && (
+                <div className="mt-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md inline-block">
+                  🎂 {isRTL ? `العمر محسوب تلقائياً: ${currentAge} سنة` : `Auto Age: ${currentAge} Yrs`}
+                </div>
+              )}
             </div>
           </div>
 
@@ -227,12 +301,19 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
                   disabled={loading}
                 />
                 {regForm.national_id_front && (
-                  <div className="relative w-full h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2">
-                    <img src={regForm.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                  <div className="relative w-full h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    {regForm.national_id_front.includes('application/pdf') ? (
+                      <div className="text-center p-2">
+                        <span className="text-2xl block">📄</span>
+                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{isRTL ? 'مُرفق ملف PDF' : 'PDF Document'}</span>
+                      </div>
+                    ) : (
+                      <img src={regForm.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                    )}
                     <button
                       type="button"
                       onClick={() => setRegForm({ ...regForm, national_id_front: '' })}
-                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition shadow"
                     >
                       <X size={12} />
                     </button>
@@ -266,12 +347,19 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
                   disabled={loading}
                 />
                 {regForm.national_id_back && (
-                  <div className="relative w-full h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2">
-                    <img src={regForm.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                  <div className="relative w-full h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 mt-2 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    {regForm.national_id_back.includes('application/pdf') ? (
+                      <div className="text-center p-2">
+                        <span className="text-2xl block">📄</span>
+                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{isRTL ? 'مُرفق ملف PDF' : 'PDF Document'}</span>
+                      </div>
+                    ) : (
+                      <img src={regForm.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                    )}
                     <button
                       type="button"
                       onClick={() => setRegForm({ ...regForm, national_id_back: '' })}
-                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition shadow"
                     >
                       <X size={12} />
                     </button>

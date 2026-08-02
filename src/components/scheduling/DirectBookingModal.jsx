@@ -28,8 +28,25 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
     national_id_back: '',
     national_id_photo: '',
     gender: 'male',
-    date_of_birth: ''
+    date_of_birth: '',
+    nationality: 'مصري - Egypt',
+    occupation: ''
   })
+
+  const calculateAge = (dob) => {
+    if (!dob) return null
+    const birthDate = new Date(dob)
+    if (isNaN(birthDate.getTime())) return null
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const m = today.getMonth() - birthDate.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age > 0 ? age : 0
+  }
+
+  const currentAge = calculateAge(regForm.date_of_birth)
   
   // Booking Fields
   const [sessionType, setSessionType] = useState('TREATMENT')
@@ -119,7 +136,10 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
         national_id_back: regForm.national_id_back || undefined,
         national_id_photo: regForm.national_id_front || regForm.national_id_photo || undefined,
         gender: regForm.gender || 'male',
-        date_of_birth: regForm.date_of_birth || undefined
+        date_of_birth: regForm.date_of_birth || undefined,
+        nationality: regForm.nationality || 'Egypt',
+        occupation: regForm.occupation || undefined,
+        age: currentAge !== null ? currentAge : undefined
       }
       const response = await fetch(`${API_BASE}/patients`, {
         method: 'POST',
@@ -199,9 +219,13 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
         whatsapp_number: '',
         sameAsPhone: true,
         referral_source: '',
+        national_id_front: '',
+        national_id_back: '',
         national_id_photo: '',
         gender: 'male',
-        date_of_birth: ''
+        date_of_birth: '',
+        nationality: 'مصري - Egypt',
+        occupation: ''
       })
       
       if (onBookingComplete) onBookingComplete()
@@ -396,13 +420,57 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
               )}
 
               <div>
-                <input
-                  type="text"
-                  placeholder={isRTL ? 'جهة التحويل' : 'Referral Source'}
-                  value={regForm.referral_source}
+                <select
+                  value={regForm.referral_source || ''}
                   onChange={(e) => setRegForm({ ...regForm, referral_source: e.target.value })}
-                  className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
-                />
+                  className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 text-gray-700 dark:text-gray-200"
+                >
+                  <option value="">{isRTL ? 'جهة التحويل (كيف عرفتنا؟)' : 'Referral Source'}</option>
+                  <option value="Social Media">{isRTL ? 'سوشيال ميديا (Social Media)' : 'Social Media'}</option>
+                  <option value="Google Search">{isRTL ? 'بحث جوجل (Google Search)' : 'Google Search'}</option>
+                  <option value="Friend">{isRTL ? 'ترشيح صديق / أقارب' : 'Friend / Family'}</option>
+                  <option value="Doctor Referral">{isRTL ? 'تحويل طبيب' : 'Doctor Referral'}</option>
+                  <option value="Advertisement">{isRTL ? 'إعلانات' : 'Advertisement'}</option>
+                  <option value="Walk-in">{isRTL ? 'زيارة مباشرة' : 'Walk-in'}</option>
+                  <option value="Other">{isRTL ? 'أخرى' : 'Other'}</option>
+                </select>
+              </div>
+
+              {/* Nationality & Occupation */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <input
+                    type="text"
+                    required
+                    list="direct_nationalities"
+                    placeholder={isRTL ? 'الجنسية (إلزامي)...' : 'Nationality *...'}
+                    value={regForm.nationality || ''}
+                    onChange={(e) => setRegForm({ ...regForm, nationality: e.target.value })}
+                    className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-gray-800 dark:text-white"
+                  />
+                  <datalist id="direct_nationalities">
+                    <option value="مصري - Egypt" />
+                    <option value="سعودي - Saudi Arabia" />
+                    <option value="إماراتي - UAE" />
+                    <option value="كويتي - Kuwait" />
+                    <option value="قطري - Qatar" />
+                    <option value="أردني - Jordan" />
+                    <option value="سوري - Syria" />
+                    <option value="لبناني - Lebanon" />
+                    <option value="عراقي - Iraq" />
+                    <option value="فلسطيني - Palestine" />
+                    <option value="أجنبي / آخر - Other" />
+                  </datalist>
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder={isRTL ? 'الوظيفة (اختياري)...' : 'Occupation (Optional)...'}
+                    value={regForm.occupation || ''}
+                    onChange={(e) => setRegForm({ ...regForm, occupation: e.target.value })}
+                    className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800 dark:text-white"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -423,6 +491,11 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                     onChange={(e) => setRegForm({ ...regForm, date_of_birth: e.target.value })}
                     className="w-full p-2.2 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
                   />
+                  {currentAge !== null && (
+                    <div className="mt-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-md inline-block">
+                      🎂 {isRTL ? `العمر محسوب: ${currentAge} سنة` : `Auto Age: ${currentAge} Yrs`}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -458,12 +531,19 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                       disabled={loading}
                     />
                     {regForm.national_id_front && (
-                      <div className="relative w-full h-16 rounded overflow-hidden border border-gray-200 dark:border-gray-700 mt-1">
-                        <img src={regForm.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                      <div className="relative w-full h-16 rounded overflow-hidden border border-gray-200 dark:border-gray-700 mt-1 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        {regForm.national_id_front.includes('application/pdf') ? (
+                          <div className="text-center p-1">
+                            <span className="text-xl block">📄</span>
+                            <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">PDF Document</span>
+                          </div>
+                        ) : (
+                          <img src={regForm.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
+                        )}
                         <button
                           type="button"
                           onClick={() => setRegForm({ ...regForm, national_id_front: '' })}
-                          className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                          className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition shadow"
                         >
                           <X size={10} />
                         </button>
@@ -496,12 +576,19 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                       disabled={loading}
                     />
                     {regForm.national_id_back && (
-                      <div className="relative w-full h-16 rounded overflow-hidden border border-gray-200 dark:border-gray-700 mt-1">
-                        <img src={regForm.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                      <div className="relative w-full h-16 rounded overflow-hidden border border-gray-200 dark:border-gray-700 mt-1 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        {regForm.national_id_back.includes('application/pdf') ? (
+                          <div className="text-center p-1">
+                            <span className="text-xl block">📄</span>
+                            <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">PDF Document</span>
+                          </div>
+                        ) : (
+                          <img src={regForm.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
+                        )}
                         <button
                           type="button"
                           onClick={() => setRegForm({ ...regForm, national_id_back: '' })}
-                          className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                          className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition shadow"
                         >
                           <X size={10} />
                         </button>
@@ -509,42 +596,6 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                     )}
                   </div>
                 </div>
-              </div>
-
-              {/* صورة البطاقة */}
-              <div className="space-y-1">
-                <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">{isRTL ? 'صورة البطاقة' : 'National ID Photo'}</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="w-full text-xs text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20"
-                  onChange={(e) => {
-                    const file = e.target.files[0]
-                    if (file) {
-                      if (file.size > 5 * 1024 * 1024) {
-                        toast.error(isRTL ? 'حجم الصورة يجب أن لا يتجاوز 5 ميجابايت' : 'Image size must not exceed 5MB')
-                        return
-                      }
-                      const reader = new FileReader()
-                      reader.onloadend = () => {
-                        setRegForm({ ...regForm, national_id_photo: reader.result })
-                      }
-                      reader.readAsDataURL(file)
-                    }
-                  }}
-                />
-                {regForm.national_id_photo && (
-                  <div className="relative w-24 h-16 rounded-lg overflow-hidden border border-gray-700 mt-1">
-                    <img src={regForm.national_id_photo} alt="National ID" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setRegForm({ ...regForm, national_id_photo: '' })}
-                      className="absolute top-0.5 right-0.5 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                    >
-                      <X size={10} />
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           )}
