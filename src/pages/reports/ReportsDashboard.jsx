@@ -172,7 +172,7 @@ export default function ReportsDashboard() {
                   <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700/60">
                     <div className="flex items-center justify-between font-bold text-sm mb-1.5">
                       <span className="text-gray-800 dark:text-gray-200">{item.source}</span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-black">{item.count} مريض ({item.percentage}%)</span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-black">{item.count} {isRTL ? 'مريض' : 'patients'} ({item.percentage}%)</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
                       <div className={`h-full ${item.color} transition-all duration-1000`} style={{ width: `${item.percentage}%` }}></div>
@@ -297,13 +297,13 @@ export default function ReportsDashboard() {
               <div className="p-5 bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-200 dark:border-rose-800 rounded-2xl text-center space-y-2">
                 <AlertTriangle size={36} className="mx-auto text-rose-600 dark:text-rose-400" />
                 <div className="text-3xl font-black text-rose-900 dark:text-rose-300">{reportData.attendance.noShowPercentage}%</div>
-                <div className="text-xs font-extrabold text-rose-800 dark:text-rose-400">{isRTL ? 'نسبة الغياب دون إشعار (No-Show)' : 'No-Show Rate'} ({reportData.attendance.noShowCount} جلسة)</div>
+                <div className="text-xs font-extrabold text-rose-800 dark:text-rose-400">{isRTL ? 'نسبة الغياب دون إشعار' : 'No-Show Rate'} ({reportData.attendance.noShowCount} {isRTL ? 'جلسة' : 'sessions'})</div>
               </div>
 
               <div className="p-5 bg-amber-50/70 dark:bg-amber-950/30 border-2 border-amber-200 dark:border-amber-800 rounded-2xl text-center space-y-2">
                 <Calendar size={36} className="mx-auto text-amber-600 dark:text-amber-400" />
                 <div className="text-3xl font-black text-amber-900 dark:text-amber-300">{reportData.attendance.cancelledPercentage}%</div>
-                <div className="text-xs font-extrabold text-amber-800 dark:text-amber-400">{isRTL ? 'معدل الإلغاء المبكر والتأجيل' : 'Cancellation Rate'} ({reportData.attendance.cancelledCount} جلسة)</div>
+                <div className="text-xs font-extrabold text-amber-800 dark:text-amber-400">{isRTL ? 'معدل الإلغاء المبكر والتأجيل' : 'Cancellation Rate'} ({reportData.attendance.cancelledCount} {isRTL ? 'جلسة' : 'sessions'})</div>
               </div>
             </div>
 
@@ -315,7 +315,7 @@ export default function ReportsDashboard() {
                 {reportData.attendance.reasons.map((r, idx) => (
                   <div key={idx} className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 flex justify-between items-center text-xs font-bold">
                     <span className="text-gray-700 dark:text-gray-300">{r.reason}</span>
-                    <span className="px-2.5 py-1 bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 rounded-lg font-extrabold">{r.count} حالة</span>
+                    <span className="px-2.5 py-1 bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 rounded-lg font-extrabold">{r.count} {isRTL ? 'حالة' : 'cases'}</span>
                   </div>
                 ))}
               </div>

@@ -220,7 +220,7 @@ export default function DailyFollowUp() {
         {/* إجمالي الجلسات */}
         <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center justify-between text-gray-500 dark:text-gray-400 mb-2">
-            <span className="text-xs font-semibold">إجمالي الجلسات</span>
+            <span className="text-xs font-semibold">{t('attendance_mgmt.total_sessions_card', 'إجمالي الجلسات')}</span>
             <Calendar size={18} className="text-blue-500" />
           </div>
           <span className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -231,7 +231,7 @@ export default function DailyFollowUp() {
         {/* الحاضرون */}
         <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 shadow-sm">
           <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-2">
-            <span className="text-xs font-semibold">تم الحضور (Attended)</span>
+            <span className="text-xs font-semibold">{t('attendance_mgmt.attended_card', 'تم الحضور')}</span>
             <UserCheck size={18} />
           </div>
           <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
@@ -242,7 +242,7 @@ export default function DailyFollowUp() {
         {/* في الانتظار */}
         <div className="bg-amber-50/50 dark:bg-amber-950/20 p-5 rounded-2xl border border-amber-100 dark:border-amber-900/40 shadow-sm">
           <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 mb-2">
-            <span className="text-xs font-semibold">في الانتظار (Pending)</span>
+            <span className="text-xs font-semibold">{t('attendance_mgmt.pending_card', 'في الانتظار')}</span>
             <Clock size={18} />
           </div>
           <span className="text-2xl font-bold text-amber-700 dark:text-amber-300">
@@ -253,7 +253,7 @@ export default function DailyFollowUp() {
         {/* لم يحضر */}
         <div className="bg-rose-50/50 dark:bg-rose-950/20 p-5 rounded-2xl border border-rose-100 dark:border-rose-900/40 shadow-sm">
           <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 mb-2">
-            <span className="text-xs font-semibold">لم يحضر (Missed)</span>
+            <span className="text-xs font-semibold">{t('attendance_mgmt.missed_card', 'لم يحضر')}</span>
             <UserX size={18} />
           </div>
           <span className="text-2xl font-bold text-rose-700 dark:text-rose-300">
@@ -264,7 +264,7 @@ export default function DailyFollowUp() {
         {/* إجراءات متابعة مطلوبة */}
         <div className="bg-indigo-50/50 dark:bg-indigo-950/20 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 shadow-sm">
           <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400 mb-2">
-            <span className="text-xs font-semibold">متابعات مطلوبة</span>
+            <span className="text-xs font-semibold">{t('attendance_mgmt.follow_ups_card', 'متابعات مطلوبة')}</span>
             <PhoneCall size={18} />
           </div>
           <span className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
@@ -285,7 +285,7 @@ export default function DailyFollowUp() {
                   : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
               }`}
             >
-              جميع الجلسات ({summary.total_sessions})
+              {t('attendance_mgmt.tab_all', 'جميع الجلسات')} ({summary.total_sessions})
             </button>
             <button
               onClick={() => setActiveTab('PENDING')}
@@ -295,7 +295,7 @@ export default function DailyFollowUp() {
                   : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
               }`}
             >
-              في الانتظار ({summary.pending_count})
+              {t('attendance_mgmt.tab_pending', 'في الانتظار')} ({summary.pending_count})
             </button>
             <button
               onClick={() => setActiveTab('ATTENDED')}
@@ -305,7 +305,7 @@ export default function DailyFollowUp() {
                   : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
               }`}
             >
-              تم الحضور ({summary.attended_count})
+              {t('attendance_mgmt.tab_attended', 'تم الحضور')} ({summary.attended_count})
             </button>
             <button
               onClick={() => setActiveTab('MISSED')}
@@ -315,7 +315,7 @@ export default function DailyFollowUp() {
                   : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
               }`}
             >
-              لم يحضر ({summary.missed_count})
+              {t('attendance_mgmt.tab_missed', 'لم يحضر')} ({summary.missed_count})
             </button>
             <button
               onClick={() => setActiveTab('FOLLOW_UP')}
@@ -325,7 +325,7 @@ export default function DailyFollowUp() {
                   : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
               }`}
             >
-              📞 قائمة المتابعات المطلوبة ({summary.follow_up_needed})
+              {t('attendance_mgmt.tab_followup', '📞 قائمة المتابعات المطلوبة')} ({summary.follow_up_needed})
             </button>
           </div>
 
@@ -334,7 +334,7 @@ export default function DailyFollowUp() {
             <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="بحث باسم المريض أو كود الملف..."
+              placeholder={t('attendance_mgmt.search_placeholder', 'بحث باسم المريض أو كود الملف...')}
               className="w-full pr-9 pl-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -346,15 +346,17 @@ export default function DailyFollowUp() {
         {activeTab !== 'FOLLOW_UP' ? (
           filteredSessions.length === 0 ? (
             <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">
-              لا يوجد جلسات مطابقة في هذا التصنيف لهذا اليوم
+              {t('attendance_mgmt.no_sessions_matched', 'لا توجد جلسات مطابقة في هذا التصنيف لهذا اليوم')}
             </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700/60">
               {filteredSessions.map((session) => {
-                const patientName = session.patient?.full_name_ar || `${session.patient?.first_name || ''} ${session.patient?.last_name || ''}`.trim() || 'مريض'
-                const profileNum = session.patient?.profile_number || 'غير متوفر'
-                const doctorName = session.doctor?.name || 'غير محدد'
-                const roomName = session.room?.name || 'غرفة العامة'
+                const enName = `${session.patient?.first_name || ''} ${session.patient?.last_name || ''}`.trim()
+                const arName = session.patient?.full_name_ar
+                const patientName = (isRTL ? (arName || enName) : (enName || arName)) || t('attendance_mgmt.patient_label', 'مريض')
+                const profileNum = session.patient?.profile_number || t('attendance_mgmt.na_label', 'غير متوفر')
+                const doctorName = session.doctor?.name || t('attendance_mgmt.unassigned_doctor', 'غير محدد')
+                const roomName = session.room?.name || t('attendance_mgmt.general_room', 'غرفة عامة')
                 const isAttended = session.status === 'ATTENDED' || session.attendance?.status === 'ATTENDED'
                 const isMissed = session.status === 'MISSED' || session.attendance?.status === 'ABSENT'
 
@@ -389,7 +391,7 @@ export default function DailyFollowUp() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock size={13} className="text-gray-400" />
-                            {new Date(session.session_date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(session.session_date).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
 
@@ -397,10 +399,10 @@ export default function DailyFollowUp() {
                         {(session.attendance?.check_in_time || session.attendance?.check_out_time) && (
                           <div className="flex items-center gap-3 text-[11px] text-gray-400 mt-1.5 bg-gray-100 dark:bg-gray-900/60 px-2.5 py-1 rounded-lg w-fit">
                             {session.attendance?.check_in_time && (
-                              <span>🟢 دخول: {new Date(session.attendance.check_in_time).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>{t('attendance_mgmt.in_time', '🟢 دخول:')} {new Date(session.attendance.check_in_time).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             )}
                             {session.attendance?.check_out_time && (
-                              <span>🏁 خروج: {new Date(session.attendance.check_out_time).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>{t('attendance_mgmt.out_time', '🏁 خروج:')} {new Date(session.attendance.check_out_time).toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             )}
                           </div>
                         )}
@@ -422,7 +424,7 @@ export default function DailyFollowUp() {
 
                         {isMissed && (
                           <div className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold mt-1">
-                            سبب الغياب: {session.attendance?.reason || session.absence_reason || t('attendance_mgmt.no_show', 'لم يحضر بدون إشعار')}
+                            {t('attendance_mgmt.absence_reason_prefix', 'سبب الغياب:')} {session.attendance?.reason || session.absence_reason || t('attendance_mgmt.no_show', 'لم يحضر بدون إشعار')}
                           </div>
                         )}
                       </div>
@@ -489,7 +491,7 @@ export default function DailyFollowUp() {
           <div className="space-y-3">
             {(data?.follow_up_actions || []).length === 0 ? (
               <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">
-                🎉 لا يوجد حالات تحتاج لمتابعة في هذا اليوم
+                {t('attendance_mgmt.no_followups_required', '🎉 لا توجد حالات تحتاج لمتابعة في هذا اليوم')}
               </div>
             ) : (
               data.follow_up_actions.map((act, i) => (
@@ -501,7 +503,7 @@ export default function DailyFollowUp() {
                       <span className="text-xs text-rose-600 font-semibold">({act.absence_reason})</span>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      💡 إجراء المتابعة: {act.recommended_action}
+                      {t('attendance_mgmt.followup_action_prefix', '💡 إجراء المتابعة:')} {act.recommended_action}
                     </p>
                   </div>
 
@@ -511,7 +513,7 @@ export default function DailyFollowUp() {
                       className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white rounded-lg text-xs font-semibold hover:bg-gray-50 transition-colors flex items-center gap-1 shadow-sm"
                     >
                       <PhoneCall size={13} className="text-blue-500" />
-                      اتصال ({act.patient_phone || 'لا يوجد رقم'})
+                      {t('attendance_mgmt.call_btn', 'اتصال')} ({act.patient_phone || t('attendance_mgmt.no_phone', 'لا يوجد رقم')})
                     </a>
                   </div>
                 </div>
@@ -580,7 +582,7 @@ export default function DailyFollowUp() {
             <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-3">
               <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
                 <UserX size={20} className="text-rose-500" />
-                تسجيل غياب مريض
+                {t('attendance_mgmt.absence_modal_title', 'تسجيل غياب المريض')}
               </h3>
               <button
                 onClick={() => setAbsentModal({ isOpen: false, sessionId: null, patientName: '', reason: 'No Show' })}
@@ -591,22 +593,22 @@ export default function DailyFollowUp() {
             </div>
 
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              المريض: <strong className="text-gray-900 dark:text-white">{absentModal.patientName}</strong>
+              {t('attendance_mgmt.patient_modal_prefix', 'المريض:')} <strong className="text-gray-900 dark:text-white">{absentModal.patientName}</strong>
             </p>
 
             <div className="space-y-3 mb-6">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-                اختر سبب عدم الحضور <span className="text-red-500">*</span>
+                {t('attendance_mgmt.select_reason_msg', 'اختر سبب عدم الحضور')} <span className="text-red-500">*</span>
               </label>
               <select
                 className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={absentModal.reason}
                 onChange={(e) => setAbsentModal({ ...absentModal, reason: e.target.value })}
               >
-                <option value="No Show">لم يحضر بدون إشعار (No Show)</option>
-                <option value="Patient Cancelled">اعتذار المريض (Patient Cancelled)</option>
-                <option value="Emergency">ظرف طارئ للمريض (Emergency)</option>
-                <option value="Doctor Unavailable">عدم تفرغ الطبيب (Doctor Unavailable)</option>
+                <option value="No Show">{t('attendance_mgmt.no_show', 'لم يحضر بدون إشعار')}</option>
+                <option value="Patient Cancelled">{t('attendance_mgmt.patient_cancelled', 'اعتذار المريض قبل الجلسة')}</option>
+                <option value="Emergency">{t('attendance_mgmt.emergency', 'ظرف طارئ للمريض')}</option>
+                <option value="Doctor Unavailable">{t('attendance_mgmt.doctor_unavailable', 'عدم تفرغ الطبيب')}</option>
               </select>
             </div>
 
@@ -616,14 +618,14 @@ export default function DailyFollowUp() {
                 onClick={() => setAbsentModal({ isOpen: false, sessionId: null, patientName: '', reason: 'No Show' })}
                 className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
               >
-                إلغاء
+                {t('attendance_mgmt.cancel', 'إلغاء')}
               </button>
               <button
                 type="button"
                 onClick={submitAbsent}
                 className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-md shadow-rose-500/20 transition-all"
               >
-                تأكيد تسجيل الغياب
+                {t('attendance_mgmt.confirm_absent', 'تأكيد الغياب')}
               </button>
             </div>
           </div>

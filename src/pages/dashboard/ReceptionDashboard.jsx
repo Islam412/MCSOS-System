@@ -1279,24 +1279,24 @@ export default function ReceptionDashboard() {
           <div className="bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-gray-700">
             <h3 className="font-bold text-lg text-white mb-3 flex items-center gap-2">
               <span className="text-rose-500">❌</span>
-              تسجيل غياب المريض
+              {t('attendance_mgmt.absence_modal_title', 'تسجيل غياب المريض')}
             </h3>
             <p className="text-sm text-gray-300 mb-4">
-              المريض: <strong className="text-white font-bold">{absentModal.patient}</strong>
+              {t('attendance_mgmt.patient_modal_prefix', 'المريض:')} <strong className="text-white font-bold">{absentModal.patient}</strong>
             </p>
             <div className="space-y-2 mb-6">
               <label className="block text-xs font-semibold text-gray-300">
-                سبب عدم الحضور <span className="text-rose-500">*</span>
+                {t('attendance_mgmt.absence_reason_label', 'سبب عدم الحضور')} <span className="text-rose-500">*</span>
               </label>
               <select
                 className="w-full py-2.5 px-3 bg-gray-900 border border-gray-700 rounded-xl text-xs text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
                 value={absentModal.reason}
                 onChange={(e) => setAbsentModal({ ...absentModal, reason: e.target.value })}
               >
-                <option value="No Show">لم يحضر بدون إشعار (No Show)</option>
-                <option value="Patient Cancelled">اعتذار المريض قبل الجلسة (Patient Cancelled)</option>
-                <option value="Emergency">ظرف طارئ للمريض (Emergency)</option>
-                <option value="Doctor Unavailable">عدم تفرغ الطبيب (Doctor Unavailable)</option>
+                <option value="No Show">{t('attendance_mgmt.no_show', 'لم يحضر بدون إشعار')}</option>
+                <option value="Patient Cancelled">{t('attendance_mgmt.patient_cancelled', 'اعتذار المريض قبل الجلسة')}</option>
+                <option value="Emergency">{t('attendance_mgmt.emergency', 'ظرف طارئ للمريض')}</option>
+                <option value="Doctor Unavailable">{t('attendance_mgmt.doctor_unavailable', 'عدم تفرغ الطبيب')}</option>
               </select>
             </div>
             <div className="flex items-center justify-end gap-3">
@@ -1305,7 +1305,7 @@ export default function ReceptionDashboard() {
                 onClick={() => setAbsentModal({ isOpen: false, id: null, patient: '', reason: 'No Show' })}
                 className="px-4 py-2 text-xs font-semibold text-gray-400 hover:bg-gray-700 rounded-xl transition-colors"
               >
-                إلغاء
+                {t('attendance_mgmt.cancel', 'إلغاء')}
               </button>
               <button
                 type="button"
@@ -1313,7 +1313,7 @@ export default function ReceptionDashboard() {
                 disabled={isSubmitting}
                 className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg shadow-rose-600/30 transition-all disabled:opacity-50"
               >
-                تأكيد الغياب
+                {t('attendance_mgmt.confirm_absent', 'تأكيد الغياب')}
               </button>
             </div>
           </div>

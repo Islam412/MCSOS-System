@@ -53,14 +53,14 @@ export const STATUS_COLORS = {
   },
   NO_SHOW: {
     key: 'no_show',
-    labelAr: 'عدم حضور (No Show)',
+    labelAr: 'لم يحضر بدون إشعار',
     labelEn: 'No Show',
     colorClass: 'bg-red-900 text-white font-extrabold border-red-950',
     hex: '#7F1D1D'
   },
   FULLY_BOOKED: {
     key: 'fully_booked',
-    labelAr: 'مكتمل العدد (Fully Booked)',
+    labelAr: 'مكتمل العدد',
     labelEn: 'Fully Booked',
     colorClass: 'bg-black text-white dark:bg-gray-950 border-gray-800',
     hex: '#000000'

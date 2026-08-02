@@ -206,8 +206,35 @@ export default function CapacityTab() {
 
   const totalPages = Math.ceil(filteredSlots.length / itemsPerPage)
   const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = filteredSlots.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Sections 9 & 10: Capacity Management & Alerts calculation
+  const reservedSlotsCount = filteredSlots.filter(s => s.booked_count > 0 || s.session).length || 0;
+  
+  // Doctor Capacity (Max 20 patients per doctor daily)
+  const docMaxCapacity = (doctors.length > 0 ? doctors.length : 4) * 20;
+  const docOccupancy = reservedSlotsCount;
+  const docOccupancyPercent = Math.min(100, Math.round((docOccupancy / (docMaxCapacity || 1)) * 100));
+
+  // Room Capacity (Max concurrent sessions)
+  const roomMaxCapacity = 60;
+  const roomOccupancy = Math.min(roomMaxCapacity, Math.round(reservedSlotsCount * 0.8));
+  const roomOccupancyPercent = Math.min(100, Math.round((roomOccupancy / roomMaxCapacity) * 100));
+
+  // Center Overall Capacity
+  const centerMaxCapacity = 150;
+  const centerOccupancy = reservedSlotsCount;
+  const centerOccupancyPercent = Math.min(100, Math.round((centerOccupancy / centerMaxCapacity) * 100));
+
+  const getAlertBadge = (percent) => {
+    if (percent >= 85) {
+      return <span className="px-2.5 py-1 text-xs font-black rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-xs">{t('capacity_mgmt.status_full', '🔴 ممتلئ بالكامل')}</span>;
+    }
+    if (percent >= 60) {
+      return <span className="px-2.5 py-1 text-xs font-black rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-xs">{t('capacity_mgmt.status_almost_full', '🟡 شارف على الامتلاء')}</span>;
+    }
+    return <span className="px-2.5 py-1 text-xs font-black rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs">{t('capacity_mgmt.status_available', '🟢 متاح (سعة شاغرة)')}</span>;
+  };
 
   return (
     <div className="space-y-6">
@@ -338,6 +365,78 @@ export default function CapacityTab() {
             >
               <ChevronLeft size={16} />
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Sections 9 & 10: Capacity Management & Capacity Alerts Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Doctor Capacity */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-lg relative overflow-hidden">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">{t('capacity_mgmt.doctor_capacity', 'سعة الأطباء اليومية')}</p>
+              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{docOccupancy} / <span className="text-sm font-semibold text-gray-400">{docMaxCapacity} {t('capacity_mgmt.patients_per_day', 'مريض / اليوم')}</span></h3>
+            </div>
+            {getAlertBadge(docOccupancyPercent)}
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-gray-600 dark:text-gray-400">
+              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {docOccupancyPercent}%</span>
+              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {docMaxCapacity - docOccupancy}</span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${docOccupancyPercent >= 85 ? 'bg-rose-500' : docOccupancyPercent >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                style={{ width: `${docOccupancyPercent}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Room Capacity */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-lg relative overflow-hidden">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">{t('capacity_mgmt.room_capacity', 'سعة الغرف والعيادات')}</p>
+              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{roomOccupancy} / <span className="text-sm font-semibold text-gray-400">{roomMaxCapacity} {t('capacity_mgmt.sessions_per_room', 'جلسات بالتزامن')}</span></h3>
+            </div>
+            {getAlertBadge(roomOccupancyPercent)}
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-gray-600 dark:text-gray-400">
+              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {roomOccupancyPercent}%</span>
+              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {roomMaxCapacity - roomOccupancy}</span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${roomOccupancyPercent >= 85 ? 'bg-rose-500' : roomOccupancyPercent >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                style={{ width: `${roomOccupancyPercent}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Overall Capacity */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-lg relative overflow-hidden">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">{t('capacity_mgmt.center_capacity', 'السعة الإجمالية للمركز')}</p>
+              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{centerOccupancy} / <span className="text-sm font-semibold text-gray-400">{centerMaxCapacity} {t('capacity_mgmt.total_center_cap', 'إجمالي استيعاب المركز')}</span></h3>
+            </div>
+            {getAlertBadge(centerOccupancyPercent)}
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-gray-600 dark:text-gray-400">
+              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {centerOccupancyPercent}%</span>
+              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {centerMaxCapacity - centerOccupancy}</span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${centerOccupancyPercent >= 85 ? 'bg-rose-500' : centerOccupancyPercent >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                style={{ width: `${centerOccupancyPercent}%` }}
+              ></div>
+            </div>
           </div>
         </div>
       </div>

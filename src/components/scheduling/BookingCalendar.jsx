@@ -304,14 +304,14 @@ export default function BookingCalendar() {
 
   const statusColors = useMemo(() => ({
     AVAILABLE: { bg: 'linear-gradient(135deg, #10b981, #047857)', text: '#ffffff', label: isRTL ? 'متاح للحجز' : 'Available', dot: '#10b981' },
-    SCHEDULED: { bg: 'linear-gradient(135deg, #10b981, #059669)', text: '#ffffff', label: isRTL ? 'مجدول (Available)' : 'Scheduled', dot: '#10b981' },
+    SCHEDULED: { bg: 'linear-gradient(135deg, #10b981, #059669)', text: '#ffffff', label: isRTL ? 'مجدول' : 'Scheduled', dot: '#10b981' },
     CHECKED_IN: { bg: 'linear-gradient(135deg, #2563eb, #1d4ed8)', text: '#ffffff', label: isRTL ? 'تسجيل حضور' : 'Checked In', dot: '#2563eb' },
     IN_PROGRESS: { bg: 'linear-gradient(135deg, #f97316, #c2410c)', text: '#ffffff', label: isRTL ? 'جلسة جارية' : 'In Progress', dot: '#f97316' },
     COMPLETED: { bg: 'linear-gradient(135deg, #64748b, #334155)', text: '#ffffff', label: isRTL ? 'مكتمل' : 'Completed', dot: '#64748b' },
     PAYMENT_PENDING: { bg: 'linear-gradient(135deg, #eab308, #ca8a04)', text: '#1c1917', label: isRTL ? 'في انتظار الدفع' : 'Payment Pending', dot: '#eab308' },
     AWAITING_FINANCE_APPROVAL: { bg: 'linear-gradient(135deg, #9333ea, #6b21a8)', text: '#ffffff', label: isRTL ? 'اعتماد المالية' : 'Finance Approval', dot: '#9333ea' },
     CANCELLED: { bg: 'linear-gradient(135deg, #ef4444, #b91c1c)', text: '#ffffff', label: isRTL ? 'ملغي' : 'Cancelled', dot: '#ef4444' },
-    NO_SHOW: { bg: 'linear-gradient(135deg, #7f1d1d, #450a0a)', text: '#ffffff', label: isRTL ? 'عدم حضور (No Show)' : 'No Show', dot: '#7f1d1d' },
+    NO_SHOW: { bg: 'linear-gradient(135deg, #7f1d1d, #450a0a)', text: '#ffffff', label: isRTL ? 'لم يحضر بدون إشعار' : 'No Show', dot: '#7f1d1d' },
     FULLY_BOOKED: { bg: 'linear-gradient(135deg, #18181b, #09090b)', text: '#ffffff', label: isRTL ? 'مكتمل العدد' : 'Fully Booked', dot: '#18181b' },
     PACKAGE_ENDING_SOON: { bg: 'linear-gradient(135deg, #d97706, #b45309)', text: '#ffffff', label: isRTL ? 'باقة تنتهي قريباً' : 'Ending Soon', dot: '#d97706' }
   }), [isRTL])

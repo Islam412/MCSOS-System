@@ -23,6 +23,7 @@ export default function SchedulingPackages() {
     discount_amount: 0,
     notes: '',
     auto_book: false,
+    schedule_pattern: 'sat_mon_wed',
     // Custom package fields
     custom_name: '',
     custom_price: '',
@@ -62,6 +63,7 @@ export default function SchedulingPackages() {
       discount_amount: 0,
       notes: '',
       auto_book: false,
+      schedule_pattern: 'sat_mon_wed',
       custom_name: '',
       custom_price: '',
       custom_services: []
@@ -435,7 +437,7 @@ export default function SchedulingPackages() {
                 </div>
               )}
 
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
                 <label className="flex items-center gap-3 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border border-blue-100 dark:border-blue-800/30">
                   <input
                     type="checkbox"
@@ -454,6 +456,48 @@ export default function SchedulingPackages() {
                     </span>
                   </div>
                 </label>
+
+                {/* Section 8: Smart Auto-Booking Suggestions */}
+                {form.auto_book && (
+                  <div className="p-4 bg-gradient-to-r from-amber-500/10 to-indigo-500/10 rounded-xl border border-amber-500/20 dark:border-amber-500/30 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-extrabold text-sm mb-1">
+                      <span>{t('booking_suggestions.title', '💡 اقتراحات الحجز التلقائي الذكي')}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+                      {t('booking_suggestions.desc', 'يقوم النظام باقتراح أفضل الأوقات بناءً على جداول الأطباء وشغور الغرف')}
+                    </p>
+                    
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { id: 'sat_mon_wed', label: t('booking_suggestions.sat_mon_wed', 'السبت - الإثنين - الأربعاء (3 أيام/أسبوع)') },
+                        { id: 'sun_tue_thu', label: t('booking_suggestions.sun_tue_thu', 'الأحد - الثلاثاء - الخميس (3 أيام/أسبوع)') },
+                        { id: 'daily_no_fri', label: t('booking_suggestions.daily_no_fri', 'يومياً (ما عدا الجمعة)') }
+                      ].map(pattern => (
+                        <label 
+                          key={pattern.id}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg border text-xs font-bold cursor-pointer transition-all ${
+                            form.schedule_pattern === pattern.id 
+                              ? 'bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-500 shadow-sm font-black' 
+                              : 'bg-white/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="schedule_pattern"
+                            className="w-4 h-4 text-amber-600 focus:ring-amber-500 border-gray-300"
+                            checked={form.schedule_pattern === pattern.id}
+                            onChange={() => setForm({ ...form, schedule_pattern: pattern.id })}
+                          />
+                          <span>{pattern.label}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                      <span>✓ {t('booking_suggestions.suggested_time', 'الوقت المقترح: 10:00 صباحاً - غرفة العلاج الطبيعي 1')}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
