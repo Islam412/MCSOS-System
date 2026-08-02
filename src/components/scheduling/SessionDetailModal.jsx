@@ -1,7 +1,7 @@
 // src/components/scheduling/SessionDetailModal.jsx
 import { useState, useEffect } from 'react'
 import { confirmAlert } from '../../utils/confirmAlert'
-import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award } from 'lucide-react'
+import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award, Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 
@@ -720,15 +720,29 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleSaveEvaluation}
-                  disabled={submitting}
-                  className="w-full mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
-                >
-                  <ClipboardCheck size={16} />
-                  {isRTL ? 'حفظ واعتماد التقييم والخطة الموصى بها 💾' : 'Save & Submit Assessment Plan 💾'}
-                </button>
+                <div className="flex flex-col gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveEvaluation}
+                    disabled={submitting}
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                  >
+                    <ClipboardCheck size={16} />
+                    {isRTL ? 'حفظ واعتماد التقييم والخطة الموصى بها 💾' : 'Save & Submit Assessment Plan 💾'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const patientId = session.patient_id || (session.patient && session.patient.id);
+                      if (patientId) window.location.href = `/packages?patientId=${patientId}`;
+                      else toast.error(isRTL ? 'بيانات المريض غير متاحة للاستكمال' : 'Patient ID not available');
+                    }}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white p-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                  >
+                    <Package size={16} />
+                    {isRTL ? 'الانتقال لتعيين الباقة الموصى بها للمريض 📦' : 'Proceed to Assign Recommended Package 📦'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -886,7 +886,16 @@ export default function ReceptionDashboard() {
                 <input type="tel" placeholder="رقم الواتساب" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.whatsapp_number} onChange={(e) => setNewPatient({...newPatient, whatsapp_number: e.target.value})} />
               )}
               
-              <input type="text" placeholder="جهة التحويل" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.referral_source} onChange={(e) => setNewPatient({...newPatient, referral_source: e.target.value})} />
+              <select className="w-full p-2 bg-gray-700 rounded-lg text-white border border-gray-600 focus:ring-2 focus:ring-blue-500" value={newPatient.referral_source || ''} onChange={(e) => setNewPatient({...newPatient, referral_source: e.target.value})}>
+                <option value="">-- اختر جهة التحويل --</option>
+                <option value="Social Media">سوشيال ميديا (Social Media)</option>
+                <option value="Google Search">بحث جوجل (Google Search)</option>
+                <option value="Friend">ترشيح صديق (Friend)</option>
+                <option value="Doctor Referral">تحويل طبيب (Doctor Referral)</option>
+                <option value="Advertisement">إعلانات (Advertisement)</option>
+                <option value="Walk-in">زيارة مباشرة (Walk-in)</option>
+                <option value="Other">أخرى (Other)</option>
+              </select>
               <input type="text" placeholder="العنوان" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.address} onChange={(e) => setNewPatient({...newPatient, address: e.target.value})} />
 
               {/* صورة البطاقة */}
@@ -1049,7 +1058,16 @@ export default function ReceptionDashboard() {
                 <input type="tel" placeholder="رقم الواتساب" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.whatsapp_number} onChange={(e) => setEditPatientData({...editPatientData, whatsapp_number: e.target.value})} />
               )}
               
-              <input type="text" placeholder="جهة التحويل" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.referral_source} onChange={(e) => setEditPatientData({...editPatientData, referral_source: e.target.value})} />
+              <select className="w-full p-2 bg-gray-700 rounded-lg text-white border border-gray-600 focus:ring-2 focus:ring-blue-500" value={editPatientData.referral_source || ''} onChange={(e) => setEditPatientData({...editPatientData, referral_source: e.target.value})}>
+                <option value="">-- اختر جهة التحويل --</option>
+                <option value="Social Media">سوشيال ميديا (Social Media)</option>
+                <option value="Google Search">بحث جوجل (Google Search)</option>
+                <option value="Friend">ترشيح صديق (Friend)</option>
+                <option value="Doctor Referral">تحويل طبيب (Doctor Referral)</option>
+                <option value="Advertisement">إعلانات (Advertisement)</option>
+                <option value="Walk-in">زيارة مباشرة (Walk-in)</option>
+                <option value="Other">أخرى (Other)</option>
+              </select>
               <input type="text" placeholder="العنوان" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatientData.address} onChange={(e) => setEditPatientData({...editPatientData, address: e.target.value})} />
 
               {/* صورة البطاقة */}

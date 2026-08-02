@@ -1118,7 +1118,16 @@ export default function PatientProfile() {
               )}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">جهة التحويل</label>
-                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.referral_source} onChange={(e) => setNewPatient({...newPatient, referral_source: e.target.value})} />
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white border border-gray-600 focus:ring-2 focus:ring-blue-500" value={newPatient.referral_source || ''} onChange={(e) => setNewPatient({...newPatient, referral_source: e.target.value})}>
+                  <option value="">-- اختر جهة التحويل --</option>
+                  <option value="Social Media">سوشيال ميديا (Social Media)</option>
+                  <option value="Google Search">بحث جوجل (Google Search)</option>
+                  <option value="Friend">ترشيح صديق (Friend)</option>
+                  <option value="Doctor Referral">تحويل طبيب (Doctor Referral)</option>
+                  <option value="Advertisement">إعلانات (Advertisement)</option>
+                  <option value="Walk-in">زيارة مباشرة (Walk-in)</option>
+                  <option value="Other">أخرى (Other)</option>
+                </select>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm text-gray-400 mb-1">صورة البطاقة</label>
@@ -1246,7 +1255,16 @@ export default function PatientProfile() {
               )}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">جهة التحويل</label>
-                <input type="text" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={editPatient.referral_source} onChange={(e) => setEditPatient({...editPatient, referral_source: e.target.value})} />
+                <select className="w-full p-2 bg-gray-700 rounded-lg text-white border border-gray-600 focus:ring-2 focus:ring-blue-500" value={editPatient.referral_source || ''} onChange={(e) => setEditPatient({...editPatient, referral_source: e.target.value})}>
+                  <option value="">-- اختر جهة التحويل --</option>
+                  <option value="Social Media">سوشيال ميديا (Social Media)</option>
+                  <option value="Google Search">بحث جوجل (Google Search)</option>
+                  <option value="Friend">ترشيح صديق (Friend)</option>
+                  <option value="Doctor Referral">تحويل طبيب (Doctor Referral)</option>
+                  <option value="Advertisement">إعلانات (Advertisement)</option>
+                  <option value="Walk-in">زيارة مباشرة (Walk-in)</option>
+                  <option value="Other">أخرى (Other)</option>
+                </select>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm text-gray-400 mb-1">صورة البطاقة</label>

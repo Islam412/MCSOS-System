@@ -237,22 +237,36 @@ export default function PatientRegistration({ onRegistrationSuccess }) {
             <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
               الجنسية <span className="text-red-500">*</span>
             </label>
-            <select
+            <input
+              type="text"
+              list="nationalities-list"
               required
+              placeholder="ابحث أو اختر الجنسية..."
               className="w-full py-3 px-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all"
               value={form.nationality}
               onChange={(e) => setForm({ ...form, nationality: e.target.value })}
               disabled={loading}
-            >
-              <option value="مصر">مصري (مصر)</option>
-              <option value="السعودية">سعودي (السعودية)</option>
-              <option value="الإمارات">إماراتي (الإمارات)</option>
-              <option value="الكويت">كويتي (الكويت)</option>
-              <option value="قطر">قطري (قطر)</option>
-              <option value="الأردن">أردني (الأردن)</option>
-              <option value="السودان">سوداني (السودان)</option>
-              <option value="أخرى">أخرى</option>
-            </select>
+            />
+            <datalist id="nationalities-list">
+              <option value="مصر (Egypt)" />
+              <option value="السعودية (Saudi Arabia)" />
+              <option value="الإمارات (UAE)" />
+              <option value="الكويت (Kuwait)" />
+              <option value="قطر (Qatar)" />
+              <option value="الأردن (Jordan)" />
+              <option value="العراق (Iraq)" />
+              <option value="سوريا (Syria)" />
+              <option value="السودان (Sudan)" />
+              <option value="لبنان (Lebanon)" />
+              <option value="فلسطين (Palestine)" />
+              <option value="سلطنة عمان (Oman)" />
+              <option value="البحرين (Bahrain)" />
+              <option value="اليمن (Yemen)" />
+              <option value="المغرب (Morocco)" />
+              <option value="الجزائر (Algeria)" />
+              <option value="تونس (Tunisia)" />
+              <option value="أخرى (Other)" />
+            </datalist>
           </div>
 
           <div>

@@ -15,7 +15,50 @@ export default function DashboardLayout() {
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState('')
   const [showNotifications, setShowNotifications] = useState(false)
+  const [notifications, setNotifications] = useState([
+    { id: 1, icon: '📦', colorClass: 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20', iconColor: 'text-amber-500', titleAr: 'تنبيه باقة على وشك الانتهاء', titleEn: 'Package Ending Soon Alert', descAr: 'باقة المريض (منى عبد المقصود) متبقي بها جلستان فقط. يُنصح بتجهيز الفاتورة للتجديد لتفادي انقطاع العلاج.', descEn: 'Patient package has only 2 sessions remaining. Prepare renewal invoice.', is_read: false },
+    { id: 2, icon: '🔴', colorClass: 'hover:bg-rose-50/50 dark:hover:bg-rose-950/20', iconColor: 'text-rose-600', titleAr: 'تنبيه السعة القصوى للطبيب', titleEn: 'Doctor Full Capacity Warning', descAr: 'د. محمود سعيد وصل للحد الأقصى اليوم (20 / 20 مريض). يتم تحويل المواعيد الجديدة تلقائيًا.', descEn: 'Dr. Mahmoud has reached daily maximum capacity (20/20).', is_read: false },
+    { id: 3, icon: '💳', colorClass: 'hover:bg-purple-50/50 dark:hover:bg-purple-950/20', iconColor: 'text-purple-600', titleAr: 'التحقق المالي لجلسة التقييم', titleEn: 'Payment Verification Pending', descAr: 'دفعة التقييم للمريض (ريماز عبد الرزاق) في انتظار اعتماد قسم المالية للسماح ببدء الجلسة.', descEn: 'Assessment session payment pending finance verification.', is_read: false },
+    { id: 4, icon: '🟢', colorClass: 'hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20', iconColor: 'text-emerald-500', titleAr: 'تسجيل دخول مريض وإصدار تقرير', titleEn: 'Patient Checked-in & Evaluated', descAr: 'تم تسجيل حضور المريض سعد الله وبدء جلسة العلاج في صالة Pool 1.', descEn: 'Patient checked in successfully at Pool 1.', is_read: true }
+  ])
   const isRTL = i18n.language === 'ar'
+  
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem('mcsos_token')
+        const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
+        const res = await fetch(`${API_BASE}/notifications`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            setNotifications(data.map((item, idx) => ({
+              id: item.id || idx,
+              icon: item.type === 'PACKAGE_ENDING_SOON' ? '📦' : item.type === 'CAPACITY_LIMIT_REACHED' ? '🔴' : item.type === 'PAYMENT_VERIFIED' ? '💳' : '🔔',
+              colorClass: 'hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20',
+              iconColor: 'text-indigo-500',
+              titleAr: item.title,
+              titleEn: item.title,
+              descAr: item.message,
+              descEn: item.message,
+              is_read: item.is_read
+            })))
+          }
+        }
+      } catch (e) {
+        console.warn('Using local notification alerts')
+      }
+    }
+    fetchNotifications()
+  }, [])
+
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+  }
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
   
   useEffect(() => {
     const checkScreenSize = () => {
@@ -279,45 +322,43 @@ export default function DashboardLayout() {
                 title="إشعارات الرقابة العلاجية والمالية التلقائية"
               >
                 <Activity size={18} className="text-indigo-600 dark:text-indigo-400" />
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
+                {unreadCount > 0 && (
+                  <>
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
+                  </>
+                )}
               </button>
 
               {showNotifications && (
                 <div className={`absolute top-12 ${isRTL ? 'left-0' : 'right-0'} w-80 sm:w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border-2 border-gray-200 dark:border-gray-800 z-50 overflow-hidden animate-fade-in`}>
                   <div className="p-3.5 bg-indigo-900 text-white font-extrabold flex justify-between items-center text-xs">
-                    <span>🔔 {isRTL ? 'الإشعارات والتنبيهات التلقائية (Phase 14)' : 'System Notifications Center'}</span>
-                    <span className="px-2 py-0.5 bg-rose-500 rounded-md text-[10px]">4 {isRTL ? 'تنبيهات نشطة' : 'Active Alerts'}</span>
+                    <span>🔔 {isRTL ? 'الإشعارات والتنبيهات التلقائية' : 'System Notifications Center'}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-rose-500 rounded-md text-[10px]">{unreadCount} {isRTL ? 'تنبيهات' : 'Alerts'}</span>
+                      {unreadCount > 0 && (
+                        <button onClick={handleMarkAllRead} className="text-[10px] bg-indigo-800 hover:bg-indigo-700 px-1.5 py-0.5 rounded text-indigo-200 transition">
+                          {isRTL ? 'تحديد كمقروء' : 'Mark read'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-80 overflow-y-auto font-bold text-xs text-left rtl:text-right">
-                    <div className="p-3 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 flex gap-3 transition cursor-pointer" onClick={() => setShowNotifications(false)}>
-                      <span className="text-amber-500 text-lg">📦</span>
-                      <div>
-                        <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? 'تنبيه باقة على وشك الانتهاء' : 'Package Ending Soon Alert'}</p>
-                        <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? 'باقة المريض (منى عبد المقصود) متبقي بها جلستان فقط. يُنصح بتجهيز الفاتورة للتجديد لتفادي انقطاع العلاج.' : 'Patient package has only 2 sessions remaining. Prepare renewal invoice.'}</p>
+                    {notifications.map((notif) => (
+                      <div key={notif.id} className={`p-3 ${notif.colorClass || 'hover:bg-gray-50 dark:hover:bg-gray-800'} flex gap-3 transition cursor-pointer ${!notif.is_read ? 'bg-blue-50/20 dark:bg-blue-950/10' : 'opacity-75'}`} onClick={() => {
+                        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n))
+                        setShowNotifications(false)
+                      }}>
+                        <span className={`${notif.iconColor || 'text-indigo-500'} text-lg`}>{notif.icon || '🔔'}</span>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center">
+                            <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? notif.titleAr : notif.titleEn}</p>
+                            {!notif.is_read && <span className="w-2 h-2 rounded-full bg-indigo-500"></span>}
+                          </div>
+                          <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? notif.descAr : notif.descEn}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="p-3 hover:bg-rose-50/50 dark:hover:bg-rose-950/20 flex gap-3 transition cursor-pointer" onClick={() => setShowNotifications(false)}>
-                      <span className="text-rose-600 text-lg">🔴</span>
-                      <div>
-                        <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? 'تنبيه السعة القصوى للطبيب' : 'Doctor Full Capacity Warning'}</p>
-                        <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? 'د. محمود سعيد وصل للحد الأقصى اليوم (20 / 20 مريض). يتم تحويل المواعيد الجديدة تلقائيًا.' : 'Dr. Mahmoud has reached daily maximum capacity (20/20).'}</p>
-                      </div>
-                    </div>
-                    <div className="p-3 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 flex gap-3 transition cursor-pointer" onClick={() => setShowNotifications(false)}>
-                      <span className="text-purple-600 text-lg">💳</span>
-                      <div>
-                        <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? 'التحقق المالي لجلسة التقييم' : 'Payment Verification Pending'}</p>
-                        <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? 'دفعة التقييم للمريض (ريماز عبد الرزاق) في انتظار اعتماد قسم المالية للسماح ببدء الجلسة.' : 'Assessment session payment pending finance verification.'}</p>
-                      </div>
-                    </div>
-                    <div className="p-3 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 flex gap-3 transition cursor-pointer" onClick={() => setShowNotifications(false)}>
-                      <span className="text-emerald-500 text-lg">🟢</span>
-                      <div>
-                        <p className="text-gray-900 dark:text-white font-extrabold">{isRTL ? 'تسجيل دخول مريض وإصدار تقرير' : 'Patient Checked-in & Evaluated'}</p>
-                        <p className="text-gray-500 dark:text-gray-400 font-normal text-[11px] mt-0.5">{isRTL ? 'تم تسجيل حضور المريض سعد الله وبدء جلسة العلاج في صالة Pool 1.' : 'Patient checked in successfully at Pool 1.'}</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               )}
