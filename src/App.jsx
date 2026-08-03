@@ -30,6 +30,8 @@ import Appointments from './pages/patient/Appointments'
 import BookAppointment from './pages/patient/BookAppointment'
 import DailyFollowUp from './pages/DailyFollowUp'
 import ReportsDashboard from './pages/reports/ReportsDashboard'
+import EmployeesManagerPage from './pages/admin/EmployeesManagerPage'
+import RbacManagerPage from './pages/admin/RbacManagerPage'
 
 function App() {
   return (
@@ -46,6 +48,8 @@ function App() {
         }>
           {/* مسارات الأدمن */}
           <Route path="admin" element={<AdminDashboard />} />
+          <Route path="employees-manager" element={<EmployeesManagerPage />} />
+          <Route path="rbac-manager" element={<RbacManagerPage />} />
           <Route path="dashboard" element={<HospitalDashboard />} />
           <Route path="doctors-manager" element={<DoctorsManager />} />
           <Route path="users-manager" element={<UsersManager />} />

@@ -17,7 +17,6 @@ import {
 import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-// ========== استيراد الخدمات ==========
 import { usersService, doctorsService, patientsService, invoicesService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 
@@ -34,6 +33,13 @@ export default function AdminDashboard() {
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [loading, setLoading] = useState(true)
   const [apiError, setApiError] = useState(null)
+
+  // ========== حالات إدارة الموظفين وصلاحيات RBAC ==========
+  const [isEmpModalOpen, setIsEmpModalOpen] = useState(false)
+  const [selectedEmpForEdit, setSelectedEmpForEdit] = useState(null)
+  const [empSearchQuery, setEmpSearchQuery] = useState('')
+  const [empDepartmentFilter, setEmpDepartmentFilter] = useState('all')
+  const [rbacRolesList, setRbacRolesList] = useState([])
 
   // ========== بيانات من API ==========
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
@@ -153,18 +159,25 @@ export default function AdminDashboard() {
   const loadLocalEmployees = () => {
     try {
       const saved = localStorage.getItem('mcsos_users_v2')
-      if (saved) {
-        const data = JSON.parse(saved)
-        if (Array.isArray(data)) {
-          const grouped = {
-            doctors: data.filter(u => u.role?.toLowerCase() === 'doctor'),
-            reception: data.filter(u => u.role?.toLowerCase() === 'reception'),
-            finance: data.filter(u => u.role?.toLowerCase() === 'finance'),
-            nurses: data.filter(u => u.role?.toLowerCase() === 'nurse')
-          }
-          setEmployees(grouped)
-        }
+      let data = saved ? JSON.parse(saved) : []
+      if (!Array.isArray(data) || data.length === 0) {
+        data = [
+          { id: 'EMP-101', name: isRTL ? 'د. سارة عبد الستار' : 'Dr. Sarah Abdel Satar', email: 'sarah.s@mc.com', phone: '+20 100 234 5678', department: 'Doctors', role: 'Doctor', shift: 'Morning (08:00 - 16:00)', status: 'active', salary: '25,000 EGP / 20%' },
+          { id: 'EMP-102', name: isRTL ? 'د. حاتم رضوان' : 'Dr. Hatem Radwan', email: 'hatem.r@mc.com', phone: '+20 101 987 6543', department: 'Doctors', role: 'Doctor', shift: 'Evening (16:00 - 00:00)', status: 'active', salary: '28,000 EGP / 25%' },
+          { id: 'EMP-103', name: isRTL ? 'منى عبد الرحيم' : 'Mona Abdel Rahim', email: 'mona.recep@mc.com', phone: '+20 102 345 6789', department: 'Reception', role: 'Receptionist', shift: 'Morning (08:00 - 16:00)', status: 'active', salary: '12,000 EGP' },
+          { id: 'EMP-104', name: isRTL ? 'طارق فتحي' : 'Tarek Fathy', email: 'tarek.f@mc.com', phone: '+20 105 678 9012', department: 'Finance', role: 'Finance', shift: 'Full Time', status: 'active', salary: '16,000 EGP' },
+          { id: 'EMP-105', name: isRTL ? 'مريم صلاح' : 'Maryam Salah', email: 'maryam.s@mc.com', phone: '+20 109 876 5432', department: 'Nursing', role: 'Nurse', shift: 'Evening (16:00 - 00:00)', status: 'inactive', salary: '9,500 EGP' }
+        ]
+        localStorage.setItem('mcsos_users_v2', JSON.stringify(data))
       }
+      const grouped = {
+        doctors: data.filter(u => u.department === 'Doctors' || u.role?.toLowerCase().includes('doc') || u.role === 'DOCTOR' || u.role === 'Doctor'),
+        reception: data.filter(u => u.department === 'Reception' || u.role?.toLowerCase().includes('recep') || u.role === 'RECEPTIONIST' || u.role === 'Receptionist'),
+        finance: data.filter(u => u.department === 'Finance' || u.role?.toLowerCase().includes('fin') || u.role === 'FINANCE' || u.role === 'Finance'),
+        nurses: data.filter(u => u.department === 'Nursing' || u.role?.toLowerCase().includes('nurse') || u.role === 'NURSE' || u.role === 'Nurse'),
+        admin: data.filter(u => u.department === 'Administration' || u.role === 'Admin')
+      }
+      setEmployees(grouped)
     } catch (error) {
       console.error('Error loading local employees:', error)
     }
@@ -335,6 +348,83 @@ export default function AdminDashboard() {
     return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">✓ متوفر</span>
   }
 
+  // ========== دوال إدارة الكادر الوظيفي (Employee CRUD) ==========
+  const handleOpenAddEmp = () => {
+    setSelectedEmpForEdit(null)
+    setIsEmpModalOpen(true)
+  }
+
+  const handleOpenEditEmp = (emp) => {
+    setSelectedEmpForEdit(emp)
+    setIsEmpModalOpen(true)
+  }
+
+  const handleSaveEmployee = (empData) => {
+    let allEmps = []
+    Object.values(employees).forEach(arr => {
+      if (Array.isArray(arr)) allEmps = [...allEmps, ...arr]
+    })
+    const idx = allEmps.findIndex(e => e.id === empData.id)
+    if (idx >= 0) allEmps[idx] = empData
+    else allEmps.push(empData)
+
+    localStorage.setItem('mcsos_users_v2', JSON.stringify(allEmps))
+    const grouped = {
+      doctors: allEmps.filter(u => u.department === 'Doctors' || u.role?.toLowerCase().includes('doc') || u.role === 'DOCTOR' || u.role === 'Doctor'),
+      reception: allEmps.filter(u => u.department === 'Reception' || u.role?.toLowerCase().includes('recep') || u.role === 'RECEPTIONIST' || u.role === 'Receptionist'),
+      finance: allEmps.filter(u => u.department === 'Finance' || u.role?.toLowerCase().includes('fin') || u.role === 'FINANCE' || u.role === 'Finance'),
+      nurses: allEmps.filter(u => u.department === 'Nursing' || u.role?.toLowerCase().includes('nurse') || u.role === 'NURSE' || u.role === 'Nurse'),
+      admin: allEmps.filter(u => u.department === 'Administration' || u.role === 'Admin')
+    }
+    setEmployees(grouped)
+    setDashboardStats(prev => ({ ...prev, totalDoctors: (grouped.doctors || []).length }))
+  }
+
+  const handleDeleteEmployee = (empId) => {
+    if (!window.confirm(t('employee_mgmt.delete_confirm_msg', 'هل أنت متأكد من حذف بيانات هذا الموظف نهائياً؟'))) return
+    let allEmps = []
+    Object.values(employees).forEach(arr => {
+      if (Array.isArray(arr)) allEmps = [...allEmps, ...arr]
+    })
+    allEmps = allEmps.filter(e => e.id !== empId)
+    localStorage.setItem('mcsos_users_v2', JSON.stringify(allEmps))
+    const grouped = {
+      doctors: allEmps.filter(u => u.department === 'Doctors' || u.role?.toLowerCase().includes('doc') || u.role === 'DOCTOR' || u.role === 'Doctor'),
+      reception: allEmps.filter(u => u.department === 'Reception' || u.role?.toLowerCase().includes('recep') || u.role === 'RECEPTIONIST' || u.role === 'Receptionist'),
+      finance: allEmps.filter(u => u.department === 'Finance' || u.role?.toLowerCase().includes('fin') || u.role === 'FINANCE' || u.role === 'Finance'),
+      nurses: allEmps.filter(u => u.department === 'Nursing' || u.role?.toLowerCase().includes('nurse') || u.role === 'NURSE' || u.role === 'Nurse'),
+      admin: allEmps.filter(u => u.department === 'Administration' || u.role === 'Admin')
+    }
+    setEmployees(grouped)
+    setDashboardStats(prev => ({ ...prev, totalDoctors: (grouped.doctors || []).length }))
+    toast.success(t('employee_mgmt.employee_deleted', 'تم حذف سجل الموظف من القائمة بنجاح'), { style: { background: '#7f1d1d', color: '#fff' } })
+  }
+
+  const getFilteredEmployeesList = () => {
+    let list = []
+    if (empDepartmentFilter === 'all') {
+      Object.values(employees).forEach(arr => {
+        if (Array.isArray(arr)) list = [...list, ...arr]
+      })
+    } else if (empDepartmentFilter === 'Doctors') {
+      list = employees.doctors || []
+    } else if (empDepartmentFilter === 'Reception') {
+      list = employees.reception || []
+    } else if (empDepartmentFilter === 'Nursing') {
+      list = employees.nurses || []
+    } else if (empDepartmentFilter === 'Finance') {
+      list = employees.finance || []
+    } else if (empDepartmentFilter === 'Administration') {
+      list = employees.admin || []
+    }
+
+    if (empSearchQuery.trim()) {
+      const q = empSearchQuery.toLowerCase()
+      list = list.filter(e => (e.name || '').toLowerCase().includes(q) || (e.role || '').toLowerCase().includes(q) || (e.department || '').toLowerCase().includes(q) || (e.email || '').toLowerCase().includes(q) || (e.phone || '').includes(q))
+    }
+    return list
+  }
+
   // حساب إجمالي الموظفين
   const totalEmployees = Object.values(employees).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0)
   const totalDoctors = Array.isArray(employees.doctors) ? employees.doctors.length : 0
@@ -384,15 +474,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-700 pb-2 overflow-x-auto">
-        <button onClick={() => setActiveTab('overview')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>📊 نظرة عامة</button>
-        <button onClick={() => setActiveTab('employees')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'employees' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>👥 الموظفين</button>
-        <button onClick={() => setActiveTab('doctors')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'doctors' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>👨‍⚕️ الأطباء</button>
-        <button onClick={() => setActiveTab('nurses')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'nurses' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>👩‍⚕️ الممرضات</button>
-        <button onClick={() => setActiveTab('reception')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'reception' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>📞 الاستقبال</button>
-        <button onClick={() => setActiveTab('finance')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'finance' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>💰 المالية</button>
-        <button onClick={() => setActiveTab('inventory')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'inventory' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>📦 الخزنة والمخزون</button>
-        <button onClick={() => setActiveTab('treatments')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'treatments' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}>💊 أنواع العلاج</button>
+      <div className="flex gap-2 border-b border-gray-700 pb-2 overflow-x-auto custom-scrollbar">
+        <button onClick={() => setActiveTab('overview')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400 font-bold' : 'text-gray-400 hover:text-gray-300'}`}>📊 {isRTL ? 'نظرة عامة' : 'Overview'}</button>
+        <button onClick={() => setActiveTab('doctors')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'doctors' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400 font-bold' : 'text-gray-400 hover:text-gray-300'}`}>👨‍⚕️ {t('employee_mgmt.filter_doctors', 'الأطباء')}</button>
+        <button onClick={() => setActiveTab('nurses')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'nurses' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400 font-bold' : 'text-gray-400 hover:text-gray-300'}`}>👩‍⚕️ {t('employee_mgmt.filter_nurses', 'الممرضات')}</button>
+        <button onClick={() => setActiveTab('reception')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'reception' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400 font-bold' : 'text-gray-400 hover:text-gray-300'}`}>📞 {t('employee_mgmt.filter_reception', 'الاستقبال')}</button>
+        <button onClick={() => setActiveTab('finance')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'finance' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400 font-bold' : 'text-gray-400 hover:text-gray-300'}`}>💰 {t('employee_mgmt.filter_finance', 'المالية')}</button>
+        <button onClick={() => setActiveTab('inventory')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'inventory' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400 font-bold' : 'text-gray-400 hover:text-gray-300'}`}>📦 {isRTL ? 'الخزنة والمخزون' : 'Inventory'}</button>
+        <button onClick={() => setActiveTab('treatments')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'treatments' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400 font-bold' : 'text-gray-400 hover:text-gray-300'}`}>💊 {isRTL ? 'أنواع العلاج' : 'Treatments'}</button>
       </div>
 
       {/* ========== نظرة عامة ========== */}
@@ -472,64 +561,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </>
-      )}
-
-      {/* ========== جميع الموظفين ========== */}
-      {activeTab === 'employees' && (
-        <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
-          <div className="px-6 py-4 border-b border-gray-700/50"><h2 className="text-xl font-bold text-white">جميع الموظفين ({totalEmployees})</h2></div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-800/80">
-                <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
-                  <th className="px-4 py-3 text-sm text-gray-300">الموظف</th>
-                  <th className="px-4 py-3 text-sm text-gray-300">القسم</th>
-                  <th className="px-4 py-3 text-sm text-gray-300">الوظيفة</th>
-                  <th className="px-4 py-3 text-sm text-gray-300">الجوال</th>
-                  <th className="px-4 py-3 text-sm text-gray-300">الحالة</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700/50">
-                {Array.isArray(employees.doctors) && employees.doctors.map(emp => (
-                  <tr key={emp.id} className="hover:bg-gray-700/30">
-                    <td className="px-4 py-3"><div className="font-semibold text-white">{emp.name}</div><div className="text-xs text-gray-500">{emp.specialty || emp.specialization}</div></td>
-                    <td className="px-4 py-3">الأطباء</td>
-                    <td className="px-4 py-3">طبيب</td>
-                    <td className="px-4 py-3 dir-ltr">{emp.phone}</td>
-                    <td className="px-4 py-3">{getStatusBadge(emp.status || 'active')}</td>
-                  </tr>
-                ))}
-                {Array.isArray(employees.nurses) && employees.nurses.map(emp => (
-                  <tr key={emp.id} className="hover:bg-gray-700/30">
-                    <td className="px-4 py-3"><div className="font-semibold text-white">{emp.name}</div><div className="text-xs text-gray-500">{emp.department}</div></td>
-                    <td className="px-4 py-3">التمريض</td>
-                    <td className="px-4 py-3">ممرض</td>
-                    <td className="px-4 py-3 dir-ltr">{emp.phone}</td>
-                    <td className="px-4 py-3">{getStatusBadge(emp.status || 'active')}</td>
-                  </tr>
-                ))}
-                {Array.isArray(employees.reception) && employees.reception.map(emp => (
-                  <tr key={emp.id} className="hover:bg-gray-700/30">
-                    <td className="px-4 py-3"><div className="font-semibold text-white">{emp.name}</div><div className="text-xs text-gray-500">{emp.shift}</div></td>
-                    <td className="px-4 py-3">الاستقبال</td>
-                    <td className="px-4 py-3">موظف استقبال</td>
-                    <td className="px-4 py-3 dir-ltr">{emp.phone}</td>
-                    <td className="px-4 py-3">{getStatusBadge(emp.status || 'active')}</td>
-                  </tr>
-                ))}
-                {Array.isArray(employees.finance) && employees.finance.map(emp => (
-                  <tr key={emp.id} className="hover:bg-gray-700/30">
-                    <td className="px-4 py-3"><div className="font-semibold text-white">{emp.name}</div><div className="text-xs text-gray-500">{emp.position}</div></td>
-                    <td className="px-4 py-3">المالية</td>
-                    <td className="px-4 py-3">موظف مالي</td>
-                    <td className="px-4 py-3 dir-ltr">{emp.phone}</td>
-                    <td className="px-4 py-3">{getStatusBadge(emp.status || 'active')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
       )}
 
       {/* ========== الأطباء ========== */}

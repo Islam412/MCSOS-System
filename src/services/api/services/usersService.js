@@ -153,6 +153,28 @@ export const usersService = {
     }
   },
 
+  // ✅ تخصيص دور للمستخدم (RBAC Role Assignment)
+  assignRole: async (userId, role) => {
+    try {
+      const response = await post(ENDPOINTS.USERS.ASSIGN_ROLE, { userId, role })
+      return response
+    } catch (error) {
+      console.error(`Error assigning role ${role} to user ${userId}:`, error)
+      throw error
+    }
+  },
+
+  // ✅ مزامنة وحفظ إعدادات مصفوفة الصلاحيات (RBAC Matrix Sync)
+  saveRbacMatrix: async (rolesMatrix) => {
+    try {
+      const response = await post('/api/v1/settings/rbac-matrix', { matrix: rolesMatrix })
+      return response
+    } catch (error) {
+      console.warn('Backend endpoint for RBAC matrix sync not available or offline, relying on localized state:', error.message)
+      return false
+    }
+  },
+
   // تغيير كلمة المرور
   changePassword: async (id, passwordData) => {
     try {

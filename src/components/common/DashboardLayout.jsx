@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck, DoorOpen, Activity, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck, DoorOpen, Activity, ChevronRight, ChevronLeft, UserCog, Lock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -94,6 +94,8 @@ export default function DashboardLayout() {
     if (userRole === 'admin') {
       return [
         { to: '/admin', label: 'sidebar.admin_dashboard', icon: Shield },
+        { to: '/employees-manager', label: 'sidebar.employees_manager', icon: UserCog },
+        { to: '/rbac-manager', label: 'sidebar.rbac_manager', icon: Lock },
         { to: '/dashboard', label: 'sidebar.hospital_dashboard', icon: Hospital },
         { to: '/reports', label: 'sidebar.reports', icon: Activity },
         { to: '/daily-followup', label: 'sidebar.daily_followup', icon: Clock },
@@ -131,6 +133,14 @@ export default function DashboardLayout() {
         { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: UserCircle },
         { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
+        profileItem
+      ]
+    } else if (userRole === 'finance') {
+      return [
+        { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
+        { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
+        { to: '/reports', label: 'sidebar.reports', icon: Activity },
+        { to: '/daily-followup', label: 'sidebar.daily_followup', icon: Clock },
         profileItem
       ]
     } else if (userRole === 'user' || userRole === 'patient') {
@@ -304,14 +314,39 @@ export default function DashboardLayout() {
               ) 
             : ''
         }`}>
-          {/* Phase 14 & 15: RBAC Role Bar & Smart Notifications Center */}
+          {/* Phase 14 & 15: RBAC Role Bar & Interactive Role Switcher */}
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md px-6 py-3 border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-30 flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-black shadow-2xs">
-                🛡️ {getRoleName()} (RBAC: {userRole || 'admin'})
-              </span>
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 hidden sm:inline-block">
-                {isRTL ? '✨ النظام المتكامل للرقابة الطبية، السعة، وتدفق الباقات (Active Engine)' : '✨ Advanced MCSOS Healthcare Management Engine Active'}
+            <div className="flex items-center gap-3">
+              {/* Interactive RBAC Role Selector Dropdown */}
+              <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1 rounded-xl text-xs font-bold shadow-xs">
+                <span>🛡️ {isRTL ? 'صلاحيات الحساب (RBAC):' : 'RBAC Role:'}</span>
+                <select
+                  value={userRole || 'admin'}
+                  onChange={(e) => {
+                    const newRole = e.target.value;
+                    setUserRole(newRole);
+                    const updatedUser = { ...(user || {}), role: newRole };
+                    setUser(updatedUser);
+                    localStorage.setItem('mcsos_user', JSON.stringify(updatedUser));
+                    toast.success(
+                      isRTL 
+                        ? `تم تفعيل صلاحيات: ${newRole === 'admin' ? 'مدير النظام' : newRole === 'reception' ? 'موظف الاستقبال' : newRole === 'doctor' ? 'الطبيب المعالج' : newRole === 'finance' ? 'الحسابات والمالية' : 'المريض'}` 
+                        : `Activated RBAC Role: ${newRole.toUpperCase()}`
+                    );
+                  }}
+                  className="bg-black/20 text-white font-extrabold cursor-pointer outline-none rounded-lg px-2 py-0.5 border border-white/30 text-xs hover:bg-black/30 transition"
+                  title="إمكانية تبديل الصلاحيات الفورية لاختبار شاشات ومميزات كل دور"
+                >
+                  <option value="admin" className="bg-gray-900 text-white">👑 {isRTL ? 'مدير النظام (Admin)' : 'Admin'}</option>
+                  <option value="reception" className="bg-gray-900 text-white">🏥 {isRTL ? 'موظف استقبال (Reception)' : 'Receptionist'}</option>
+                  <option value="doctor" className="bg-gray-900 text-white">🩺 {isRTL ? 'طبيب معالج (Doctor)' : 'Doctor'}</option>
+                  <option value="finance" className="bg-gray-900 text-white">💳 {isRTL ? 'الحسابات والمالية (Finance)' : 'Finance'}</option>
+                  <option value="patient" className="bg-gray-900 text-white">👤 {isRTL ? 'حساب مريض (Patient)' : 'Patient'}</option>
+                </select>
+              </div>
+
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 hidden lg:inline-block">
+                {isRTL ? '✨ النظام المتكامل للرقابة الطبية والسعة والتدفقات' : '✨ Healthcare Operations & Capacity Engine Active'}
               </span>
             </div>
 
