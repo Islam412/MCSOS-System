@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, Search, Plus, User, ClipboardList, MapPin, Loader2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { compressImage } from '../../utils/imageCompressor'
 
 export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, onBookingComplete }) {
   const { i18n } = useTranslation()
@@ -514,18 +515,11 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                       type="file"
                       accept="image/*,.pdf"
                       className="w-full text-[10px] text-gray-500 dark:text-gray-400 file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-500/10 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files[0]
                         if (file) {
-                          if (file.size > 5 * 1024 * 1024) {
-                            toast.error(isRTL ? 'حجم الملف يجب أن لا يتجاوز 5 ميجابايت' : 'File size must not exceed 5MB')
-                            return
-                          }
-                          const reader = new FileReader()
-                          reader.onloadend = () => {
-                            setRegForm({ ...regForm, national_id_front: reader.result })
-                          }
-                          reader.readAsDataURL(file)
+                          const compressed = await compressImage(file)
+                          setRegForm(prev => ({ ...prev, national_id_front: compressed }))
                         }
                       }}
                       disabled={loading}
@@ -559,18 +553,11 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                       type="file"
                       accept="image/*,.pdf"
                       className="w-full text-[10px] text-gray-500 dark:text-gray-400 file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-500/10 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files[0]
                         if (file) {
-                          if (file.size > 5 * 1024 * 1024) {
-                            toast.error(isRTL ? 'حجم الملف يجب أن لا يتجاوز 5 ميجابايت' : 'File size must not exceed 5MB')
-                            return
-                          }
-                          const reader = new FileReader()
-                          reader.onloadend = () => {
-                            setRegForm({ ...regForm, national_id_back: reader.result })
-                          }
-                          reader.readAsDataURL(file)
+                          const compressed = await compressImage(file)
+                          setRegForm(prev => ({ ...prev, national_id_back: compressed }))
                         }
                       }}
                       disabled={loading}
