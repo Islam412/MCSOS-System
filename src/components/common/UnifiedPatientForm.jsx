@@ -134,36 +134,7 @@ export default function UnifiedPatientForm({
 
   return (
     <form onSubmit={handleSubmit} className={`space-y-4 ${isRTL ? 'text-right' : 'text-left'}`}>
-      {/* Name Input Group */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-            {isRTL ? 'الاسم الأول (بالعربي/الإنجليزي)' : 'First Name'} <span className="text-rose-500">*</span>
-          </label>
-          <input
-            type="text"
-            required
-            value={form.first_name}
-            onChange={(e) => setForm({ ...form, first_name: e.target.value, full_name_ar: `${e.target.value} ${form.last_name}`.trim() })}
-            placeholder={isRTL ? 'أدخل الاسم الأول...' : 'First Name...'}
-            className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-            {isRTL ? 'اسم العائلة / باقي الاسم' : 'Last Name'}
-          </label>
-          <input
-            type="text"
-            value={form.last_name}
-            onChange={(e) => setForm({ ...form, last_name: e.target.value, full_name_ar: `${form.first_name} ${e.target.value}`.trim() })}
-            placeholder={isRTL ? 'أدخل اسم العائلة...' : 'Last Name...'}
-            className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition"
-          />
-        </div>
-      </div>
-
-      {/* Full Name AR override */}
+      {/* Full Name (4 Parts) */}
       <div>
         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
           {isRTL ? 'الاسم رباعي (بالكامل)' : 'Full Name (4 Parts)'} <span className="text-rose-500">*</span>
@@ -178,7 +149,7 @@ export default function UnifiedPatientForm({
         />
       </div>
 
-      {/* Phone & WhatsApp */}
+      {/* Phone & Nationality */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
@@ -198,13 +169,23 @@ export default function UnifiedPatientForm({
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
             {isRTL ? 'الجنسية' : 'Nationality'} <span className="text-rose-500">*</span>
           </label>
-          <input
-            type="text"
+          <select
             value={form.nationality}
             onChange={(e) => setForm({ ...form, nationality: e.target.value })}
-            placeholder={isRTL ? 'مصر - Egypt' : 'Egypt'}
             className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition"
-          />
+          >
+            <option value="مصري - Egypt">{isRTL ? 'مصري - Egypt' : 'Egyptian - Egypt'}</option>
+            <option value="سعودي - Saudi Arabia">{isRTL ? 'سعودي - Saudi Arabia' : 'Saudi - Saudi Arabia'}</option>
+            <option value="إماراتي - UAE">{isRTL ? 'إماراتي - UAE' : 'Emirati - UAE'}</option>
+            <option value="كويتي - Kuwait">{isRTL ? 'كويتي - Kuwait' : 'Kuwaiti - Kuwait'}</option>
+            <option value="قطري - Qatar">{isRTL ? 'قطري - Qatar' : 'Qatari - Qatar'}</option>
+            <option value="أردني - Jordan">{isRTL ? 'أردني - Jordan' : 'Jordanian - Jordan'}</option>
+            <option value="سوري - Syria">{isRTL ? 'سوري - Syria' : 'Syrian - Syria'}</option>
+            <option value="لبناني - Lebanon">{isRTL ? 'لبناني - Lebanon' : 'Lebanese - Lebanon'}</option>
+            <option value="عراقي - Iraq">{isRTL ? 'عراقي - Iraq' : 'Iraqi - Iraq'}</option>
+            <option value="فلسطيني - Palestine">{isRTL ? 'فلسطيني - Palestine' : 'Palestinian - Palestine'}</option>
+            <option value="أجنبي / آخر - Other">{isRTL ? 'أجنبي / آخر - Other' : 'Other'}</option>
+          </select>
         </div>
       </div>
 

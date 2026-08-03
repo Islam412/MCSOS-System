@@ -481,25 +481,25 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                   </div>
                 </div>
 
-                {/* Assessment Payment Workflow Verification Banner */}
-                {session.session_type === 'ASSESSMENT' && !session.payment_verified && (
-                  <div className="col-span-2 p-3.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800/80 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
-                    <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300">
-                      <AlertTriangle size={20} className="shrink-0 text-amber-600 dark:text-amber-400 animate-pulse" />
+                {/* Elegant Payment Verification Action Banner when unverified */}
+                {!session.payment_verified && !session.is_deducted && session.status !== 'CANCELED' && (
+                  <div className="col-span-2 p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center justify-between gap-3 shadow-sm">
+                    <div className="flex items-center gap-2.5 text-emerald-900 dark:text-emerald-300">
+                      <CreditCard size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <span className="text-xs font-bold leading-relaxed">
                         {isRTL 
-                          ? '⛔ جلسة التقييم الطبي تتطلب اعتماد الدفع من الإدارة المالية قبل البدء' 
-                          : '⛔ Assessment session requires payment verification before starting'}
+                          ? 'حالة الدفع معلقة، يمكنك اعتماد وتأكيد السداد الآن:' 
+                          : 'Payment for this session is pending. You can confirm payment below:'}
                       </span>
                     </div>
                     <button
                       type="button"
                       disabled={submitting}
                       onClick={() => handleAction('verify-payment')}
-                      className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-extrabold text-xs rounded-lg shadow-md hover:shadow-lg transition shrink-0 flex items-center gap-1.5"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition shrink-0 flex items-center gap-1.5 transform active:scale-95"
                     >
                       <Check size={15} />
-                      {isRTL ? 'تأكيد الدفع (المالية / الحسابات)' : 'Verify Payment (Finance)'}
+                      <span>{isRTL ? 'تأكيد واعتماد الدفع 💳' : 'Confirm Payment 💳'}</span>
                     </button>
                   </div>
                 )}
