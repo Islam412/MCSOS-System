@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { X, Search, Plus, User, ClipboardList, MapPin, Loader2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { compressImage } from '../../utils/imageCompressor'
+import UnifiedPatientForm from '../common/UnifiedPatientForm'
 
 export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, onBookingComplete }) {
   const { i18n } = useTranslation()
@@ -367,223 +368,19 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
               )}
             </div>
           ) : (
-            /* Inline Patient Registration Fields */
-            <div className="space-y-3 p-3 bg-gray-50/50 dark:bg-gray-900/20 border border-gray-150 dark:border-gray-700 rounded-xl">
-              <label className="block text-xs font-bold text-gray-400 tracking-wider">
+            /* Inline Unified Patient Registration Form */
+            <div className="p-4 bg-gray-50/50 dark:bg-gray-900/20 border border-gray-150 dark:border-gray-700 rounded-2xl">
+              <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wider mb-3">
                 {isRTL ? 'بيانات المريض الجديد' : 'New Patient Info'}
-              </label>
-              
-              <div>
-                <input
-                  type="text"
-                  required
-                  placeholder={isRTL ? 'الاسم الكامل *' : 'Full Name *'}
-                  value={regForm.fullName}
-                  onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
-                  className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-gray-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  placeholder={isRTL ? 'رقم الهاتف' : 'Phone Number'}
-                  value={regForm.phone}
-                  onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
-                  className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-
-              {/* خيار رقم الواتساب هو نفسه رقم الجوال */}
-              <div className="flex items-center gap-2 px-1">
-                <input
-                  type="checkbox"
-                  id="directAddSameAsPhone"
-                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 bg-gray-700 border-gray-600"
-                  checked={regForm.sameAsPhone}
-                  onChange={(e) => setRegForm({ ...regForm, sameAsPhone: e.target.checked })}
-                />
-                <label htmlFor="directAddSameAsPhone" className="text-xs font-semibold text-gray-400 cursor-pointer">
-                  {isRTL ? 'رقم الواتساب هو نفسه رقم الهاتف' : 'WhatsApp number is same as phone'}
-                </label>
-              </div>
-
-              {!regForm.sameAsPhone && (
-                <div>
-                  <input
-                    type="text"
-                    placeholder={isRTL ? 'رقم الواتساب' : 'WhatsApp Number'}
-                    value={regForm.whatsapp_number}
-                    onChange={(e) => setRegForm({ ...regForm, whatsapp_number: e.target.value })}
-                    className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-              )}
-
-              <div>
-                <select
-                  value={regForm.referral_source || ''}
-                  onChange={(e) => setRegForm({ ...regForm, referral_source: e.target.value })}
-                  className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 text-gray-700 dark:text-gray-200"
-                >
-                  <option value="">{isRTL ? 'جهة التحويل (كيف عرفتنا؟)' : 'Referral Source'}</option>
-                  <option value="Social Media">{isRTL ? 'سوشيال ميديا (Social Media)' : 'Social Media'}</option>
-                  <option value="Google Search">{isRTL ? 'بحث جوجل (Google Search)' : 'Google Search'}</option>
-                  <option value="Friend">{isRTL ? 'ترشيح صديق / أقارب' : 'Friend / Family'}</option>
-                  <option value="Doctor Referral">{isRTL ? 'تحويل طبيب' : 'Doctor Referral'}</option>
-                  <option value="Advertisement">{isRTL ? 'إعلانات' : 'Advertisement'}</option>
-                  <option value="Walk-in">{isRTL ? 'زيارة مباشرة' : 'Walk-in'}</option>
-                  <option value="Other">{isRTL ? 'أخرى' : 'Other'}</option>
-                </select>
-              </div>
-
-              {/* Nationality & Occupation */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <input
-                    type="text"
-                    required
-                    list="direct_nationalities"
-                    placeholder={isRTL ? 'الجنسية (إلزامي)...' : 'Nationality *...'}
-                    value={regForm.nationality || ''}
-                    onChange={(e) => setRegForm({ ...regForm, nationality: e.target.value })}
-                    className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-gray-800 dark:text-white"
-                  />
-                  <datalist id="direct_nationalities">
-                    <option value="مصري - Egypt" />
-                    <option value="سعودي - Saudi Arabia" />
-                    <option value="إماراتي - UAE" />
-                    <option value="كويتي - Kuwait" />
-                    <option value="قطري - Qatar" />
-                    <option value="أردني - Jordan" />
-                    <option value="سوري - Syria" />
-                    <option value="لبناني - Lebanon" />
-                    <option value="عراقي - Iraq" />
-                    <option value="فلسطيني - Palestine" />
-                    <option value="أجنبي / آخر - Other" />
-                  </datalist>
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    placeholder={isRTL ? 'الوظيفة (اختياري)...' : 'Occupation (Optional)...'}
-                    value={regForm.occupation || ''}
-                    onChange={(e) => setRegForm({ ...regForm, occupation: e.target.value })}
-                    className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <select
-                    value={regForm.gender}
-                    onChange={(e) => setRegForm({ ...regForm, gender: e.target.value })}
-                    className="w-full p-2.5 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
-                    <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
-                  </select>
-                </div>
-                <div>
-                  <input
-                    type="date"
-                    value={regForm.date_of_birth}
-                    onChange={(e) => setRegForm({ ...regForm, date_of_birth: e.target.value })}
-                    className="w-full p-2.2 border border-gray-250 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                  {currentAge !== null && (
-                    <div className="mt-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-md inline-block">
-                      🎂 {isRTL ? `العمر محسوب: ${currentAge} سنة` : `Auto Age: ${currentAge} Yrs`}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* National ID Front & Back */}
-              <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <label className="block text-[11px] font-bold text-gray-400">
-                  {isRTL ? 'صورة الهوية الوطنية / البطاقة الشخصية' : 'National ID Copy'}
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="p-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900">
-                    <span className="block text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
-                      <span>{isRTL ? '• الوجه الأمامي (Front)' : '• Front View'}</span>
-                      <span className="text-red-500 font-bold">* ({isRTL ? 'إلزامي' : 'Required'})</span>
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="w-full text-[10px] text-gray-500 dark:text-gray-400 file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-500/10 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer"
-                      onChange={async (e) => {
-                        const file = e.target.files[0]
-                        if (file) {
-                          const compressed = await compressImage(file)
-                          setRegForm(prev => ({ ...prev, national_id_front: compressed }))
-                        }
-                      }}
-                      disabled={loading}
-                    />
-                    {regForm.national_id_front && (
-                      <div className="relative w-full h-16 rounded overflow-hidden border border-gray-200 dark:border-gray-700 mt-1 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                        {regForm.national_id_front.includes('application/pdf') ? (
-                          <div className="text-center p-1">
-                            <span className="text-xl block">📄</span>
-                            <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">PDF Document</span>
-                          </div>
-                        ) : (
-                          <img src={regForm.national_id_front} alt="ID Front" className="w-full h-full object-cover" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setRegForm({ ...regForm, national_id_front: '' })}
-                          className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition shadow"
-                        >
-                          <X size={10} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900">
-                    <span className="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                      {isRTL ? '• الوجه الخلفي (Back - اختياري)' : '• Back View (Optional)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="w-full text-[10px] text-gray-500 dark:text-gray-400 file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-500/10 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer"
-                      onChange={async (e) => {
-                        const file = e.target.files[0]
-                        if (file) {
-                          const compressed = await compressImage(file)
-                          setRegForm(prev => ({ ...prev, national_id_back: compressed }))
-                        }
-                      }}
-                      disabled={loading}
-                    />
-                    {regForm.national_id_back && (
-                      <div className="relative w-full h-16 rounded overflow-hidden border border-gray-200 dark:border-gray-700 mt-1 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                        {regForm.national_id_back.includes('application/pdf') ? (
-                          <div className="text-center p-1">
-                            <span className="text-xl block">📄</span>
-                            <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">PDF Document</span>
-                          </div>
-                        ) : (
-                          <img src={regForm.national_id_back} alt="ID Back" className="w-full h-full object-cover" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setRegForm({ ...regForm, national_id_back: '' })}
-                          className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition shadow"
-                        >
-                          <X size={10} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              </h4>
+              <UnifiedPatientForm
+                variant="compact"
+                submitBtnText={isRTL ? 'حفظ المريض واختياره للحجز' : 'Save & Select Patient'}
+                onSuccess={(newPatient) => {
+                  setSelectedPatient(newPatient)
+                  setMode('search')
+                }}
+              />
             </div>
           )}
 
