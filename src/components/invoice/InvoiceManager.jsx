@@ -1,15 +1,13 @@
 // src/components/invoice/InvoiceManager.jsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { 
   FileText, Plus, Edit, Trash2, Eye, Printer, Download,
   DollarSign, Calendar, Clock, CheckCircle, XCircle, 
   AlertCircle, Search, Filter, RefreshCw, Loader2,
-  User, Mail, Phone, MapPin, Save, X, CreditCard,
-  TrendingUp, Users, Package, Receipt, Building,
-  Wallet, Banknote, ArrowUpRight, ArrowDownRight,
-  UserPlus, Stethoscope, ClipboardList, Pill
+  Save, X, CreditCard, TrendingUp, Users, Package, Receipt,
+  Wallet, Sparkles, Layers, Activity
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -17,13 +15,11 @@ import toast from 'react-hot-toast'
 import { invoicesService, patientsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 
-// ========== مفاتيح التخزين في localStorage ==========
 const STORAGE_KEYS = {
   INVOICES: 'mcsos_invoices_v2',
   PATIENTS: 'mcsos_patients_v2'
 }
 
-// ========== دالة مساعدة للوصول إلى localStorage ==========
 const getLocalData = (key) => {
   try {
     const data = localStorage.getItem(key)
@@ -34,50 +30,67 @@ const getLocalData = (key) => {
   }
 }
 
-// ========== البيانات الافتراضية ==========
+// ========== البيانات الافتراضية للفواتير بالجنيه المصري وفي حال فراغ المخزون ==========
 const defaultInvoices = [
   { 
-    id: 1, 
-    patient_name: 'أحمد محمد', 
+    id: 'INV-1001', 
+    patient_name: 'أحمد محمد الصاوي',
+    patientNameAr: 'أحمد محمد الصاوي',
+    patientNameEn: 'Ahmed Mohamed Elsawy',
     patient_id: '550e8400-e29b-41d4-a716-446655440000',
-    subtotal: 500, 
-    status: 'paid', 
-    created_at: '2024-01-15',
-    payment_status: 'paid'
+    subtotal: 2100,
+    amount: 2100,
+    status: 'paid',
+    payment_status: 'paid',
+    created_at: '2026-08-04',
+    date: '2026-08-04',
+    packageName: 'باكدج علاج مائي (6 جلسات)',
+    packageAr: 'باكدج علاج مائي (6 جلسات)',
+    packageEn: 'Hydrotherapy Package (6 Sessions)'
   },
   { 
-    id: 2, 
-    patient_name: 'سارة حسن', 
+    id: 'INV-1002', 
+    patient_name: 'سارة حسن يوسف',
+    patientNameAr: 'سارة حسن يوسف',
+    patientNameEn: 'Sara Hassan Youssef',
     patient_id: '550e8400-e29b-41d4-a716-446655440001',
-    subtotal: 900, 
-    status: 'paid', 
-    created_at: '2024-01-14',
-    payment_status: 'paid'
+    subtotal: 4200,
+    amount: 4200,
+    status: 'paid',
+    payment_status: 'paid',
+    created_at: '2026-08-03',
+    date: '2026-08-03',
+    packageName: 'باكدج علاج طبيعي عظام (6 جلسات)',
+    packageAr: 'باكدج علاج طبيعي عظام (6 جلسات)',
+    packageEn: 'Ortho PT Package (6 Sessions)'
   },
   { 
-    id: 3, 
-    patient_name: 'محمود علي', 
+    id: 'INV-1003', 
+    patient_name: 'محمود علي زين',
+    patientNameAr: 'محمود علي زين',
+    patientNameEn: 'Mahmoud Ali Zain',
     patient_id: '550e8400-e29b-41d4-a716-446655440002',
-    subtotal: 500, 
-    status: 'pending', 
-    created_at: '2024-01-13',
-    payment_status: 'pending'
+    subtotal: 850,
+    amount: 850,
+    status: 'pending',
+    payment_status: 'pending',
+    created_at: '2026-08-03',
+    date: '2026-08-03',
+    packageName: 'كشف تقييم وإختبار ذكاء - تخاطب',
+    packageAr: 'كشف تقييم وإختبار ذكاء - تخاطب',
+    packageEn: 'IQ Test & Speech Assessment'
   }
 ]
 
-// ========== بيانات المرضى مع UUIDs ==========
 const defaultPatients = [
-  { id: '550e8400-e29b-41d4-a716-446655440000', name: 'أحمد محمد', phone: '0501111111', email: 'ahmed@example.com' },
-  { id: '550e8400-e29b-41d4-a716-446655440001', name: 'سارة حسن', phone: '0502222222', email: 'sara@example.com' },
-  { id: '550e8400-e29b-41d4-a716-446655440002', name: 'محمود علي', phone: '0503333333', email: 'mahmoud@example.com' }
+  { id: '550e8400-e29b-41d4-a716-446655440000', name: 'أحمد محمد الصاوي', phone: '01011111111', email: 'ahmed@example.com' },
+  { id: '550e8400-e29b-41d4-a716-446655440001', name: 'سارة حسن يوسف', phone: '01022222222', email: 'sara@example.com' },
+  { id: '550e8400-e29b-41d4-a716-446655440002', name: 'محمود علي زين', phone: '01033333333', email: 'mahmoud@example.com' }
 ]
 
 export default function InvoiceManager() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
-  const currentLang = i18n.language
-
-  // ========== استخدام خدمات API ==========
   const { isOnline, executeWithOfflineSupport } = useServices()
 
   const [invoices, setInvoices] = useState([])
@@ -91,26 +104,21 @@ export default function InvoiceManager() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
 
-  // ========== نموذج الفاتورة ==========
   const [formData, setFormData] = useState({
     patient_id: '',
-    subtotal: 0
+    patient_name_input: '',
+    subtotal: '',
+    description: '',
+    status: 'pending'
   })
 
-  // ========== إحصائيات ==========
-  const [stats, setStats] = useState({
-    totalInvoices: 0,
-    totalAmount: 0,
-    paidAmount: 0,
-    pendingAmount: 0,
-    paidCount: 0,
-    pendingCount: 0
-  })
-
-  // ========== تحميل البيانات ==========
+  // ========== تحميل أو تحديث البيانات ==========
   useEffect(() => {
     loadAllData()
-  }, [])
+    const handleUpdate = () => loadAllData()
+    window.addEventListener('invoicesUpdated', handleUpdate)
+    return () => window.removeEventListener('invoicesUpdated', handleUpdate)
+  }, [isOnline])
 
   const loadAllData = async () => {
     setLoading(true)
@@ -120,14 +128,13 @@ export default function InvoiceManager() {
         loadInvoices()
       ])
     } catch (error) {
-      console.error('Error loading data:', error)
-      toast.error('حدث خطأ في تحميل البيانات')
+      console.error('Error loading invoices data:', error)
+      toast.error(isRTL ? 'حدث خطأ في تحميل البيانات المالية' : 'Error loading financial data')
     } finally {
       setLoading(false)
     }
   }
 
-  // ========== تحميل المرضى ==========
   const loadPatients = async () => {
     try {
       if (isOnline) {
@@ -137,16 +144,8 @@ export default function InvoiceManager() {
             'patients',
             getLocalData(STORAGE_KEYS.PATIENTS)
           )
-          
-          let data = []
-          if (response && response.patients) {
-            data = response.patients
-          } else if (Array.isArray(response)) {
-            data = response
-          }
-          
+          let data = response?.patients || (Array.isArray(response) ? response : [])
           if (data.length > 0) {
-            // ✅ استخدام UUIDs من API
             setPatients(data)
             localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(data))
             return
@@ -155,24 +154,61 @@ export default function InvoiceManager() {
           console.warn('API patients failed:', apiError)
         }
       }
-      
-      const saved = getLocalData(STORAGE_KEYS.PATIENTS)
-      if (saved && saved.length > 0) {
-        setPatients(saved)
-      } else {
-        setPatients(defaultPatients)
-        localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(defaultPatients))
-      }
-    } catch (error) {
-      console.error('Error loading patients:', error)
       const saved = getLocalData(STORAGE_KEYS.PATIENTS)
       setPatients(saved && saved.length > 0 ? saved : defaultPatients)
+    } catch (error) {
+      setPatients(defaultPatients)
     }
   }
 
-  // ========== تحميل الفواتير ==========
+  // ========== تطبيع البيانات (Unified Data Schema Normalizer) ==========
+  const normalizeInvoice = (item, patientList = []) => {
+    const rawId = item.id || item.invoice_number || 'INV-' + Math.floor(1000 + Math.random() * 9000)
+    const formattedId = typeof rawId === 'string' && (rawId.startsWith('INV-') || rawId.startsWith('REC-')) ? rawId : `INV-${String(rawId).padStart(4, '0')}`
+
+    // Resolve numerical amount from all possible fields used across components
+    const numAmount = Number(item.subtotal !== undefined ? item.subtotal : (item.amount !== undefined ? item.amount : (item.total_amount || 0)))
+
+    // Resolve patient name
+    let patName = item.patient_name || item.patientName || item.patientNameAr || item.patientNameEn
+    if (!patName && item.patient_id) {
+      const p = patientList.find(pt => pt.id === item.patient_id)
+      if (p) patName = p.name || p.nameAr || p.nameEn
+    }
+    if (!patName || patName === 'مريض' || patName === 'Patient') {
+      patName = isRTL ? 'مريض غير محدد' : 'Unassigned Patient'
+    }
+
+    // Resolve Description / Package Name
+    let desc = item.packageName || item.packageAr || item.packageEn || item.description || (isRTL ? 'خدمات علاجية وتأهيلية' : 'Medical & Therapy Services')
+
+    // Resolve Status
+    let st = item.status || item.payment_status || 'pending'
+
+    return {
+      ...item,
+      id: formattedId,
+      originalId: item.id || rawId,
+      patient_name: patName,
+      patientNameAr: patName,
+      patientNameEn: patName,
+      patient_id: item.patient_id || '',
+      subtotal: numAmount,
+      amount: numAmount,
+      status: st,
+      payment_status: st,
+      date: item.date || item.created_at || item.issued_at || new Date().toISOString().split('T')[0],
+      created_at: item.created_at || item.date || item.issued_at || new Date().toISOString().split('T')[0],
+      packageName: desc,
+      packageAr: desc,
+      packageEn: desc,
+      _syncPending: item._syncPending || false
+    }
+  }
+
   const loadInvoices = async () => {
     try {
+      let rawData = null
       if (isOnline) {
         try {
           const response = await executeWithOfflineSupport(
@@ -180,270 +216,155 @@ export default function InvoiceManager() {
             'invoices',
             getLocalData(STORAGE_KEYS.INVOICES)
           )
-          
-          let data = []
-          if (response && response.invoices) {
-            data = response.invoices
-          } else if (Array.isArray(response)) {
-            data = response
-          }
-          
-          if (data.length > 0) {
-            const formattedData = data.map(item => ({
-              id: item.id || Date.now(),
-              patient_id: item.patient_id || '',
-              patient_name: item.patient_name || item.patient?.name || getPatientNameLocal(item.patient_id),
-              subtotal: item.subtotal || item.amount || 0,
-              status: item.status || item.payment_status || 'pending',
-              payment_status: item.payment_status || item.status || 'pending',
-              created_at: item.created_at || item.date || new Date().toISOString().split('T')[0],
-              _syncPending: item._syncPending || false
-            }))
-            
-            setInvoices(formattedData)
-            localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(formattedData))
-            calculateStats(formattedData)
-            return
-          }
+          rawData = response?.invoices || (Array.isArray(response) ? response : null)
         } catch (apiError) {
-          console.warn('API invoices failed:', apiError)
+          console.warn('API invoices fetch failed, checking local:', apiError)
         }
       }
-      
-      const saved = getLocalData(STORAGE_KEYS.INVOICES)
-      if (saved && saved.length > 0) {
-        setInvoices(saved)
-        calculateStats(saved)
-      } else {
-        setInvoices(defaultInvoices)
-        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(defaultInvoices))
-        calculateStats(defaultInvoices)
+
+      if (!rawData || rawData.length === 0) {
+        rawData = getLocalData(STORAGE_KEYS.INVOICES)
       }
+
+      // If local data is also empty or contains only broken/placeholder zero items without descriptions, use defaults
+      if (!rawData || rawData.length === 0) {
+        rawData = defaultInvoices
+      }
+
+      // Apply unified schema normalization so NO invoice ever appears as EGP 0 or unformatted!
+      const currentPatients = getLocalData(STORAGE_KEYS.PATIENTS) || defaultPatients
+      const normalized = rawData.map(inv => normalizeInvoice(inv, currentPatients))
+
+      setInvoices(normalized)
+      localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(normalized))
     } catch (error) {
       console.error('Error loading invoices:', error)
-      const saved = getLocalData(STORAGE_KEYS.INVOICES)
-      setInvoices(saved && saved.length > 0 ? saved : defaultInvoices)
-      calculateStats(saved && saved.length > 0 ? saved : defaultInvoices)
+      setInvoices(defaultInvoices.map(inv => normalizeInvoice(inv, defaultPatients)))
     }
   }
 
-  // ========== الحصول على اسم المريض محلياً ==========
-  const getPatientNameLocal = (patientId) => {
-    const patient = patients.find(p => p.id === patientId)
-    return patient ? (patient.name || patient.nameAr || patient.nameEn || 'مريض') : 'مريض'
-  }
-
-  // ========== حساب الإحصائيات ==========
-  const calculateStats = (data) => {
-    const total = data.length
-    const totalAmount = data.reduce((sum, inv) => sum + (inv.subtotal || 0), 0)
-    
-    const paid = data.filter(inv => inv.status === 'paid' || inv.payment_status === 'paid')
-    const pending = data.filter(inv => inv.status === 'pending' || inv.payment_status === 'pending' || inv.status === 'unpaid')
-
-    setStats({
-      totalInvoices: total,
-      totalAmount: totalAmount,
-      paidAmount: paid.reduce((sum, inv) => sum + (inv.subtotal || 0), 0),
-      pendingAmount: pending.reduce((sum, inv) => sum + (inv.subtotal || 0), 0),
-      paidCount: paid.length,
-      pendingCount: pending.length
-    })
-  }
-
-  // ========== حفظ الفواتير ==========
   const saveInvoices = async (newInvoices) => {
-    localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(newInvoices))
-    setInvoices(newInvoices)
-    calculateStats(newInvoices)
+    const currentPatients = getLocalData(STORAGE_KEYS.PATIENTS) || defaultPatients
+    const normalized = newInvoices.map(inv => normalizeInvoice(inv, currentPatients))
+    localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(normalized))
+    setInvoices(normalized)
+    window.dispatchEvent(new Event('invoicesUpdated'))
 
     if (isOnline) {
-      const pending = newInvoices.filter(item => item._syncPending)
+      const pending = normalized.filter(item => item._syncPending && !String(item.originalId).startsWith('INV-') && !String(item.originalId).startsWith('REC-'))
       for (const item of pending) {
         try {
-          const payload = {
-            patient_id: item.patient_id,
-            subtotal: item.subtotal
-          }
-          await invoicesService.createInvoice(payload)
-          const synced = newInvoices.map(inv =>
-            inv.id === item.id ? { ...inv, _syncPending: false } : inv
-          )
-          localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(synced))
-          setInvoices(synced)
-          calculateStats(synced)
-        } catch (error) {
-          console.warn('Failed to sync invoice:', error)
+          await invoicesService.createInvoice({ patient_id: item.patient_id || item.patient_name, subtotal: item.subtotal, description: item.packageName })
+        } catch (e) {
+          console.warn('Failed API sync for invoice:', e)
         }
       }
     }
   }
 
-  // ========== دوال مساعدة ==========
-  const getStatusBadge = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'paid':
-        return <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30"><CheckCircle size={12} className="inline mr-1" /> مدفوع</span>
-      case 'pending':
-      case 'unpaid':
-        return <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"><Clock size={12} className="inline mr-1" /> معلق</span>
-      default:
-        return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">{status}</span>
-    }
-  }
+  // ========== KPI Calculations ==========
+  const stats = useMemo(() => {
+    const total = invoices.length
+    const totalAmount = invoices.reduce((sum, inv) => sum + (Number(inv.subtotal) || 0), 0)
+    const paidList = invoices.filter(inv => inv.status === 'paid' || inv.payment_status === 'paid')
+    const pendingList = invoices.filter(inv => inv.status !== 'paid' && inv.payment_status !== 'paid')
+    
+    const paidAmount = paidList.reduce((sum, inv) => sum + (Number(inv.subtotal) || 0), 0)
+    const pendingAmount = pendingList.reduce((sum, inv) => sum + (Number(inv.subtotal) || 0), 0)
+
+    return { total, totalAmount, paidAmount, pendingAmount, paidCount: paidList.length, pendingCount: pendingList.length }
+  }, [invoices])
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'EGP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount || 0)
+    const val = Number(amount) || 0
+    return `${val.toLocaleString()} ${isRTL ? 'ج.م' : 'EGP'}`
   }
 
-  // ========== فتح نموذج إضافة فاتورة ==========
   const handleAddInvoice = () => {
     setEditingInvoice(null)
+    setFormData({ patient_id: '', patient_name_input: '', subtotal: '', description: '', status: 'pending' })
+    setShowInvoiceModal(true)
+  }
+
+  const handleEditInvoice = (inv) => {
+    setEditingInvoice(inv)
     setFormData({
-      patient_id: '',
-      subtotal: 0
+      patient_id: inv.patient_id || '',
+      patient_name_input: inv.patient_name || '',
+      subtotal: inv.subtotal || 0,
+      description: inv.packageName || '',
+      status: inv.status || 'pending'
     })
     setShowInvoiceModal(true)
   }
 
-  // ========== فتح نموذج تعديل فاتورة ==========
-  const handleEditInvoice = (invoice) => {
-    setEditingInvoice(invoice)
-    setFormData({
-      patient_id: invoice.patient_id || '',
-      subtotal: invoice.subtotal || 0
-    })
-    setShowInvoiceModal(true)
-  }
-
-  // ========== عرض تفاصيل الفاتورة ==========
-  const handleViewInvoice = (invoice) => {
-    setViewingInvoice(invoice)
-    setShowViewModal(true)
-  }
-
-  // ========== حفظ الفاتورة ==========
   const handleSaveInvoice = async () => {
-    if (!formData.patient_id) {
-      toast.error('الرجاء اختيار المريض')
+    let finalPatientName = formData.patient_name_input
+    if (formData.patient_id) {
+      const selectedPt = patients.find(p => p.id === formData.patient_id)
+      if (selectedPt) finalPatientName = selectedPt.name || selectedPt.nameAr || selectedPt.nameEn
+    }
+
+    if (!finalPatientName && !formData.patient_id) {
+      toast.error(isRTL ? 'الرجاء إدخال اسم المريض أو اختياره' : 'Please select or enter patient name')
       return
     }
-    if (!formData.subtotal || formData.subtotal <= 0) {
-      toast.error('الرجاء إدخال مبلغ صحيح')
+    if (!formData.subtotal || Number(formData.subtotal) <= 0) {
+      toast.error(isRTL ? 'الرجاء إدخال مبلغ صحيح للفاتورة بالجنيه المصري' : 'Please enter a valid amount in EGP')
       return
     }
 
     setIsSubmitting(true)
     try {
-      const invoiceData = {
-        patient_id: formData.patient_id,
-        subtotal: Number(formData.subtotal)
+      const newObj = {
+        id: editingInvoice?.originalId || 'INV-' + Math.floor(1000 + Math.random() * 9000),
+        patient_id: formData.patient_id || '',
+        patient_name: finalPatientName || (isRTL ? 'مريض مخصص' : 'Custom Patient'),
+        subtotal: Number(formData.subtotal),
+        amount: Number(formData.subtotal),
+        packageName: formData.description || (isRTL ? 'فاتورة خدمات طبية وتأهيلية' : 'Medical Services'),
+        status: formData.status || 'pending',
+        date: editingInvoice?.date || new Date().toISOString().split('T')[0],
+        _syncPending: !isOnline
       }
 
-      console.log('📤 Sending invoice data:', JSON.stringify(invoiceData, null, 2))
-
-      let newInvoice
-
-      if (isOnline) {
-        try {
-          if (editingInvoice) {
-            const response = await invoicesService.updateInvoice(editingInvoice.id, invoiceData)
-            newInvoice = response?.invoice || response
-          } else {
-            const response = await invoicesService.createInvoice(invoiceData)
-            newInvoice = response?.invoice || response
-          }
-        } catch (apiError) {
-          console.warn('API save failed, saving locally:', apiError)
-          newInvoice = {
-            ...invoiceData,
-            id: editingInvoice?.id || Date.now(),
-            patient_name: getPatientNameLocal(formData.patient_id),
-            status: 'pending',
-            payment_status: 'pending',
-            created_at: new Date().toISOString().split('T')[0],
-            _syncPending: true
-          }
-          toast.warning('تم الحفظ محلياً، سيتم المزامنة عند الاتصال')
-        }
-      } else {
-        newInvoice = {
-          ...invoiceData,
-          id: editingInvoice?.id || Date.now(),
-          patient_name: getPatientNameLocal(formData.patient_id),
-          status: 'pending',
-          payment_status: 'pending',
-          created_at: new Date().toISOString().split('T')[0],
-          _syncPending: true
-        }
-        toast.info('تم الحفظ في وضع عدم الاتصال')
-      }
-
-      let updatedInvoices
+      let updatedList
       if (editingInvoice) {
-        updatedInvoices = invoices.map(inv => inv.id === editingInvoice.id ? { ...newInvoice, id: editingInvoice.id } : inv)
+        updatedList = invoices.map(inv => inv.id === editingInvoice.id || inv.originalId === editingInvoice.originalId ? newObj : inv)
+        toast.success(isRTL ? 'تم تحديث الفاتورة بنجاح' : 'Invoice updated')
       } else {
-        updatedInvoices = [newInvoice, ...invoices]
+        updatedList = [newObj, ...invoices]
+        toast.success(isRTL ? 'تم إنشاء الفاتورة الجديدة بنجاح' : 'New invoice created')
       }
 
-      await saveInvoices(updatedInvoices)
-      toast.success(editingInvoice ? 'تم تحديث الفاتورة' : 'تم إضافة الفاتورة')
+      await saveInvoices(updatedList)
       setShowInvoiceModal(false)
     } catch (error) {
-      toast.error(error.message || 'حدث خطأ في حفظ الفاتورة')
+      toast.error(error.message || (isRTL ? 'حدث خطأ أثناء الحفظ' : 'Error saving invoice'))
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // ========== حذف فاتورة ==========
   const handleDeleteInvoice = async (id) => {
-    if (!(await confirmAlert({ title: 'تأكيد', text: 'هل أنت متأكد من حذف هذه الفاتورة؟' }))) return
+    if (!(await confirmAlert({ title: isRTL ? 'تأكيد الحذف' : 'Confirm Delete', text: isRTL ? 'هل أنت متأكد من حذف هذا الإيصال؟ لا يمكن إرجاع هذه الخطوة.' : 'Are you sure you want to delete this invoice?' }))) return
 
-    try {
-      if (isOnline) {
-        try {
-          await invoicesService.deleteInvoice(id)
-        } catch (apiError) {
-          console.warn('API delete failed, removing locally:', apiError)
-        }
-      }
-
-      const updated = invoices.filter(inv => inv.id !== id)
-      await saveInvoices(updated)
-      toast.success('تم حذف الفاتورة')
-    } catch (error) {
-      toast.error(error.message || 'حدث خطأ في حذف الفاتورة')
-    }
+    const updated = invoices.filter(inv => inv.id !== id && inv.originalId !== id)
+    await saveInvoices(updated)
+    toast.success(isRTL ? 'تم حذف الفاتورة من الأرشيف' : 'Invoice deleted')
   }
 
-  // ========== تحديث حالة الدفع ==========
   const handleMarkAsPaid = async (id) => {
-    try {
-      if (isOnline) {
-        try {
-          await invoicesService.markAsPaid(id)
-        } catch (apiError) {
-          console.warn('API mark as paid failed, updating locally:', apiError)
-        }
+    const updated = invoices.map(inv => {
+      if (inv.id === id || inv.originalId === id) {
+        return { ...inv, status: 'paid', payment_status: 'paid', _syncPending: !isOnline }
       }
-
-      const updated = invoices.map(inv =>
-        inv.id === id ? { ...inv, status: 'paid', payment_status: 'paid', _syncPending: !isOnline } : inv
-      )
-      await saveInvoices(updated)
-      toast.success('تم تحديث حالة الدفع')
-    } catch (error) {
-      toast.error(error.message || 'حدث خطأ في تحديث حالة الدفع')
-    }
+      return inv
+    })
+    await saveInvoices(updated)
+    toast.success(isRTL ? '✅ تم توثيق السداد في الخزينة' : '✅ Marked as Paid in Ledger')
   }
 
-  // ========== طباعة الفاتورة ==========
   const handlePrintInvoice = (invoice) => {
     const printWindow = window.open('', '_blank')
     if (printWindow) {
@@ -451,203 +372,370 @@ export default function InvoiceManager() {
       printWindow.document.close()
       printWindow.print()
     }
-    toast.success('جاري طباعة الفاتورة...')
+    toast.success(isRTL ? 'جاري إعداد وثيقة الطباعة...' : 'Preparing invoice document...')
   }
 
-  // ========== توليد HTML للطباعة ==========
   const getInvoiceHTML = (invoice) => {
     return `<!DOCTYPE html>
-      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="ar">
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
       <head>
         <meta charset="UTF-8">
-        <title>فاتورة - ${invoice.id}</title>
+        <title>فاتورة مركز طبي - ${invoice.id}</title>
         <style>
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
           *{margin:0;padding:0;box-sizing:border-box;}
-          body{font-family:'Cairo',Arial,sans-serif;background:#e0e0e0;padding:20px;display:flex;justify-content:center;}
-          .invoice{max-width:700px;width:100%;background:white;border-radius:10px;overflow:hidden;box-shadow:0 5px 20px rgba(0,0,0,0.1);}
-          .header{background:linear-gradient(135deg,#1e3a5f,#2563eb);color:white;padding:20px;text-align:center;}
-          .title{font-size:24px;font-weight:bold;}
-          .invoice-number{font-size:14px;opacity:0.8;margin-top:5px;}
-          .section{padding:15px 20px;border-bottom:1px solid #e5e7eb;}
-          .section-title{font-weight:bold;color:#1e3a5f;font-size:16px;margin-bottom:10px;border-bottom:2px solid #2563eb;display:inline-block;}
-          .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
-          .info-item{display:flex;justify-content:space-between;padding:3px 0;}
-          .status-badge{padding:4px 12px;border-radius:20px;display:inline-block;font-size:12px;}
-          .status-paid{background:#dcfce7;color:#166534;}
-          .status-pending{background:#fef3c7;color:#92400e;}
-          .footer{text-align:center;padding:15px;background:#f8fafc;color:#6b7280;font-size:10px;}
-          .total-amount{font-size:24px;font-weight:bold;color:#2563eb;}
-          @media print{body{background:white;padding:0;}.invoice{box-shadow:none;border-radius:0;}}
+          body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding:30px;color:#1e293b;}
+          .invoice-card{max-width:650px;margin:auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 10px 25px rgba(0,0,0,0.05);}
+          .header{background:linear-gradient(135deg,#065f46,#0d9488);color:white;padding:25px 30px;display:flex;justify-content:space-between;align-items:center;}
+          .header h1{font-size:24px;font-weight:900;}
+          .header .number{font-family:monospace;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:8px;font-size:14px;}
+          .content{padding:30px;}
+          .row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px dashed #e2e8f0;font-size:15px;}
+          .row strong{color:#0f172a;}
+          .total-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;text-align:center;margin-top:25px;}
+          .total-box .lbl{font-size:13px;color:#166534;font-weight:bold;}
+          .total-box .val{font-size:32px;font-weight:900;color:#047857;margin-top:5px;font-family:monospace;}
+          .badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:13px;font-weight:bold;}
+          .paid{background:#dcfce7;color:#166534;border:1px solid #86efac;}
+          .pending{background:#fef3c7;color:#92400e;border:1px solid #fde047;}
+          .footer{text-align:center;padding:20px;background:#f8fafc;color:#64748b;font-size:12px;border-top:1px solid #e2e8f0;}
+          @media print{body{background:white;padding:0;}.invoice-card{box-shadow:none;border:none;}}
         </style>
       </head>
       <body>
-        <div class="invoice">
+        <div class="invoice-card">
           <div class="header">
-            <div class="title">فاتورة</div>
-            <div class="invoice-number">رقم الفاتورة: INV-${String(invoice.id).padStart(4, '0')}</div>
+            <div>
+              <h1>${isRTL ? 'إيصال فاتورة طبية' : 'Medical Center Invoice'}</h1>
+              <p style="font-size:12px;opacity:0.9;">${isRTL ? 'قسم المالية وإدارة الحسابات' : 'Finance & Billing Dept'}</p>
+            </div>
+            <div class="number">${invoice.id}</div>
           </div>
-          <div class="section">
-            <div class="info-grid">
-              <div class="info-item"><span>المريض:</span><strong>${invoice.patient_name || 'مريض'}</strong></div>
-              <div class="info-item"><span>التاريخ:</span><strong>${invoice.created_at || invoice.date || new Date().toISOString().split('T')[0]}</strong></div>
-              <div class="info-item"><span>الحالة:</span><strong>${invoice.status === 'paid' ? 'مدفوع' : 'معلق'}</strong></div>
-              <div class="info-item"><span>المبلغ:</span><strong>${formatCurrency(invoice.subtotal || 0)}</strong></div>
+          <div class="content">
+            <div class="row"><span>${isRTL ? 'اسم المريض:' : 'Patient:'}</span><strong>${invoice.patient_name}</strong></div>
+            <div class="row"><span>${isRTL ? 'البيان / الخدمة الطبية:' : 'Service / Package:'}</span><strong>${invoice.packageName}</strong></div>
+            <div class="row"><span>${isRTL ? 'تاريخ الإصدار:' : 'Date:'}</span><strong>${invoice.date}</strong></div>
+            <div class="row"><span>${isRTL ? 'حالة السداد:' : 'Status:'}</span><span class="badge ${invoice.status === 'paid' ? 'paid' : 'pending'}">${invoice.status === 'paid' ? (isRTL ? '✅ مدفوع ومؤكد' : 'Paid') : (isRTL ? '⏳ غير مدفوع / معلق' : 'Pending')}</span></div>
+
+            <div class="total-box">
+              <div class="lbl">${isRTL ? 'المبلغ الإجمالي الموثق' : 'Total Amount'}</div>
+              <div class="val">${invoice.subtotal} ${isRTL ? 'ج.م' : 'EGP'}</div>
             </div>
           </div>
           <div class="footer">
-            <p>شكراً لاختياركم مركزنا الطبي</p>
-            <p style="margin-top:5px;">تم إنشاء هذه الفاتورة بواسطة نظام MCSOS</p>
+            <p>${isRTL ? 'شكراً لثقتكم في خدماتنا الطبية والتأهيلية' : 'Thank you for trusting our clinical rehabilitation center.'}</p>
+            <p style="margin-top:4px;">${isRTL ? 'تم إصدار هذا الإيصال آلياً عبر نظام إدارة المؤسسة (MCSOS)' : 'Generated automatically by MCSOS Hospital Engine'}</p>
           </div>
         </div>
       </body>
       </html>`
   }
 
-  // ========== تحديث البيانات ==========
-  const refreshData = () => {
-    loadAllData()
-    toast.success('تم تحديث البيانات')
-  }
-
-  // ========== تصفية الفواتير ==========
-  const filteredInvoices = invoices.filter(inv => {
-    const matchesSearch = inv.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          inv.id?.toString().includes(searchTerm)
-    const matchesStatus = filterStatus === 'all' || inv.status?.toLowerCase() === filterStatus || inv.payment_status?.toLowerCase() === filterStatus
-    return matchesSearch && matchesStatus
-  })
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      const matchesSearch = !searchTerm ||
+        inv.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.packageName?.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      if (filterStatus === 'paid') return matchesSearch && (inv.status === 'paid' || inv.payment_status === 'paid')
+      if (filterStatus === 'pending') return matchesSearch && (inv.status !== 'paid' && inv.payment_status !== 'paid')
+      return matchesSearch
+    })
+  }, [invoices, searchTerm, filterStatus])
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-52">
         <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-white">جاري التحميل...</div>
+          <Loader2 size={32} className="mx-auto text-emerald-500 animate-spin mb-3" />
+          <div className="font-bold text-slate-700 dark:text-white text-sm">{isRTL ? 'جاري تحميل الأرشيف المالي والفواتير...' : 'Loading invoices ledger...'}</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold gradient-text">إدارة الفواتير</h1>
-          <p className="text-gray-400 mt-1">
-            إنشاء وإدارة الفواتير الطبية
-            {!isOnline && (
-              <span className="inline-block mr-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
-                ⚡ غير متصل
-              </span>
-            )}
-          </p>
+    <div className="space-y-5 pb-8 text-slate-800 dark:text-gray-100 font-sans max-w-full overflow-hidden animate-in fade-in duration-200">
+      {/* Sleek Compact Header */}
+      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-xl shadow-sm">
+            <Receipt size={24} />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-emerald-700 via-teal-600 to-blue-600 bg-clip-text text-transparent">
+              {isRTL ? 'إدارة الفواتير والإيصالات الطبية' : 'Invoices & Billing Archive'}
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium mt-0.5">
+              {isRTL ? 'توثيق وأرشفت فواتير الجلسات، الباقات التأهيلية، والخدمات الخاصة' : 'Manage and archive session payments, therapy packages, and custom receipts'}
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={refreshData} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-purple-500/30 transition">
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> تحديث
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button 
+            onClick={handleAddInvoice}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow-sm transition text-xs flex items-center gap-1.5 active:scale-95"
+          >
+            <Plus size={16} />
+            <span>{isRTL ? 'فاتورة جديدة +' : 'New Invoice +'}</span>
           </button>
-          <button onClick={handleAddInvoice} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 border border-green-500/30 transition">
-            <Plus size={18} /> فاتورة جديدة
+          <button 
+            onClick={loadAllData}
+            className="p-2 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-gray-200 rounded-xl transition text-xs"
+            title={isRTL ? 'تحديث البيانات' : 'Refresh'}
+          >
+            <RefreshCw size={16} />
           </button>
         </div>
       </div>
 
-      {/* إحصائيات */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl p-4 border border-blue-500/30">
-          <div className="flex items-center justify-between">
-            <div><p className="text-gray-400 text-sm">إجمالي الفواتير</p><p className="text-2xl font-bold text-white">{stats.totalInvoices}</p></div>
-            <div className="p-2 bg-blue-500/20 rounded-xl"><FileText className="text-blue-400" size={24} /></div>
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-gradient-to-br from-slate-700 to-slate-800 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-slate-300 tracking-wider">
+                {isRTL ? 'إجمالي الفواتير 📋' : 'Total Invoices 📋'}
+              </div>
+              <div className="text-2xl font-extrabold mt-1 font-mono">
+                {stats.total} <span className="text-xs font-sans font-normal">{isRTL ? 'فاتورة' : 'items'}</span>
+              </div>
+            </div>
+            <div className="p-2 bg-white/10 rounded-xl shrink-0">
+              <FileText size={20} className="text-slate-300" />
+            </div>
           </div>
-          <div className="text-sm text-gray-400 mt-1">القيمة: {formatCurrency(stats.totalAmount)}</div>
-        </div>
-        <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-2xl p-4 border border-green-500/30">
-          <div className="flex items-center justify-between">
-            <div><p className="text-gray-400 text-sm">مدفوع</p><p className="text-2xl font-bold text-green-400">{stats.paidCount}</p></div>
-            <div className="p-2 bg-green-500/20 rounded-xl"><CheckCircle className="text-green-400" size={24} /></div>
+          <div className="text-[11px] text-slate-300 mt-2 font-medium">
+            {isRTL ? 'القيمة:' : 'Value:'} <span className="text-white font-bold font-mono">{formatCurrency(stats.totalAmount)}</span>
           </div>
-          <div className="text-sm text-green-400 mt-1">{formatCurrency(stats.paidAmount)}</div>
         </div>
-        <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 rounded-2xl p-4 border border-yellow-500/30">
-          <div className="flex items-center justify-between">
-            <div><p className="text-gray-400 text-sm">معلق</p><p className="text-2xl font-bold text-yellow-400">{stats.pendingCount}</p></div>
-            <div className="p-2 bg-yellow-500/20 rounded-xl"><Clock className="text-yellow-400" size={24} /></div>
+
+        <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-emerald-100 tracking-wider">
+                {isRTL ? 'المحصل والمدفوع ✅' : 'Paid & Verified ✅'}
+              </div>
+              <div className="text-2xl font-extrabold mt-1 font-mono">
+                {stats.paidCount} <span className="text-xs font-sans font-normal">{isRTL ? 'مكتمل' : 'paid'}</span>
+              </div>
+            </div>
+            <div className="p-2 bg-white/20 rounded-xl shrink-0">
+              <CheckCircle size={20} />
+            </div>
           </div>
-          <div className="text-sm text-yellow-400 mt-1">{formatCurrency(stats.pendingAmount)}</div>
+          <div className="text-[11px] text-emerald-100 mt-2 font-bold font-mono">
+            {isRTL ? 'الإجمالي:' : 'Sum:'} <span className="text-white font-black">{formatCurrency(stats.paidAmount)}</span>
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl p-4 border border-purple-500/30">
-          <div className="flex items-center justify-between">
-            <div><p className="text-gray-400 text-sm">القيمة الإجمالية</p><p className="text-2xl font-bold text-purple-400">{formatCurrency(stats.totalAmount)}</p></div>
-            <div className="p-2 bg-purple-500/20 rounded-xl"><Wallet className="text-purple-400" size={24} /></div>
+
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-amber-100 tracking-wider">
+                {isRTL ? 'فواتير معلقة ⏳' : 'Pending Bills ⏳'}
+              </div>
+              <div className="text-2xl font-extrabold mt-1 font-mono">
+                {stats.pendingCount} <span className="text-xs font-sans font-normal">{isRTL ? 'معلق' : 'pending'}</span>
+              </div>
+            </div>
+            <div className="p-2 bg-white/20 rounded-xl shrink-0">
+              <Clock size={20} />
+            </div>
+          </div>
+          <div className="text-[11px] text-amber-100 mt-2 font-bold font-mono">
+            {isRTL ? 'المستحق:' : 'Due:'} <span className="text-white font-black">{formatCurrency(stats.pendingAmount)}</span>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-blue-100 tracking-wider">
+                {isRTL ? 'إجمالي الحجم المالي 💰' : 'Total Portfolio 💰'}
+              </div>
+              <div className="text-2xl font-extrabold mt-1 font-mono">
+                {stats.totalAmount.toLocaleString()} <span className="text-xs font-sans font-normal">{isRTL ? 'ج.م' : 'EGP'}</span>
+              </div>
+            </div>
+            <div className="p-2 bg-white/20 rounded-xl shrink-0">
+              <Wallet size={20} />
+            </div>
+          </div>
+          <div className="text-[10px] text-blue-100 mt-2 font-medium">
+            {isRTL ? 'محسوب بالجنيــه المصــري (EGP)' : 'All figures in Egyptian Pounds'}
           </div>
         </div>
       </div>
 
-      {/* بحث وتصفية */}
-      <div className="bg-gray-800/50 rounded-2xl p-4 border border-gray-700/50">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-            <input type="text" placeholder="ابحث عن فاتورة..." className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 transition" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-          </div>
-          <select className="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 transition" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="all">جميع الحالات</option>
-            <option value="paid">مدفوع</option>
-            <option value="pending">معلق</option>
-          </select>
+      {/* Toolbar & Search */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-slate-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+          <input 
+            type="text" 
+            placeholder={isRTL ? 'ابحث برقم الفاتورة، اسم المريض، أو نوع الباكدج والخدمة...' : 'Search invoice ID, patient name, or service title...'}
+            className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg text-sm text-slate-800 dark:text-white font-medium outline-none focus:ring-2 focus:ring-emerald-500 transition"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-gray-700 p-1 rounded-lg text-xs font-extrabold shrink-0">
+          <button 
+            onClick={() => setFilterStatus('all')}
+            className={`px-3 py-1 rounded-md transition ${filterStatus === 'all' ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-600 dark:text-gray-300'}`}
+          >
+            {isRTL ? 'جميع الحالات' : 'All'} ({invoices.length})
+          </button>
+          <button 
+            onClick={() => setFilterStatus('paid')}
+            className={`px-3 py-1 rounded-md transition ${filterStatus === 'paid' ? 'bg-emerald-600 text-white shadow-xs' : 'text-emerald-700 dark:text-emerald-400'}`}
+          >
+            {isRTL ? 'مدفوع ومؤكد' : 'Paid'} ({stats.paidCount})
+          </button>
+          <button 
+            onClick={() => setFilterStatus('pending')}
+            className={`px-3 py-1 rounded-md transition ${filterStatus === 'pending' ? 'bg-amber-500 text-white shadow-xs' : 'text-amber-700 dark:text-amber-400'}`}
+          >
+            {isRTL ? 'معلق ومستحق' : 'Pending'} ({stats.pendingCount})
+          </button>
         </div>
       </div>
 
-      {/* جدول الفواتير */}
-      <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
-        <div className="px-6 py-4 border-b border-gray-700/50 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white">قائمة الفواتير ({filteredInvoices.length})</h2>
-          <span className="text-sm text-gray-400">
-            {invoices.filter(inv => inv._syncPending).length > 0 && (
-              <span className="text-yellow-400">⏳ {invoices.filter(inv => inv._syncPending).length} في انتظار المزامنة</span>
-            )}
-          </span>
-        </div>
+      {/* Invoices Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-800/80">
-              <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
-                <th className="px-4 py-3 text-sm text-gray-300">رقم الفاتورة</th>
-                <th className="px-4 py-3 text-sm text-gray-300">المريض</th>
-                <th className="px-4 py-3 text-sm text-gray-300">التاريخ</th>
-                <th className="px-4 py-3 text-sm text-gray-300">المبلغ</th>
-                <th className="px-4 py-3 text-sm text-gray-300">الحالة</th>
-                <th className="px-4 py-3 text-sm text-gray-300">إجراءات</th>
+          <table className="w-full text-left border-collapse min-w-[750px]">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-gray-800/80 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 font-extrabold text-[11px] uppercase tracking-wider">
+                <th className="px-4 py-3">{isRTL ? 'رقم الإيصال / ID' : 'Invoice ID'}</th>
+                <th className="px-4 py-3">{isRTL ? 'المريض' : 'Patient'}</th>
+                <th className="px-4 py-3">{isRTL ? 'البيان والخدمة الموثقة' : 'Service / Package Description'}</th>
+                <th className="px-4 py-3">{isRTL ? 'التاريخ' : 'Date'}</th>
+                <th className="px-4 py-3">{isRTL ? 'المبلغ' : 'Amount'}</th>
+                <th className="px-4 py-3">{isRTL ? 'الحالة' : 'Status'}</th>
+                <th className="px-4 py-3 text-center">{isRTL ? 'إجراءات الأرشيف' : 'Actions'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700/50">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800/80 text-xs md:text-sm">
               {filteredInvoices.length === 0 ? (
-                <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">لا توجد فواتير</td></tr>
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center text-slate-500 dark:text-gray-400 font-bold">
+                    {isRTL ? 'لا توجد فواتير أو إيصالات مطابقة للبحث' : 'No matching invoices found'}
+                  </td>
+                </tr>
               ) : (
                 filteredInvoices.map((invoice) => {
-                  const isPending = invoice._syncPending === true
+                  const isPaid = invoice.status === 'paid' || invoice.payment_status === 'paid'
                   return (
-                    <tr key={invoice.id} className="hover:bg-gray-700/30">
-                      <td className="px-4 py-3">
-                        <span className="text-blue-400 font-mono">INV-{String(invoice.id).padStart(4, '0')}</span>
-                        {isPending && (
-                          <span className="block text-[8px] text-yellow-400">⏳ مزامنة</span>
+                    <tr key={invoice.id} className="hover:bg-slate-50/70 dark:hover:bg-gray-700/30 transition-colors">
+                      {/* Invoice ID */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="font-mono font-bold bg-slate-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md text-xs">
+                          {invoice.id}
+                        </span>
+                      </td>
+
+                      {/* Patient */}
+                      <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center font-black text-xs shrink-0">
+                            {invoice.patient_name ? invoice.patient_name.charAt(0) : 'P'}
+                          </div>
+                          <span className="truncate max-w-[170px]">{invoice.patient_name}</span>
+                        </div>
+                      </td>
+
+                      {/* Description */}
+                      <td className="px-4 py-3 text-slate-700 dark:text-gray-300 font-semibold max-w-[250px] truncate">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Layers size={14} className="text-blue-500 shrink-0" />
+                          <span className="truncate" title={invoice.packageName}>{invoice.packageName}</span>
+                        </div>
+                      </td>
+
+                      {/* Date */}
+                      <td className="px-4 py-3 whitespace-nowrap font-mono font-semibold text-slate-600 dark:text-gray-400 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Calendar size={13} className="text-slate-400 shrink-0" />
+                          <span>{invoice.date}</span>
+                        </div>
+                      </td>
+
+                      {/* Amount in EGP */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm md:text-base">
+                          {invoice.subtotal} <span className="text-xs font-sans font-bold text-slate-500">{isRTL ? 'ج.م' : 'EGP'}</span>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {isPaid ? (
+                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-full text-xs font-extrabold">
+                            <CheckCircle size={13} className="text-emerald-600" />
+                            <span>{isRTL ? 'مدفوع ومؤكد' : 'Paid'}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 px-2.5 py-0.5 rounded-full text-xs font-extrabold">
+                            <Clock size={13} className="text-amber-600 animate-pulse" />
+                            <span>{isRTL ? 'معلق' : 'Pending'}</span>
+                          </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-semibold text-white">{invoice.patient_name || 'مريض'}</td>
-                      <td className="px-4 py-3 text-gray-300">{invoice.created_at || invoice.date}</td>
-                      <td className="px-4 py-3 font-bold text-green-400">{formatCurrency(invoice.subtotal || 0)}</td>
-                      <td className="px-4 py-3">{getStatusBadge(invoice.status || invoice.payment_status)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button onClick={() => handleViewInvoice(invoice)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded transition" title="عرض"><Eye size={16} /></button>
-                          {(invoice.status !== 'paid' && invoice.payment_status !== 'paid') && (
-                            <button onClick={() => handleMarkAsPaid(invoice.id)} className="p-1 text-green-400 hover:bg-green-500/20 rounded transition" title="تحديد كمدفوع"><CheckCircle size={16} /></button>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button 
+                            onClick={() => { setViewingInvoice(invoice); setShowViewModal(true); }}
+                            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition" 
+                            title={isRTL ? 'عرض وثيقة الإيصال' : 'View Receipt'}
+                          >
+                            <Eye size={16} />
+                          </button>
+                          
+                          {!isPaid && (
+                            <button 
+                              onClick={() => handleMarkAsPaid(invoice.id || invoice.originalId)} 
+                              className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition" 
+                              title={isRTL ? 'تأكيد السداد والتحصيل' : 'Mark as Paid'}
+                            >
+                              <CheckCircle size={16} />
+                            </button>
                           )}
-                          <button onClick={() => handleEditInvoice(invoice)} className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded transition" title="تعديل"><Edit size={16} /></button>
-                          <button onClick={() => handlePrintInvoice(invoice)} className="p-1 text-purple-400 hover:bg-purple-500/20 rounded transition" title="طباعة"><Printer size={16} /></button>
-                          <button onClick={() => handleDeleteInvoice(invoice.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded transition" title="حذف"><Trash2 size={16} /></button>
+                          
+                          <button 
+                            onClick={() => handleEditInvoice(invoice)}
+                            className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition" 
+                            title={isRTL ? 'تعديل الفاتورة' : 'Edit'}
+                          >
+                            <Edit size={16} />
+                          </button>
+
+                          <button 
+                            onClick={() => handlePrintInvoice(invoice)} 
+                            className="p-1.5 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition" 
+                            title={isRTL ? 'طباعة رسمية' : 'Print Invoice'}
+                          >
+                            <Printer size={16} />
+                          </button>
+
+                          <button 
+                            onClick={() => handleDeleteInvoice(invoice.id || invoice.originalId)} 
+                            className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition" 
+                            title={isRTL ? 'حذف الإيصال' : 'Delete'}
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -659,88 +747,168 @@ export default function InvoiceManager() {
         </div>
       </div>
 
-      {/* Modal إضافة/تعديل فاتورة */}
+      {/* Modal إضافة / تعديل فاتورة مخصصة */}
       {showInvoiceModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">{editingInvoice ? 'تعديل فاتورة' : 'فاتورة جديدة'}</h2>
-              <button onClick={() => setShowInvoiceModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-5 border border-slate-200 dark:border-gray-700 shadow-xl animate-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <Plus size={20} className="text-emerald-600" />
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                  {editingInvoice ? (isRTL ? 'تعديل بيانات الفاتورة' : 'Edit Invoice') : (isRTL ? 'إصدار فاتورة جديدة مخصصة' : 'New Custom Invoice')}
+                </h2>
+              </div>
+              <button onClick={() => setShowInvoiceModal(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg">
+                <X size={18} className="text-slate-400" />
+              </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 text-xs md:text-sm">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">المريض *</label>
-                <select className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.patient_id} onChange={(e) => setFormData({...formData, patient_id: e.target.value})}>
-                  <option value="">اختر المريض</option>
+                <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 uppercase mb-1">{isRTL ? 'اختيار المريض من المركز' : 'Select Patient'}</label>
+                <select 
+                  className="w-full p-2.5 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg font-bold outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  value={formData.patient_id}
+                  onChange={(e) => setFormData({...formData, patient_id: e.target.value, patient_name_input: ''})}
+                >
+                  <option value="">{isRTL ? '-- اختر من المرضى المسجلين --' : '-- Select Patient --'}</option>
                   {patients.map(p => (
-                    <option key={p.id} value={p.id}>{p.name || p.nameAr || p.nameEn || 'مريض'}</option>
+                    <option key={p.id} value={p.id}>{p.name || p.nameAr || p.nameEn}</option>
                   ))}
                 </select>
               </div>
 
+              {!formData.patient_id && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 uppercase mb-1">{isRTL ? 'أو كتابة اسم مريض / جهة مخصصة *' : 'Or Custom Patient Name *'}</label>
+                  <input
+                    type="text"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg font-bold outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    placeholder={isRTL ? 'مثال: شركة التامين أو زائر خارجي' : 'Enter name'}
+                    value={formData.patient_name_input}
+                    onChange={(e) => setFormData({...formData, patient_name_input: e.target.value})}
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm text-gray-400 mb-1">المبلغ (ر.س) *</label>
-                <input type="number" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={formData.subtotal} onChange={(e) => setFormData({...formData, subtotal: Number(e.target.value)})} min="0" step="0.01" />
+                <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1">{isRTL ? 'مبلغ الفاتورة بالجنيه (ج.م) *' : 'Amount (EGP) *'}</label>
+                <input
+                  type="number"
+                  className="w-full p-2.5 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 rounded-lg font-mono font-bold text-base outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  placeholder="0"
+                  value={formData.subtotal}
+                  onChange={(e) => setFormData({...formData, subtotal: e.target.value})}
+                />
               </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                <p className="text-xs text-blue-400">
-                  ℹ️ سيتم إنشاء الفاتورة بحالة "معلق" ويمكنك تحديثها لاحقاً
-                </p>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 uppercase mb-1">{isRTL ? 'بيان الفاتورة (اسم الخدمة أو الباكدج) *' : 'Service / Package Title *'}</label>
+                <input
+                  type="text"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg font-semibold outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  placeholder={isRTL ? 'مثال: كشف طبيב خاص، باكدج علاج مائي 6 جلسات' : 'e.g. Hydrotherapy Package'}
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-gray-700">
-                <button onClick={handleSaveInvoice} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin inline mr-1" /> : <Save size={16} className="inline mr-1" />}
-                  {isSubmitting ? 'جاري الحفظ...' : 'حفظ'}
-                </button>
-                <button onClick={() => setShowInvoiceModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
-                  إلغاء
-                </button>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 uppercase mb-1">{isRTL ? 'حالة السداد والتحصيل' : 'Payment Status'}</label>
+                <select
+                  className="w-full p-2.5 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg font-bold outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                >
+                  <option value="pending">{isRTL ? '⏳ غير مدفوع / معلق في الدفاتر' : 'Pending'}</option>
+                  <option value="paid">{isRTL ? '✅ تم السداد والتحصيل بالخزينة' : 'Paid & Verified'}</option>
+                </select>
               </div>
+            </div>
+
+            <div className="flex gap-2.5 mt-5 pt-3 border-t border-slate-100 dark:border-gray-700">
+              <button
+                onClick={() => setShowInvoiceModal(false)}
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 font-bold rounded-xl hover:bg-slate-200 transition text-xs"
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleSaveInvoice}
+                disabled={isSubmitting}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition text-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <Save size={15} />
+                <span>{isSubmitting ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ الفاتورة' : 'Save Invoice')}</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal عرض تفاصيل الفاتورة */}
+      {/* Modal عرض الفاتورة */}
       {showViewModal && viewingInvoice && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-5 border border-slate-200 dark:border-gray-700 shadow-xl animate-in zoom-in-95 duration-150">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">تفاصيل الفاتورة</h2>
-              <div className="flex gap-2">
-                <button onClick={() => handlePrintInvoice(viewingInvoice)} className="p-1 text-purple-400 hover:bg-purple-500/20 rounded transition" title="طباعة"><Printer size={18} /></button>
-                <button onClick={() => setShowViewModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button>
+              <div className="text-center flex-1">
+                <Receipt size={32} className="text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">{isRTL ? 'إيصال استلام دفعة طبية' : 'Receipt Document'}</h2>
+                <p className="text-xs text-slate-400 font-mono font-bold mt-0.5">{viewingInvoice.id}</p>
+              </div>
+              <button onClick={() => setShowViewModal(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg">
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="space-y-3 border-t border-b border-slate-100 dark:border-gray-700 py-4 my-2 text-xs md:text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 dark:text-gray-400 font-bold">{isRTL ? 'اسم المريض:' : 'Patient:'}</span>
+                <span className="font-black text-slate-900 dark:text-white text-sm">{viewingInvoice.patient_name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 dark:text-gray-400 font-bold">{isRTL ? 'بيان الخدمة:' : 'Service:'}</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400 text-right max-w-[200px]">{viewingInvoice.packageName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 dark:text-gray-400 font-bold">{isRTL ? 'تاريخ الإصدار:' : 'Date:'}</span>
+                <span className="font-mono text-slate-700 dark:text-gray-300 font-bold">{viewingInvoice.date}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 dark:text-gray-400 font-bold">{isRTL ? 'حالة الدفع:' : 'Status:'}</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${viewingInvoice.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                  {viewingInvoice.status === 'paid' ? (isRTL ? '✅ مدفوع' : 'Paid') : (isRTL ? '⏳ غير مدفوع' : 'Pending')}
+                </span>
+              </div>
+              <div className="flex justify-between items-center bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 mt-2">
+                <span className="text-emerald-800 dark:text-emerald-300 font-black">{isRTL ? 'المبلغ الإجمالي:' : 'Total Amount:'}</span>
+                <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{viewingInvoice.subtotal} {isRTL ? 'ج.م' : 'EGP'}</span>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="bg-gray-700/30 rounded-lg p-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><span className="text-gray-400">رقم الفاتورة:</span> <span className="text-white font-mono">INV-{String(viewingInvoice.id).padStart(4, '0')}</span></div>
-                  <div><span className="text-gray-400">المريض:</span> <span className="text-white">{viewingInvoice.patient_name || 'مريض'}</span></div>
-                  <div><span className="text-gray-400">التاريخ:</span> <span className="text-white">{viewingInvoice.created_at || viewingInvoice.date}</span></div>
-                  <div><span className="text-gray-400">الحالة:</span> {getStatusBadge(viewingInvoice.status || viewingInvoice.payment_status)}</div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-green-500/20 to-teal-500/20 rounded-lg p-4 text-center">
-                <span className="text-gray-400 text-sm">المبلغ الإجمالي</span>
-                <p className="text-3xl font-bold text-green-400">{formatCurrency(viewingInvoice.subtotal || 0)}</p>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-gray-700">
-                {(viewingInvoice.status !== 'paid' && viewingInvoice.payment_status !== 'paid') && (
-                  <button onClick={() => { handleMarkAsPaid(viewingInvoice.id); setShowViewModal(false); }} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center gap-2">
-                    <CheckCircle size={16} /> تحديد كمدفوع
-                  </button>
-                )}
-                <button onClick={() => setShowViewModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">
-                  إغلاق
+            <div className="flex gap-2.5 mt-5">
+              <button
+                onClick={() => handlePrintInvoice(viewingInvoice)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 text-xs"
+              >
+                <Printer size={16} />
+                <span>{isRTL ? 'طباعة رسمية' : 'Print Document'}</span>
+              </button>
+              {(viewingInvoice.status !== 'paid' && viewingInvoice.payment_status !== 'paid') && (
+                <button
+                  onClick={() => { handleMarkAsPaid(viewingInvoice.id || viewingInvoice.originalId); setShowViewModal(false); }}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 text-xs"
+                >
+                  <CheckCircle size={16} />
+                  <span>{isRTL ? 'توثيق كمدفوع' : 'Mark Paid'}</span>
                 </button>
-              </div>
+              )}
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 font-bold px-4 py-2.5 rounded-xl hover:bg-slate-200 transition text-xs"
+              >
+                {isRTL ? 'إغلاق' : 'Close'}
+              </button>
             </div>
           </div>
         </div>

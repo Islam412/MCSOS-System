@@ -1,7 +1,7 @@
 // src/components/common/UnifiedPatientForm.jsx
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { User, Phone, Mail, MapPin, Briefcase, Calendar, FileText, Upload, X, Loader2, Sparkles, Check } from 'lucide-react'
+import { User, Phone, Mail, MapPin, Briefcase, Calendar, FileText, Upload, X, Loader2, Sparkles, Check, Stethoscope } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { compressImage } from '../../utils/imageCompressor'
 import { patientsService } from '../../services/api'
@@ -30,6 +30,7 @@ export default function UnifiedPatientForm({
     whatsapp_number: initialValues.whatsapp_number || '',
     sameAsPhone: initialValues.sameAsPhone !== undefined ? initialValues.sameAsPhone : true,
     referral_source: initialValues.referral_source || 'Social Media',
+    referral_doctor_name: initialValues.referral_doctor_name || '',
     national_id_front: initialValues.national_id_front || '',
     national_id_back: initialValues.national_id_back || '',
     email: initialValues.email || '',
@@ -81,13 +82,19 @@ export default function UnifiedPatientForm({
     }
     if (!lastName) lastName = firstName
 
+    let finalReferralSource = form.referral_source || 'Social Media'
+    if (form.referral_source === 'Doctor Referral' && form.referral_doctor_name?.trim()) {
+      finalReferralSource = `Doctor Referral (${form.referral_doctor_name.trim()})`
+    }
+
     const patientPayload = {
       first_name: firstName,
       last_name: lastName,
       full_name_ar: fullName,
       phone: form.phone.trim(),
       whatsapp_number: form.sameAsPhone ? form.phone.trim() : (form.whatsapp_number.trim() || form.phone.trim()),
-      referral_source: form.referral_source || 'Social Media',
+      referral_source: finalReferralSource,
+      referral_doctor_name: form.referral_doctor_name?.trim() || undefined,
       national_id_front: form.national_id_front || undefined,
       national_id_back: form.national_id_back || undefined,
       national_id_photo: form.national_id_front || undefined,
@@ -227,11 +234,29 @@ export default function UnifiedPatientForm({
             <option value="Social Media">{isRTL ? 'سوشيال ميديا (Social Media)' : 'Social Media'}</option>
             <option value="Google Search">{isRTL ? 'بحث جوجل (Google Search)' : 'Google Search'}</option>
             <option value="Friend">{isRTL ? 'ترشيح صديق / أقارب' : 'Friend / Family'}</option>
-            <option value="Doctor Referral">{isRTL ? 'تحويل طبيب' : 'Doctor Referral'}</option>
+            <option value="Doctor Referral">{isRTL ? 'تحويل طبيب (Doctor Referral)' : 'Doctor Referral'}</option>
             <option value="Advertisement">{isRTL ? 'إعلانات' : 'Advertisement'}</option>
             <option value="Walk-in">{isRTL ? 'زيارة مباشرة' : 'Walk-in'}</option>
             <option value="Other">{isRTL ? 'أخرى' : 'Other'}</option>
           </select>
+
+          {/* Conditional input when Doctor Referral is selected */}
+          {form.referral_source === 'Doctor Referral' && (
+            <div className="mt-2">
+              <label className="block text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
+                <Stethoscope size={13} />
+                <span>{isRTL ? 'اسم الطبيب المحوّل *' : "Referring Doctor's Name *"}</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={form.referral_doctor_name || ''}
+                onChange={(e) => setForm({ ...form, referral_doctor_name: e.target.value })}
+                placeholder={isRTL ? 'مثال: د. أحمد فؤاد...' : "e.g. Dr. Ahmed Fouad..."}
+                className="w-full p-2 bg-indigo-50/50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
+              />
+            </div>
+          )}
         </div>
 
         <div>

@@ -133,5 +133,27 @@ export const packagesService = {
       console.error('❌ getCompletedFirstSessions error:', error)
       throw error
     }
+  },
+
+  // الحصول على كل باقات المرضى (للحسابات والمالية)
+  getAllPatientPackages: async () => {
+    try {
+      const response = await get('/api/v1/patient-packages')
+      return Array.isArray(response) ? response : (response?.data || [])
+    } catch (error) {
+      console.warn('⚠️ getAllPatientPackages failed:', error.message)
+      return []
+    }
+  },
+
+  // الحصول على باقات مريض محدد
+  getPatientPackages: async (patientId) => {
+    try {
+      const response = await get(`/api/v1/patient-packages/patient/${patientId}`)
+      return Array.isArray(response) ? response : (response?.data || [])
+    } catch (error) {
+      console.warn('⚠️ getPatientPackages failed:', error.message)
+      return []
+    }
   }
 }

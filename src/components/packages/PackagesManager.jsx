@@ -1,7 +1,7 @@
 // src/components/packages/PackagesManager.jsx
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Package, Plus, Edit, Trash2, DollarSign, Clock, CheckCircle, XCircle, RefreshCw, Loader2, X } from 'lucide-react'
+import { Package, Plus, Edit, Trash2, DollarSign, Clock, CheckCircle, XCircle, RefreshCw, Loader2, X, LayoutGrid, List } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
@@ -42,6 +42,8 @@ export default function PackagesManager() {
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [targetPatientName, setTargetPatientName] = useState('')
   const [assignDoctorName, setAssignDoctorName] = useState('د. أحمد رمزي (العلاج الطبيعي والتأهيل)')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [viewMode, setViewMode] = useState('grid')
   const [formData, setFormData] = useState({
     nameAr: '',
     nameEn: '',
@@ -193,19 +195,18 @@ export default function PackagesManager() {
           nameAr: item.name || item.nameAr || 'باقة',
           nameEn: item.name || item.nameEn || 'Package',
           nameFr: item.name || item.nameFr || 'Forfait',
+          description: item.description || '',
           price: item.price || 0,
           total_sessions: item.total_sessions || 0,
           expiryDays: item.expiry_days || item.expiryDays || 30,
-          services: Array.isArray(item.services) 
-            ? item.services.map(s => {
-                const service = services.find(srv => srv.id === s.service_id)
-                return {
-                  service_id: s.service_id,
-                  service_name: service?.name || s.service_name || 'خدمة',
-                  session_count: s.session_count || 1
-                }
-              })
-            : [],
+          services: (Array.isArray(item.package_services) ? item.package_services : Array.isArray(item.services) ? item.services : []).map(s => {
+            const service = services.find(srv => srv.id === s.service_id)
+            return {
+              service_id: s.service_id,
+              service_name: s.service?.name || service?.name || s.service_name || 'خدمة',
+              session_count: s.session_count || 1
+            }
+          }),
           isActive: item.is_active !== undefined ? item.is_active : true,
           _syncPending: item._syncPending || false
         }))
@@ -498,89 +499,173 @@ export default function PackagesManager() {
         </div>
       </div>
 
-      {/* Packages Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {packages.length === 0 ? (
-          <div className="col-span-3 text-center py-12 text-gray-400">
-            <Package size={48} className="mx-auto mb-4 opacity-50" />
-            <p>لا توجد باقات</p>
+      {/* Search Bar & View Mode Toggle for Packages */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-slate-200 dark:border-gray-700 shadow-sm flex flex-col md:flex-row items-center gap-3 justify-between">
+        <div className="relative w-full md:flex-1 flex items-center gap-3">
+          <input
+            type="text"
+            placeholder={isRTL ? 'ابحث في الباقات الجاهزة بالاسم أو الخدمة...' : 'Search template packages by name or service...'}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 bg-slate-50 dark:bg-gray-700/70 border border-slate-200 dark:border-gray-600 rounded-xl text-slate-800 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute left-3 md:left-auto md:right-3 p-1.5 text-gray-400 hover:text-gray-600">
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        
+        {/* View Switcher */}
+        <div className="flex bg-slate-100 dark:bg-gray-900/50 p-1 rounded-xl shrink-0 w-full md:w-auto">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              viewMode === 'grid' 
+                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50'
+            }`}
+          >
+            <LayoutGrid size={16} /> <span className="hidden md:inline">{isRTL ? 'كروت' : 'Grid'}</span>
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              viewMode === 'table' 
+                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50'
+            }`}
+          >
+            <List size={16} /> <span className="hidden md:inline">{isRTL ? 'جدول' : 'Table'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Packages Grid View */}
+      {viewMode === 'grid' && (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {packages.filter(p => p.nameAr?.toLowerCase().includes(searchTerm.toLowerCase()) || p.description?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
+          <div className="col-span-1 md:col-span-2 xl:col-span-3 text-center py-16 bg-white dark:bg-gray-800/50 rounded-3xl border border-slate-200/60 dark:border-gray-700/50 shadow-sm flex flex-col items-center justify-center">
+            <div className="w-20 h-20 bg-slate-50 dark:bg-gray-800 rounded-3xl flex items-center justify-center mb-4 border border-slate-100 dark:border-gray-700">
+              <Package size={40} className="text-slate-300 dark:text-gray-600" />
+            </div>
+            <p className="text-slate-600 dark:text-gray-400 font-bold text-lg">لا توجد باقات مطابقة للبحث</p>
           </div>
         ) : (
-          packages.map(pkg => {
+          packages.filter(p => p.nameAr?.toLowerCase().includes(searchTerm.toLowerCase()) || p.description?.toLowerCase().includes(searchTerm.toLowerCase())).map(pkg => {
             const isPending = pkg._syncPending === true
             return (
-              <div key={pkg.id} className={`bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border transition-all ${pkg.isActive ? 'border-gray-200 dark:border-gray-700' : 'border-red-200 dark:border-red-800 opacity-60'}`}>
-                <div className="bg-gradient-to-r from-blue-500 to-teal-500 px-6 py-4 flex justify-between items-center">
-                  <h3 className="text-xl font-bold text-white">{getPackageName(pkg)}</h3>
-                  {isPending && (
-                    <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">
-                      ⏳ مزامنة
-                    </span>
-                  )}
+              <div key={pkg.id} className={`group bg-white dark:bg-gray-800/90 rounded-[2rem] border transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl dark:hover:shadow-indigo-900/10 flex flex-col overflow-hidden ${pkg.isActive ? 'border-slate-200/80 dark:border-gray-700/60 shadow-xl shadow-slate-200/40 dark:shadow-none' : 'border-rose-200 dark:border-rose-900/50 opacity-75'}`}>
+                
+                {/* Header */}
+                <div className="relative px-6 pt-6 pb-4 bg-gradient-to-b from-slate-50/80 to-transparent dark:from-gray-800 dark:to-transparent border-b border-slate-100 dark:border-gray-700/50">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 shrink-0">
+                        <Package size={24} strokeWidth={2} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{getPackageName(pkg)}</h3>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${pkg.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'}`}>
+                            {pkg.isActive ? 'نشط' : 'غير نشط'}
+                          </span>
+                          {isPending && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                              ⏳ مزامنة
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="text-green-500" size={20} />
-                      <span className="text-2xl font-bold text-gray-900 dark:text-white">{pkg.price} ر.س</span>
+                {/* Content */}
+                <div className="p-6 flex-1 flex flex-col">
+                  {/* Price & Duration */}
+                  <div className="flex items-center justify-between mb-5 bg-slate-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-slate-100 dark:border-gray-700/50">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">{isRTL ? 'السعر' : 'Price'}</span>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-black text-slate-900 dark:text-white">{pkg.price}</span>
+                        <span className="text-xs font-bold text-slate-500 dark:text-gray-400">{isRTL ? 'ج.م' : 'EGP'}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="text-blue-500" size={16} />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{pkg.expiryDays || 30} يوم</span>
+                    <div className="w-px h-8 bg-slate-200 dark:bg-gray-700"></div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">{isRTL ? 'الصلاحية' : 'Validity'}</span>
+                      <div className="flex items-center gap-1.5 text-slate-700 dark:text-gray-300 font-bold">
+                        <Clock size={14} className="text-indigo-500" />
+                        <span>{pkg.expiryDays || 30} {isRTL ? 'يوم' : 'Days'}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Package size={16} className="text-purple-500" />
-                      <span className="font-semibold">{pkg.total_sessions || pkg.sessions || 0} جلسة</span>
+                  {/* Description */}
+                  {pkg.description && (
+                    <p className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-5 leading-relaxed bg-indigo-50/50 dark:bg-indigo-900/10 p-3 rounded-xl border border-indigo-100/50 dark:border-indigo-800/30">
+                      {pkg.description}
+                    </p>
+                  )}
+
+                  {/* Sessions details */}
+                  <div className="mb-5 flex-1">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg text-xs font-extrabold flex items-center gap-1.5 border border-purple-200 dark:border-purple-800/50">
+                        <Package size={14} />
+                        <span>{pkg.total_sessions || pkg.sessions || 0} {isRTL ? 'إجمالي الجلسات' : 'Total Sessions'}</span>
+                      </div>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {pkg.services && pkg.services.map((service, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <CheckCircle size={12} className="text-green-500" />
-                          <span>{service.service_name || service.name || 'خدمة'} ({service.session_count || 1} جلسة)</span>
+                        <div key={idx} className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-gray-300 bg-slate-50 dark:bg-gray-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                          <CheckCircle size={16} className="text-emerald-500 shrink-0" />
+                          <span className="flex-1 truncate">{service.service_name || service.name || 'خدمة'}</span>
+                          <span className="px-2 py-0.5 bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded text-xs font-bold shrink-0">
+                            {service.session_count || 1} {isRTL ? 'جلسة' : 'Session'}
+                          </span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Phase 7: Treatment Package Assignment & Phase 11/12 Renewal Monitor */}
-                  <div className="pt-3 border-t border-gray-100 dark:border-gray-700/60 mt-4 mb-3">
+                  {/* Actions */}
+                  <div className="mt-auto space-y-3">
                     <button
                       onClick={() => {
                         setAssigningPackage(pkg);
                         setAssignModalOpen(true);
                       }}
-                      className="w-full py-2 px-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-2 transition"
+                      className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
                     >
-                      <Package size={15} />
-                      {isRTL ? '🎁 تسكين الباقة لمريض وإدارة الفواتير (Phase 7)' : 'Assign Package to Patient'}
+                      <Package size={16} />
+                      {isRTL ? 'تسكين الباقة لمريض' : 'Assign Package to Patient'}
                     </button>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditPackage(pkg)}
-                      className="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition flex items-center justify-center gap-2"
-                    >
-                      <Edit size={16} />
-                      تعديل
-                    </button>
-                    <button
-                      onClick={() => handleDeletePackage(pkg.id)}
-                      className="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2"
-                    >
-                      <Trash2 size={16} />
-                      حذف
-                    </button>
-                    <button
-                      onClick={() => togglePackageStatus(pkg.id)}
-                      className={`px-3 py-2 rounded-lg transition ${pkg.isActive ? 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400' : 'bg-green-500 hover:bg-green-600 text-white'}`}
-                    >
-                      {pkg.isActive ? <XCircle size={16} /> : <CheckCircle size={16} />}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditPackage(pkg)}
+                        className="flex-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 text-amber-600 dark:text-amber-400 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 text-xs font-bold border border-amber-200 dark:border-amber-800/50"
+                      >
+                        <Edit size={14} />
+                        تعديل
+                      </button>
+                      <button
+                        onClick={() => handleDeletePackage(pkg.id)}
+                        className="flex-1 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 text-xs font-bold border border-rose-200 dark:border-rose-800/50"
+                      >
+                        <Trash2 size={14} />
+                        حذف
+                      </button>
+                      <button
+                        onClick={() => togglePackageStatus(pkg.id)}
+                        className={`px-4 py-2.5 rounded-xl transition-colors border text-xs font-bold flex items-center justify-center ${pkg.isActive ? 'bg-slate-100 hover:bg-slate-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-slate-600 dark:text-gray-300 border-slate-200 dark:border-gray-600' : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'}`}
+                        title={pkg.isActive ? 'إلغاء التفعيل' : 'تفعيل'}
+                      >
+                        {pkg.isActive ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -588,6 +673,158 @@ export default function PackagesManager() {
           })
         )}
       </div>
+      )}
+
+      {/* Packages Table View */}
+      {viewMode === 'table' && (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-slate-200 dark:border-gray-700/80 shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-gray-800/80 border-b border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 font-bold text-[11px] uppercase tracking-wider text-right rtl:text-right">
+                  <th className="px-6 py-4">{isRTL ? 'الباقة' : 'Package'}</th>
+                  <th className="px-4 py-4 text-center">{isRTL ? 'السعر' : 'Price'}</th>
+                  <th className="px-4 py-4 text-center">{isRTL ? 'الجلسات' : 'Sessions'}</th>
+                  <th className="px-4 py-4 text-center">{isRTL ? 'الصلاحية' : 'Validity'}</th>
+                  <th className="px-4 py-4">{isRTL ? 'تفاصيل الخدمات' : 'Services Detail'}</th>
+                  <th className="px-4 py-4 text-center">{isRTL ? 'الحالة' : 'Status'}</th>
+                  <th className="px-6 py-4 text-center">{isRTL ? 'الإجراءات' : 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-800/60 text-sm">
+                {packages.filter(p => p.nameAr?.toLowerCase().includes(searchTerm.toLowerCase()) || p.description?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-16 h-16 bg-slate-50 dark:bg-gray-800/80 rounded-2xl flex items-center justify-center mb-3 border border-slate-100 dark:border-gray-700 text-slate-400">
+                          <Package size={30} />
+                        </div>
+                        <p className="text-slate-600 dark:text-gray-400 font-bold text-base">لا توجد باقات مطابقة للبحث</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  packages.filter(p => p.nameAr?.toLowerCase().includes(searchTerm.toLowerCase()) || p.description?.toLowerCase().includes(searchTerm.toLowerCase())).map(pkg => {
+                    const isPending = pkg._syncPending === true
+                    return (
+                      <tr key={pkg.id} className="hover:bg-indigo-50/40 dark:hover:bg-indigo-900/10 transition-colors duration-150 group text-right rtl:text-right">
+                        {/* Package Info */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3.5">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-sm shrink-0">
+                              <Package size={18} strokeWidth={2} />
+                            </div>
+                            <div>
+                              <span className="block font-black text-slate-900 dark:text-white text-sm">
+                                {getPackageName(pkg)}
+                              </span>
+                              {pkg.description && (
+                                <span className="block text-xs text-slate-500 dark:text-gray-400 mt-1 max-w-[200px] truncate" title={pkg.description}>
+                                  {pkg.description}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        
+                        {/* Price */}
+                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                          <div className="inline-flex items-baseline gap-1 bg-slate-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-gray-700/50">
+                            <span className="font-black text-slate-900 dark:text-white text-sm">{pkg.price}</span>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400">{isRTL ? 'ج.م' : 'EGP'}</span>
+                          </div>
+                        </td>
+
+                        {/* Sessions Count */}
+                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                          <span className="font-extrabold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2.5 py-1 rounded-lg text-xs border border-purple-100 dark:border-purple-800/30">
+                            {pkg.total_sessions || pkg.sessions || 0} {isRTL ? 'جلسة' : 'S'}
+                          </span>
+                        </td>
+
+                        {/* Validity */}
+                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1.5 font-bold text-slate-600 dark:text-slate-300 text-xs">
+                            <Clock size={14} className="text-slate-400" />
+                            <span>{pkg.expiryDays || 30} {isRTL ? 'يوم' : 'D'}</span>
+                          </div>
+                        </td>
+
+                        {/* Services Detail List */}
+                        <td className="px-4 py-4 max-w-[200px]">
+                          <div className="flex flex-col gap-1.5">
+                            {pkg.services && pkg.services.slice(0, 2).map((service, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-gray-300 bg-slate-50 dark:bg-gray-800/50 p-1.5 rounded-lg border border-slate-100 dark:border-gray-700/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                                <span className="truncate flex-1">{service.service_name || service.name || 'خدمة'}</span>
+                                <span className="bg-slate-200 dark:bg-gray-700 px-1.5 rounded text-[10px]">{service.session_count || 1}</span>
+                              </div>
+                            ))}
+                            {pkg.services && pkg.services.length > 2 && (
+                              <span className="text-[10px] font-bold text-indigo-500">+{pkg.services.length - 2} {isRTL ? 'خدمات أخرى' : 'more'}</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold ${pkg.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'}`}>
+                              {pkg.isActive ? 'نشط' : 'غير نشط'}
+                            </span>
+                            {isPending && (
+                              <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                                ⏳ مزامنة
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => {
+                                setAssigningPackage(pkg);
+                                setAssignModalOpen(true);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-colors border border-indigo-200 dark:border-indigo-800/50 shadow-sm hover:shadow-md"
+                              title={isRTL ? 'تسكين الباقة لمريض' : 'Assign Package'}
+                            >
+                              <Package size={14} strokeWidth={2.5} />
+                            </button>
+                            <button
+                              onClick={() => handleEditPackage(pkg)}
+                              className="w-8 h-8 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center transition-colors border border-amber-200 dark:border-amber-800/50"
+                              title={isRTL ? 'تعديل' : 'Edit'}
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePackage(pkg.id)}
+                              className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center transition-colors border border-rose-200 dark:border-rose-800/50"
+                              title={isRTL ? 'حذف' : 'Delete'}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => togglePackageStatus(pkg.id)}
+                              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-colors ${pkg.isActive ? 'bg-slate-50 hover:bg-slate-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-gray-600' : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'}`}
+                              title={pkg.isActive ? 'إلغاء التفعيل' : 'تفعيل'}
+                            >
+                              {pkg.isActive ? <XCircle size={14} /> : <CheckCircle size={14} />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Modal Add/Edit Package */}
       {showModal && (
