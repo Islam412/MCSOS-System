@@ -8,9 +8,11 @@ import {
   CheckCircle, XCircle, Clock, TrendingUp, Stethoscope, Syringe,
   ClipboardList, AlertCircle, Eye, Upload, Search, UserPlus, PenBox,
   Bone, Microscope, FileImage, Scissors, Droplet, Heart, Brain,
-  Loader2, RefreshCw, ChevronLeft, ChevronRight, LayoutGrid, List
+  Loader2, RefreshCw, ChevronLeft, ChevronRight, LayoutGrid, List,
+  Paperclip, ExternalLink
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { compressImage } from '../../utils/imageCompressor'
 
 // ========== استيراد الخدمات ==========
 import { patientsService, prescriptionsService } from '../../services/api'
@@ -75,7 +77,10 @@ export default function PatientProfile() {
   const [prescriptions, setPrescriptions] = useState([])
   const [prescriptionForm, setPrescriptionForm] = useState({
     medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
-    notes: ''
+    notes: '',
+    prescriptionFile: '',
+    fileName: '',
+    fileType: ''
   })
   
   const [newPatient, setNewPatient] = useState({
@@ -725,8 +730,8 @@ export default function PatientProfile() {
   // ========== دوال الروشتات ==========
   const handleAddPrescription = async () => {
     const validMedications = prescriptionForm.medications.filter(m => m.name.trim())
-    if (validMedications.length === 0) {
-      toast.error('الرجاء إضافة دواء واحد على الأقل')
+    if (validMedications.length === 0 && !prescriptionForm.prescriptionFile) {
+      toast.error(isRTL ? 'الرجاء إضافة دواء واحد على الأقل أو رفع ملف/صورة الروشتة' : 'Please add at least one medication or upload a prescription file/image')
       return
     }
 
@@ -739,8 +744,11 @@ export default function PatientProfile() {
         patientId: selectedPatient.id,
         patientName: getPatientName(selectedPatient),
         medications: validMedications,
-        notes: prescriptionForm.notes,
-        doctorName: selectedPatient.doctorName || 'الطبيب المعالج'
+        notes: prescriptionForm.notes || '',
+        fileUrl: prescriptionForm.prescriptionFile || null,
+        fileName: prescriptionForm.fileName || null,
+        fileType: prescriptionForm.fileType || null,
+        doctorName: selectedPatient.doctorName || (isRTL ? 'الطبيب المعالج' : 'Attending Doctor')
       }
 
       const updatedPrescriptions = [newPrescription, ...prescriptions]
@@ -753,10 +761,16 @@ export default function PatientProfile() {
       }
       updatePatient(updatedPatient)
       setShowPrescriptionModal(false)
-      setPrescriptionForm({ medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }], notes: '' })
-      toast.success('تم إضافة الروشتة بنجاح')
+      setPrescriptionForm({
+        medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
+        notes: '',
+        prescriptionFile: '',
+        fileName: '',
+        fileType: ''
+      })
+      toast.success(isRTL ? 'تم إضافة الروشتة بنجاح' : 'Prescription added successfully')
     } catch (error) {
-      toast.error(error.message || 'حدث خطأ في إضافة الروشتة')
+      toast.error(error.message || (isRTL ? 'حدث خطأ في إضافة الروشتة' : 'Failed to add prescription'))
     } finally {
       setIsSubmitting(false)
     }
@@ -771,13 +785,78 @@ export default function PatientProfile() {
 
   const handleRemoveMedicationField = (index) => {
     if (prescriptionForm.medications.length === 1) {
-      toast.error('يجب وجود دواء واحد على الأقل')
+      if (prescriptionForm.prescriptionFile) {
+        setPrescriptionForm(prev => ({ ...prev, medications: [] }))
+        return
+      }
+      toast.error(isRTL ? 'يجب وجود دواء واحد على الأقل أو إرفاق ملف الروشتة' : 'At least one medication or an attached file is required')
       return
     }
     setPrescriptionForm(prev => ({
       ...prev,
       medications: prev.medications.filter((_, i) => i !== index)
     }))
+  }
+
+  const handlePrescriptionFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error(isRTL ? 'حجم الملف يجب ألا يتجاوز 15 ميجابايت' : 'File size must not exceed 15MB')
+      return
+    }
+    try {
+      const base64 = await compressImage(file, 1600, 1600, 0.8)
+      setPrescriptionForm(prev => ({
+        ...prev,
+        prescriptionFile: base64,
+        fileName: file.name,
+        fileType: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
+      }))
+      toast.success(isRTL ? 'تم إرفاق ملف الروشتة بنجاح' : 'Prescription file attached')
+    } catch (err) {
+      toast.error(isRTL ? 'فشل إرفاق الملف' : 'Failed to attach file')
+    }
+  }
+
+  const handleDirectPrescriptionUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error(isRTL ? 'حجم الملف يجب ألا يتجاوز 15 ميجابايت' : 'File size must not exceed 15MB')
+      return
+    }
+    try {
+      const base64 = await compressImage(file, 1600, 1600, 0.8)
+      setPrescriptionForm({
+        medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
+        notes: '',
+        prescriptionFile: base64,
+        fileName: file.name,
+        fileType: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
+      })
+      setShowPrescriptionModal(true)
+      toast.success(isRTL ? 'تم إرفاق الملف، يمكنك حفظ الروشتة أو إضافة ملاحظات' : 'File attached, you can save prescription or add notes')
+    } catch (err) {
+      toast.error(isRTL ? 'فشل قراءة الملف' : 'Failed to read file')
+    }
+    e.target.value = ''
+  }
+
+  const handleDeletePrescription = (prescriptionId) => {
+    if (confirm(isRTL ? 'هل أنت متأكد من حذف هذه الروشتة؟' : 'Are you sure you want to delete this prescription?')) {
+      const updated = prescriptions.filter(p => p.id !== prescriptionId)
+      setPrescriptions(updated)
+      localStorage.setItem('mcsos_prescriptions', JSON.stringify(updated))
+      if (selectedPatient?.prescriptions) {
+        const updatedPatient = {
+          ...selectedPatient,
+          prescriptions: selectedPatient.prescriptions.filter(id => id !== prescriptionId)
+        }
+        updatePatient(updatedPatient)
+      }
+      toast.success(isRTL ? 'تم حذف الروشتة بنجاح' : 'Prescription deleted successfully')
+    }
   }
 
   const handleMedicationFieldChange = (index, field, value) => {
@@ -1024,7 +1103,7 @@ export default function PatientProfile() {
                             {patientName}
                           </h3>
                           <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 text-[10px] font-mono font-bold border border-indigo-200/50 dark:border-indigo-800">
-                            {patient.profile_number || 'N/A'}
+                            ID: {patient.patient_code || patient.profile_number || (patient.id ? patient.id.slice(0, 8) : 'N/A')}
                           </span>
                         </div>
 
@@ -1151,11 +1230,9 @@ export default function PatientProfile() {
                                 <span className="block text-xs font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
                                   {patientName}
                                 </span>
-                                {patient.profile_number && (
-                                  <span className="block text-[10px] font-mono text-slate-400 dark:text-gray-500 font-bold mt-0.5">
-                                    {patient.profile_number}
-                                  </span>
-                                )}
+                                <span className="block text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
+                                  ID: {patient.patient_code || patient.profile_number || (patient.id ? patient.id.slice(0, 8) : 'N/A')}
+                                </span>
                               </div>
                             </div>
                           </td>
@@ -1418,13 +1495,26 @@ export default function PatientProfile() {
 
               {editPatient.referral_source?.includes('Doctor Referral') && (
                 <div className="md:col-span-2">
-                  <label className="block font-bold text-indigo-600 dark:text-indigo-400 mb-1">اسم الطبيب المحوّل *</label>
+                  <label className="block font-bold text-indigo-600 dark:text-indigo-400 mb-1">اسم الطبيب المحوّل</label>
                   <input
                     type="text"
                     className="w-full p-2.5 bg-indigo-50/50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
                     value={editPatient.referral_doctor_name || ''}
                     onChange={(e) => setEditPatient({...editPatient, referral_doctor_name: e.target.value})}
                     placeholder="مثال: د. أحمد فؤاد..."
+                  />
+                </div>
+              )}
+
+              {editPatient.referral_source === 'Friend' && (
+                <div className="md:col-span-2">
+                  <label className="block font-bold text-indigo-600 dark:text-indigo-400 mb-1">اسم الصديق / المُرشّح</label>
+                  <input
+                    type="text"
+                    className="w-full p-2.5 bg-indigo-50/50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
+                    value={editPatient.referral_friend_name || ''}
+                    onChange={(e) => setEditPatient({...editPatient, referral_friend_name: e.target.value})}
+                    placeholder="مثال: محمد علي..."
                   />
                 </div>
               )}
@@ -1617,6 +1707,68 @@ export default function PatientProfile() {
                     تعديل -1
                   </button>
                 </div>
+
+                {/* Re-assessment Alert & Action Banner */}
+                {((selectedPatient.totalSessions > 0 && selectedPatient.completedSessions >= selectedPatient.totalSessions - 1) || (selectedPatient.progress >= 90)) && (
+                  <div className="mt-5 p-4 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border-2 border-amber-500/40 rounded-2xl shadow-lg space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md shrink-0">
+                        <AlertCircle size={22} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-extrabold text-amber-300 flex items-center gap-1.5">
+                          <span>⚠️ {isRTL ? 'مطلوب إجراء جلسة إعادة تقييم (Re-assessment Required)' : 'Re-assessment Required'}</span>
+                        </h4>
+                        <p className="text-xs text-gray-200 mt-1 leading-relaxed">
+                          {isRTL
+                            ? `المريض قارب على إنهاء باقته العلاجية (${selectedPatient.completedSessions || 0}/${selectedPatient.totalSessions || 0} جلسة). يتوجب على الطبيب المعالج إجراء فحص إعادة تقييم لاتخاذ القرار الطبي المناسب: إما تكرار نفس الباقة لاستكمال التأهيل، أو تغيير وتعديل الباقة.`
+                            : `Patient has completed (${selectedPatient.completedSessions || 0}/${selectedPatient.totalSessions || 0} sessions). Doctor re-assessment is required to decide whether to repeat the package or modify treatment.`}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-amber-500/30">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const patientId = selectedPatient.id
+                          const pName = encodeURIComponent(getPatientName(selectedPatient))
+                          const docName = encodeURIComponent(selectedPatient.doctorName || '')
+                          window.location.href = `/packages?patientId=${patientId}&patientName=${pName}&doctorName=${docName}&action=repeat`
+                        }}
+                        className="flex-1 min-w-[140px] bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/50 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <RefreshCw size={14} />
+                        <span>{isRTL ? '🔁 تكرار نفس الباقة' : 'Repeat Package'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const patientId = selectedPatient.id
+                          const pName = encodeURIComponent(getPatientName(selectedPatient))
+                          const docName = encodeURIComponent(selectedPatient.doctorName || '')
+                          window.location.href = `/packages?patientId=${patientId}&patientName=${pName}&doctorName=${docName}&action=change`
+                        }}
+                        className="flex-1 min-w-[140px] bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/50 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <TrendingUp size={14} />
+                        <span>{isRTL ? '📦 تغيير / ترقية الباقة' : 'Change Package'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href = `/scheduling?patientId=${selectedPatient.id}&type=RE_ASSESSMENT`
+                        }}
+                        className="flex-1 min-w-[140px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border border-amber-500/50 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <Calendar size={14} />
+                        <span>{isRTL ? '📅 حجز موعد إعادة تقييم' : 'Book Re-assessment'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1647,25 +1799,165 @@ export default function PatientProfile() {
 
             {activeTab === 'prescriptions' && (
               <div>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 bg-gray-700/20 p-3 rounded-xl border border-gray-700/40">
+                  <div>
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <Pill className="text-blue-400" size={18} />
+                      {isRTL ? 'الروشتات والوصفات الطبية' : 'Medical Prescriptions'}
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {isRTL ? 'يمكنك إدخال الروشتة يدوياً أو رفعها كصورة أو ملف PDF' : 'Add prescriptions manually or upload as image/PDF file'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                      <Upload size={14} />
+                      <span>{isRTL ? 'رفع روشتة (صورة/ملف)' : 'Upload Prescription (File/Image)'}</span>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="hidden"
+                        onChange={handleDirectPrescriptionUpload}
+                      />
+                    </label>
+                    <button
+                      onClick={() => setShowPrescriptionModal(true)}
+                      className="bg-green-600/30 hover:bg-green-600/50 text-green-300 border border-green-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                    >
+                      <Plus size={14} />
+                      <span>{isRTL ? 'إضافة روشتة جديدة' : 'New Prescription'}</span>
+                    </button>
+                  </div>
+                </div>
+
                 {prescriptions.filter(p=>p.patientId===selectedPatient.id).length===0 ? (
-                  <p className="text-gray-400 text-center py-8">لا توجد روشتات</p>
+                  <div className="text-center py-10 bg-gray-800/40 rounded-xl border border-gray-700/30">
+                    <Pill className="mx-auto text-gray-500 mb-2 opacity-50" size={32} />
+                    <p className="text-gray-400 text-sm">{isRTL ? 'لا توجد روشتات مسجلة لهذا المريض' : 'No prescriptions recorded for this patient'}</p>
+                    <button
+                      onClick={() => setShowPrescriptionModal(true)}
+                      className="mt-3 text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-3 py-1.5 rounded-lg inline-flex items-center gap-1"
+                    >
+                      <Plus size={14} /> {isRTL ? 'إضافة أول روشتة' : 'Add First Prescription'}
+                    </button>
+                  </div>
                 ) : (
-                  prescriptions.filter(p=>p.patientId===selectedPatient.id).map(p=>(
-                    <div key={p.id} className="bg-gray-700/30 rounded-lg p-4 mb-2">
-                      <p className="font-bold">{p.prescriptionNumber}</p>
-                      <p className="text-sm text-gray-400">{new Date(p.prescriptionDate).toLocaleDateString()}</p>
-                      <div className="mt-2 space-y-2">
-                        {p.medications.map((m,i)=>(
-                          <div key={i} className="bg-gray-800 rounded-lg p-2">
-                            <strong className="text-white">{m.name}</strong>
-                            <span className="text-gray-400 text-sm ml-2">- {m.dosage}</span>
-                            <span className="text-gray-400 text-sm ml-2">- {m.frequency}</span>
+                  <div className="space-y-3">
+                    {prescriptions.filter(p=>p.patientId===selectedPatient.id).map(p=>(
+                      <div key={p.id} className="bg-gray-800/60 rounded-xl p-4 border border-gray-700/60 shadow-sm space-y-3">
+                        <div className="flex items-center justify-between border-b border-gray-700/40 pb-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-white font-mono">{p.prescriptionNumber}</span>
+                              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-sans">
+                                {p.doctorName || (isRTL ? 'الطبيب المعالج' : 'Doctor')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">{new Date(p.prescriptionDate).toLocaleDateString()}</p>
                           </div>
-                        ))}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDeletePrescription(p.id)}
+                              className="text-red-400 hover:bg-red-500/20 p-1.5 rounded-lg transition"
+                              title={isRTL ? 'حذف الروشتة' : 'Delete Prescription'}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Uploaded File / Image Section */}
+                        {p.fileUrl && (
+                          <div className="p-3 bg-gray-700/40 rounded-xl border border-gray-600/40 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+                                <Paperclip size={14} className="text-blue-400" />
+                                {isRTL ? 'الملف المرفق للروشتة:' : 'Attached Prescription File:'}
+                              </span>
+                              <span className="text-[11px] text-gray-400 font-mono">
+                                {p.fileName || (p.fileType?.includes('pdf') ? 'Prescription.pdf' : 'Prescription.jpg')}
+                              </span>
+                            </div>
+
+                            {/* Image Preview or PDF Link */}
+                            {p.fileType?.includes('pdf') || p.fileName?.endsWith('.pdf') ? (
+                              <div className="flex items-center justify-between p-2.5 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="text-red-400" size={24} />
+                                  <div>
+                                    <p className="text-xs font-bold text-red-300">{p.fileName || 'روشتة طبية.pdf'}</p>
+                                    <p className="text-[10px] text-gray-400">{isRTL ? 'مستند PDF' : 'PDF Document'}</p>
+                                  </div>
+                                </div>
+                                <a
+                                  href={p.fileUrl}
+                                  download={p.fileName || `${p.prescriptionNumber}.pdf`}
+                                  className="px-3 py-1.5 bg-red-600/30 hover:bg-red-600/50 text-red-200 text-xs font-semibold rounded-lg flex items-center gap-1 transition"
+                                >
+                                  <Download size={13} />
+                                  <span>{isRTL ? 'تحميل' : 'Download'}</span>
+                                </a>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div
+                                  className="w-full max-h-48 rounded-lg overflow-hidden border border-gray-600 cursor-pointer bg-black/40 group relative"
+                                  onClick={() => handleViewImage([{ id: p.id, data: p.fileUrl, title: `روشتة: ${p.prescriptionNumber}` }], 0)}
+                                >
+                                  <img
+                                    src={p.fileUrl}
+                                    alt="Prescription"
+                                    className="w-full h-44 object-contain transition group-hover:scale-105"
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white text-xs font-bold gap-1">
+                                    <Eye size={16} />
+                                    <span>{isRTL ? 'انقر للتكبير' : 'Click to view'}</span>
+                                  </div>
+                                </div>
+                                <div className="flex justify-end">
+                                  <a
+                                    href={p.fileUrl}
+                                    download={p.fileName || `${p.prescriptionNumber}.jpg`}
+                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium"
+                                  >
+                                    <Download size={13} />
+                                    <span>{isRTL ? 'تحميل الصورة الأصلية' : 'Download Image'}</span>
+                                  </a>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Medications list if any */}
+                        {p.medications && p.medications.length > 0 && (
+                          <div className="space-y-1.5">
+                            <span className="text-xs font-bold text-gray-400 block">{isRTL ? 'الأدوية الموصوفة:' : 'Prescribed Medications:'}</span>
+                            {p.medications.map((m,i)=>(
+                              <div key={i} className="bg-gray-700/40 rounded-lg p-2.5 flex items-center justify-between text-xs">
+                                <div>
+                                  <strong className="text-white text-sm">{m.name}</strong>
+                                  {m.instructions && <p className="text-gray-400 text-[11px] mt-0.5">{m.instructions}</p>}
+                                </div>
+                                <div className="text-right text-gray-300 text-[11px] space-x-2">
+                                  {m.dosage && <span className="bg-gray-800 px-2 py-0.5 rounded">{m.dosage}</span>}
+                                  {m.frequency && <span className="bg-gray-800 px-2 py-0.5 rounded">{m.frequency}</span>}
+                                  {m.duration && <span className="bg-gray-800 px-2 py-0.5 rounded">{m.duration}</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {p.notes && (
+                          <div className="text-xs text-gray-300 bg-gray-900/30 p-2.5 rounded-lg border border-gray-700/30">
+                            <span className="font-bold text-gray-400 ml-1">📋 {isRTL ? 'ملاحظات:' : 'Notes:'}</span>
+                            {p.notes}
+                          </div>
+                        )}
                       </div>
-                      {p.notes && <p className="text-xs text-gray-400 mt-2">📋 {p.notes}</p>}
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -1819,29 +2111,132 @@ export default function PatientProfile() {
 
             {showPrescriptionModal && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-                  <h2 className="text-xl font-bold text-white mb-4">إضافة روشتة طبية</h2>
-                  <div><label>المريض</label><input type="text" value={getPatientName(selectedPatient)} disabled className="w-full p-2 bg-gray-700/50 rounded-lg text-white"/></div>
-                  <div className="flex justify-between mt-4"><h3 className="text-white font-bold">الأدوية</h3><button onClick={handleAddMedicationField} className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm"><Plus size={14}/> إضافة دواء</button></div>
+                <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700 shadow-2xl">
+                  <div className="flex items-center justify-between mb-4 border-b border-gray-700 pb-3">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Pill className="text-blue-400" size={22} />
+                      {isRTL ? 'إضافة روشتة طبية' : 'Add Medical Prescription'}
+                    </h2>
+                    <button onClick={()=>setShowPrescriptionModal(false)} className="text-gray-400 hover:text-white p-1 rounded-lg">
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-400 font-bold block mb-1">{isRTL ? 'المريض' : 'Patient'}</label>
+                    <input type="text" value={getPatientName(selectedPatient)} disabled className="w-full p-2.5 bg-gray-700/50 rounded-xl text-white text-sm border border-gray-600"/>
+                  </div>
+
+                  {/* Attachment Box: Upload Image or PDF */}
+                  <div className="mt-4 p-4 bg-gray-700/30 rounded-xl border-2 border-dashed border-gray-600 hover:border-blue-500/60 transition">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Upload size={16} className="text-blue-400" />
+                        {isRTL ? 'رفع الروشتة كصورة أو ملف PDF (اختياري / كبديل لإدخال الأدوية):' : 'Upload Prescription as Image or PDF (Optional/Alternative):'}
+                      </span>
+                      {prescriptionForm.prescriptionFile && (
+                        <button
+                          type="button"
+                          onClick={() => setPrescriptionForm(prev => ({ ...prev, prescriptionFile: '', fileName: '', fileType: '' }))}
+                          className="text-red-400 hover:text-red-300 text-xs flex items-center gap-1"
+                        >
+                          <Trash2 size={13} /> {isRTL ? 'إزالة الملف' : 'Remove File'}
+                        </button>
+                      )}
+                    </div>
+
+                    {!prescriptionForm.prescriptionFile ? (
+                      <label className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-gray-700/40 rounded-lg transition">
+                        <Upload size={28} className="text-gray-400 mb-2" />
+                        <span className="text-xs text-blue-400 font-bold">
+                          {isRTL ? 'انقر لاختيار صورة (JPG, PNG) أو ملف PDF للروشتة' : 'Click to select prescription image or PDF'}
+                        </span>
+                        <span className="text-[11px] text-gray-400 mt-1">
+                          {isRTL ? 'يمكنك تصوير الروشتة أو رفع ملفها مباشرة وحفظها' : 'You can take a photo of prescription or upload directly'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          onChange={handlePrescriptionFileUpload}
+                        />
+                      </label>
+                    ) : (
+                      <div className="p-3 bg-gray-800 rounded-lg border border-gray-600 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {prescriptionForm.fileType?.includes('pdf') || prescriptionForm.fileName?.endsWith('.pdf') ? (
+                            <FileText className="text-red-400" size={32} />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-600 shrink-0">
+                              <img src={prescriptionForm.prescriptionFile} alt="Preview" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs font-bold text-white">{prescriptionForm.fileName || (isRTL ? 'ملف الروشتة' : 'Prescription File')}</p>
+                            <p className="text-[10px] text-emerald-400 font-semibold">{isRTL ? '✅ تم إرفاق الملف بنجاح' : '✅ File attached successfully'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Medications list */}
+                  <div className="flex justify-between items-center mt-5">
+                    <h3 className="text-white font-bold text-sm flex items-center gap-1.5">
+                      <Pill size={16} className="text-emerald-400" />
+                      {isRTL ? 'تفاصيل الأدوية (اختياري عند إرفاق ملف):' : 'Medication Items (Optional if file attached):'}
+                    </h3>
+                    <button
+                      onClick={handleAddMedicationField}
+                      className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      <Plus size={14}/> {isRTL ? 'إضافة دواء' : 'Add Medication'}
+                    </button>
+                  </div>
+
                   {prescriptionForm.medications.map((med,idx)=>(
-                    <div key={idx} className="bg-gray-700/30 rounded-lg p-3 mt-2">
-                      <div className="flex justify-between"><span>دواء #{idx+1}</span>{idx>0 && <button onClick={()=>handleRemoveMedicationField(idx)} className="text-red-400"><Trash2 size={14}/></button>}</div>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        <input type="text" placeholder="اسم الدواء" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.name} onChange={(e)=>handleMedicationFieldChange(idx,'name',e.target.value)}/>
-                        <input type="text" placeholder="الجرعة" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.dosage} onChange={(e)=>handleMedicationFieldChange(idx,'dosage',e.target.value)}/>
-                        <input type="text" placeholder="عدد المرات" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.frequency} onChange={(e)=>handleMedicationFieldChange(idx,'frequency',e.target.value)}/>
-                        <input type="text" placeholder="المدة" className="p-2 bg-gray-700 rounded-lg text-white text-sm" value={med.duration} onChange={(e)=>handleMedicationFieldChange(idx,'duration',e.target.value)}/>
-                        <textarea placeholder="تعليمات" className="col-span-2 p-2 bg-gray-700 rounded-lg text-white text-sm" rows="1" value={med.instructions} onChange={(e)=>handleMedicationFieldChange(idx,'instructions',e.target.value)}/>
+                    <div key={idx} className="bg-gray-700/30 rounded-xl p-3 mt-2 border border-gray-700/60">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-gray-300">{isRTL ? `دواء #${idx+1}` : `Medication #${idx+1}`}</span>
+                        {prescriptionForm.medications.length > 1 && (
+                          <button onClick={()=>handleRemoveMedicationField(idx)} className="text-red-400 hover:text-red-300 p-1">
+                            <Trash2 size={14}/>
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="text" placeholder={isRTL ? 'اسم الدواء' : 'Medication name'} className="p-2 bg-gray-700 rounded-lg text-white text-xs" value={med.name} onChange={(e)=>handleMedicationFieldChange(idx,'name',e.target.value)}/>
+                        <input type="text" placeholder={isRTL ? 'الجرعة (مثال: 500 ملغ)' : 'Dosage (e.g. 500mg)'} className="p-2 bg-gray-700 rounded-lg text-white text-xs" value={med.dosage} onChange={(e)=>handleMedicationFieldChange(idx,'dosage',e.target.value)}/>
+                        <input type="text" placeholder={isRTL ? 'التكرار (مثال: مرتين يومياً)' : 'Frequency (e.g. 2x daily)'} className="p-2 bg-gray-700 rounded-lg text-white text-xs" value={med.frequency} onChange={(e)=>handleMedicationFieldChange(idx,'frequency',e.target.value)}/>
+                        <input type="text" placeholder={isRTL ? 'المدة (مثال: أسبوعان)' : 'Duration (e.g. 2 weeks)'} className="p-2 bg-gray-700 rounded-lg text-white text-xs" value={med.duration} onChange={(e)=>handleMedicationFieldChange(idx,'duration',e.target.value)}/>
+                        <textarea placeholder={isRTL ? 'تعليمات الاستخدام...' : 'Instructions...'} className="col-span-2 p-2 bg-gray-700 rounded-lg text-white text-xs" rows="1" value={med.instructions} onChange={(e)=>handleMedicationFieldChange(idx,'instructions',e.target.value)}/>
                       </div>
                     </div>
                   ))}
-                  <textarea placeholder="ملاحظات" className="w-full p-2 bg-gray-700 rounded-lg text-white mt-4" rows="2" value={prescriptionForm.notes} onChange={(e)=>setPrescriptionForm({...prescriptionForm,notes:e.target.value})}/>
-                  <div className="flex gap-3 mt-4">
-                    <button onClick={handleAddPrescription} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50">
-                      {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : null}
-                      {isSubmitting ? 'جاري الحفظ...' : 'حفظ'}
+
+                  <textarea
+                    placeholder={isRTL ? 'ملاحظات إضافية على الروشتة...' : 'Additional prescription notes...'}
+                    className="w-full p-2.5 bg-gray-700 rounded-xl text-white text-xs mt-4 border border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none"
+                    rows="2"
+                    value={prescriptionForm.notes}
+                    onChange={(e)=>setPrescriptionForm({...prescriptionForm,notes:e.target.value})}
+                  />
+
+                  <div className="flex gap-3 mt-5">
+                    <button
+                      onClick={handleAddPrescription}
+                      disabled={isSubmitting}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm shadow-md"
+                    >
+                      {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                      <span>{isSubmitting ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ الروشتة' : 'Save Prescription')}</span>
                     </button>
-                    <button onClick={()=>setShowPrescriptionModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
+                    <button
+                      onClick={()=>setShowPrescriptionModal(false)}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold py-2.5 rounded-xl transition text-sm"
+                    >
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
                   </div>
                 </div>
               </div>

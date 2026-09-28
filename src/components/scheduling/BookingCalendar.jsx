@@ -318,11 +318,41 @@ export default function BookingCalendar() {
 
   // ========== تخصيص شكل كارت الموعد في الكالندر ==========
   const eventStyleGetter = (event) => {
-    const colorConfig = statusColors[event.status] || statusColors.SCHEDULED
+    const s = event.resource || {}
+    const plan = s.treatment_plan
+    const patient = s.patient
+    const totalSessions = plan?.total_sessions || patient?.totalSessions || s.total_sessions || 0
+    const completedSessions = plan?.sessions?.filter(sess => sess.status === 'ATTENDED' || sess.status === 'COMPLETED').length
+      ?? patient?.completedSessions 
+      ?? s.completed_sessions 
+      ?? 0
+    const progress = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : (patient?.progress || 0)
+
+    const isFinishedNotRenewed = 
+      s.package_status === 'EXPIRED' ||
+      s.package_status === 'COMPLETED_NOT_RENEWED' ||
+      (totalSessions > 0 && completedSessions >= totalSessions && !s.is_renewed)
+
+    const isNearCompletion = progress >= 90 || (totalSessions > 0 && (totalSessions - completedSessions) <= 1)
+
+    let bg = 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
+    let text = '#ffffff'
+
+    if (isFinishedNotRenewed) {
+      bg = 'linear-gradient(135deg, #ef4444, #b91c1c)' // Red: finished not renewed
+    } else if (isNearCompletion && totalSessions > 0) {
+      bg = 'linear-gradient(135deg, #f59e0b, #d97706)' // Yellow: 90% finished
+    } else if (s.confirm_status === 'CONFIRMED' || event.status === 'ATTENDED' || s.status === 'CONFIRMED') {
+      bg = 'linear-gradient(135deg, #10b981, #047857)' // Green: confirmed
+    } else if (statusColors[event.status]) {
+      bg = statusColors[event.status].bg
+      text = statusColors[event.status].text
+    }
+
     return {
       style: {
-        background: colorConfig.bg,
-        color: colorConfig.text,
+        background: bg,
+        color: text,
         borderRadius: '10px',
         border: 'none',
         padding: '3px 6px',

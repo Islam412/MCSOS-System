@@ -55,6 +55,18 @@ export default function ReportsDashboard() {
         { reason: 'عدم الحضور دون إشعار (No Show)', count: 12 },
         { reason: 'ازدحام مروري / تأخر عن الموعد', count: 9 },
         { reason: 'تعديل جدول الطبيب (Doctor Rescheduled)', count: 6 },
+      ],
+      cancellationReasons: [
+        { reason: 'المريض طلب الإلغاء', count: 11, percentage: 48 },
+        { reason: 'المريض لم يحضر (غياب بدون إشعار)', count: 6, percentage: 26 },
+        { reason: 'الطبيب غير متاح أو في إجازة', count: 3, percentage: 13 },
+        { reason: 'تعارض في المواعيد والجدول', count: 2, percentage: 9 },
+        { reason: 'سبب صحي أو ظرف طارئ للمريض', count: 1, percentage: 4 },
+      ],
+      recentCancellations: [
+        { patientName: 'سارة عبد الله الشيخ', doctorName: 'د. أحمد رمزي', date: '2026-08-01', reason: 'المريض طلب الإلغاء', cancelledBy: 'موظف الاستقبال' },
+        { patientName: 'كريم محمود إسماعيل', doctorName: 'د. سارة فوزي', date: '2026-07-31', reason: 'تعارض في المواعيد والجدول', cancelledBy: 'الاستقبال' },
+        { patientName: 'هدى مصطفى خليل', doctorName: 'د. محمود سعيد', date: '2026-07-30', reason: 'سبب صحي أو ظرف طارئ للمريض', cancelledBy: 'إدارة العمليات' },
       ]
     },
     packages: {
@@ -319,6 +331,68 @@ export default function ReportsDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Cancellation Reasons Breakdown (Phase 3 Modification) */}
+            <div className="bg-rose-50/40 dark:bg-rose-950/20 p-5 rounded-2xl border border-rose-200 dark:border-rose-900/40 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-200 dark:border-rose-900/40 pb-3">
+                <h3 className="text-sm font-extrabold text-rose-900 dark:text-rose-300 flex items-center gap-2">
+                  <span>🚫</span>
+                  <span>{isRTL ? 'تقرير أسباب إلغاء الحجوزات وإحصائياتها:' : 'Booking Cancellation Reasons Breakdown:'}</span>
+                </h3>
+                <span className="text-xs font-bold text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/50 px-2.5 py-1 rounded-lg">
+                  {reportData.attendance.cancelledCount} {isRTL ? 'إلغاء مسجل' : 'Total Cancellations'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(reportData.attendance.cancellationReasons || []).map((cr, idx) => (
+                  <div key={idx} className="p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-rose-100 dark:border-rose-900/30 space-y-1.5 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-gray-800 dark:text-gray-200">{cr.reason}</span>
+                      <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 rounded font-mono text-[11px]">
+                        {cr.count} ({cr.percentage}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="h-full bg-rose-500 rounded-full" style={{ width: `${cr.percentage}%` }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Recent Cancellations Log */}
+              {reportData.attendance.recentCancellations?.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-rose-200/60 dark:border-rose-900/40">
+                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
+                    {isRTL ? 'آخر الحجوزات الملغاة مع الأسباب:' : 'Recent Cancelled Appointments Log:'}
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left rtl:text-right text-xs">
+                      <thead className="bg-white/60 dark:bg-gray-900/60 text-gray-600 dark:text-gray-400">
+                        <tr>
+                          <th className="p-2">{isRTL ? 'المريض' : 'Patient'}</th>
+                          <th className="p-2">{isRTL ? 'الطبيب' : 'Doctor'}</th>
+                          <th className="p-2">{isRTL ? 'التاريخ' : 'Date'}</th>
+                          <th className="p-2">{isRTL ? 'سبب الإلغاء' : 'Reason'}</th>
+                          <th className="p-2">{isRTL ? 'ملغي بواسطة' : 'Cancelled By'}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-rose-100 dark:divide-rose-900/30">
+                        {reportData.attendance.recentCancellations.map((rc, i) => (
+                          <tr key={i} className="hover:bg-white/40 dark:hover:bg-gray-900/30">
+                            <td className="p-2 font-bold text-gray-800 dark:text-white">{rc.patientName}</td>
+                            <td className="p-2 text-gray-600 dark:text-gray-300">{rc.doctorName}</td>
+                            <td className="p-2 font-mono text-gray-500">{rc.date}</td>
+                            <td className="p-2 font-semibold text-rose-600 dark:text-rose-400">{rc.reason}</td>
+                            <td className="p-2 text-gray-500">{rc.cancelledBy}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

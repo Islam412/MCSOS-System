@@ -42,10 +42,18 @@ export default function RoomsManager() {
       })
       if (!response.ok) throw new Error()
       const data = await response.json()
-      setRooms(data)
+      setRooms(Array.isArray(data) ? data : [])
+      localStorage.setItem('mcsos_rooms', JSON.stringify(data))
     } catch (error) {
       console.error('Error loading rooms:', error)
-      toast.error(isRTL ? 'فشل تحميل الغرف' : 'Failed to load rooms')
+      const cached = localStorage.getItem('mcsos_rooms')
+      if (cached) {
+        try {
+          setRooms(JSON.parse(cached))
+        } catch (_) {}
+      } else {
+        toast.error(isRTL ? 'فشل تحميل الغرف' : 'Failed to load rooms')
+      }
     } finally {
       setLoading(false)
     }
@@ -65,15 +73,15 @@ export default function RoomsManager() {
     setRoomForm({
       name: room.name,
       code: room.code,
-      is_active: room.is_active
+      is_active: room.is_active !== undefined ? room.is_active : true
     })
     setEditingRoom(room)
     setShowRoomModal(true)
   }
 
   const handleSaveRoom = async () => {
-    if (!roomForm.name || !roomForm.code) {
-      toast.error(isRTL ? 'الرجاء ملء جميع الحقول المطلوبة' : 'Please fill all required fields')
+    if (!roomForm.name?.trim() || !roomForm.code?.trim()) {
+      toast.error(isRTL ? 'الرجاء إدخال اسم الغرفة وكود الغرفة' : 'Please enter room name and room code')
       return
     }
 
@@ -84,6 +92,12 @@ export default function RoomsManager() {
       : `${API_BASE}/rooms`
     const method = editingRoom ? 'PUT' : 'POST'
 
+    const payload = {
+      name: roomForm.name.trim(),
+      code: roomForm.code.trim().toUpperCase(),
+      is_active: roomForm.is_active !== undefined ? roomForm.is_active : true
+    }
+
     try {
       const response = await fetch(url, {
         method,
@@ -91,12 +105,20 @@ export default function RoomsManager() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(roomForm)
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'فشلت العملية')
+        let errMsg = isRTL ? 'فشلت العملية' : 'Operation failed'
+        try {
+          const errorData = await response.json()
+          if (Array.isArray(errorData.message)) {
+            errMsg = errorData.message.join(', ')
+          } else if (errorData.message) {
+            errMsg = errorData.message
+          }
+        } catch (_) {}
+        throw new Error(errMsg)
       }
 
       toast.success(editingRoom 
@@ -106,7 +128,25 @@ export default function RoomsManager() {
       setShowRoomModal(false)
       loadRooms()
     } catch (error) {
-      toast.error(error.message || (isRTL ? 'حدث خطأ ما' : 'Something went wrong'))
+      console.error('Save room error:', error)
+      if (!isOnline || error.message?.includes('fetch') || error.message?.includes('NetworkError')) {
+        const fallbackRoom = {
+          id: editingRoom ? editingRoom.id : `room_${Date.now()}`,
+          ...payload,
+          created_at: new Date().toISOString()
+        }
+        setRooms(prev => {
+          const updated = editingRoom
+            ? prev.map(r => r.id === editingRoom.id ? fallbackRoom : r)
+            : [...prev, fallbackRoom]
+          localStorage.setItem('mcsos_rooms', JSON.stringify(updated))
+          return updated
+        })
+        toast.success(isRTL ? 'تم حفظ الغرفة محلياً' : 'Room saved locally')
+        setShowRoomModal(false)
+      } else {
+        toast.error(error.message || (isRTL ? 'حدث خطأ ما' : 'Something went wrong'))
+      }
     } finally {
       setIsSubmitting(false)
     }

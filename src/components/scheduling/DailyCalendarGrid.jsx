@@ -33,12 +33,11 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
 
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
-  // Time slots from 08:00 to 21:30 (half-hour intervals)
+  // Time slots from 08:00 to 21:00 (one-hour intervals)
   let timeSlots = []
   for (let hour = 8; hour < 22; hour++) {
     const hh = String(hour).padStart(2, '0')
     timeSlots.push(`${hh}:00`)
-    timeSlots.push(`${hh}:30`)
   }
 
   if (selectedShift === 'morning') {
@@ -71,6 +70,64 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
     }
     return parts[0][0].toUpperCase()
+  }
+
+  // Booking Card Color Rules:
+  // - Green with confirmed
+  // - Yellow when package is 90% to finish
+  // - Red if Package finished and not renewed
+  const getSessionCardColor = (s) => {
+    const plan = s.treatment_plan
+    const patient = s.patient
+    const totalSessions = plan?.total_sessions || patient?.totalSessions || s.total_sessions || 0
+    const completedSessions = plan?.sessions?.filter(sess => sess.status === 'ATTENDED' || sess.status === 'COMPLETED').length
+      ?? patient?.completedSessions 
+      ?? s.completed_sessions 
+      ?? 0
+    const progress = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : (patient?.progress || 0)
+
+    // Red if Package finished and not renewed
+    const isFinishedNotRenewed = 
+      s.package_status === 'EXPIRED' ||
+      s.package_status === 'COMPLETED_NOT_RENEWED' ||
+      (totalSessions > 0 && completedSessions >= totalSessions && !s.is_renewed) ||
+      patient?.packageStatus === 'finished_not_renewed'
+
+    if (isFinishedNotRenewed) {
+      return {
+        classes: 'bg-rose-50/95 border-rose-300 text-rose-950 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-200 border-l-rose-600',
+        badge: { text: isRTL ? 'منتهية لم تجدد' : 'Expired', color: 'bg-rose-600 text-white' }
+      }
+    }
+
+    // Yellow when package is >= 90% to finish
+    const isNearCompletion = progress >= 90 || (totalSessions > 0 && (totalSessions - completedSessions) <= 1)
+    if (isNearCompletion && totalSessions > 0) {
+      return {
+        classes: 'bg-amber-50/95 border-amber-300 text-amber-950 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-200 border-l-amber-500',
+        badge: { text: isRTL ? 'شارفت على الانتهاء' : '90% done', color: 'bg-amber-500 text-white' }
+      }
+    }
+
+    // Green with confirmed
+    if (s.confirm_status === 'CONFIRMED' || s.status === 'CONFIRMED') {
+      return {
+        classes: 'bg-emerald-50/95 border-emerald-300 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-200 border-l-emerald-600',
+        badge: { text: isRTL ? 'مؤكد' : 'Confirmed', color: 'bg-emerald-600 text-white' }
+      }
+    }
+
+    if (s.confirm_status === 'DECLINED') {
+      return {
+        classes: 'bg-rose-50/80 border-rose-200 text-rose-900 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300 border-l-rose-400',
+        badge: { text: isRTL ? 'مرفوض' : 'Declined', color: 'bg-rose-400 text-white' }
+      }
+    }
+
+    return {
+      classes: 'bg-indigo-50/70 border-indigo-200 text-indigo-950 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-200 border-l-indigo-400',
+      badge: null
+    }
   }
 
   useEffect(() => {
@@ -509,43 +566,48 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                           }`}
                         >
                           {session ? (
-                            /* Booked session card with drag support */
-                            <div 
-                              draggable={true}
-                              onDragStart={(e) => {
-                                const data = JSON.stringify({ type: 'SESSION', session })
-                                e.dataTransfer.setData('application/json', data)
-                                e.dataTransfer.setData('text/plain', data)
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onViewSession(session)
-                              }}
-                              className={`p-2.5 rounded-xl text-right border text-xs shadow-sm cursor-grab active:cursor-grabbing transition duration-300 transform hover:scale-[1.02] hover:shadow-md flex flex-col justify-between border-l-4 h-full min-h-[55px] ${
-                                session.confirm_status === 'CONFIRMED' 
-                                  ? 'bg-emerald-50/90 border-emerald-200/80 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-300 border-l-emerald-500' 
-                                  : session.confirm_status === 'DECLINED'
-                                  ? 'bg-rose-50/90 border-rose-200/80 text-rose-900 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300 border-l-rose-500'
-                                  : 'bg-amber-50/90 border-amber-200/80 text-amber-900 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-300 border-l-amber-500'
-                              }`}
-                            >
-                            <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[9px] font-bold flex items-center justify-center shrink-0">
-                                {getInitials(session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N A')}
-                              </div>
-                              <div className="font-extrabold truncate text-gray-800 dark:text-white text-[11px] leading-tight">
-                                {session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N/A'}
-                              </div>
-                            </div>
-                            
-                            {session.room && (
-                              <div className="flex items-center justify-end gap-1 text-[9px] text-gray-500 dark:text-gray-400 mt-1.5 font-semibold bg-white/40 dark:bg-black/10 px-1.5 py-0.5 rounded w-max self-end font-mono">
-                                <span>{session.room.name || session.room.code}</span>
-                                <MapPin size={9} className="text-gray-400 dark:text-gray-500" />
-                              </div>
-                            )}
-                          </div>
-                        ) : selectedWaitlistEntry ? (
+                            (() => {
+                              const cardColor = getSessionCardColor(session)
+                              return (
+                                <div 
+                                  draggable={true}
+                                  onDragStart={(e) => {
+                                    const data = JSON.stringify({ type: 'SESSION', session })
+                                    e.dataTransfer.setData('application/json', data)
+                                    e.dataTransfer.setData('text/plain', data)
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onViewSession(session)
+                                  }}
+                                  className={`p-2.5 rounded-xl text-right border text-xs shadow-sm cursor-grab active:cursor-grabbing transition duration-300 transform hover:scale-[1.02] hover:shadow-md flex flex-col justify-between border-l-4 h-full min-h-[55px] ${cardColor.classes}`}
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center gap-2 truncate">
+                                      <div className="w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[9px] font-bold flex items-center justify-center shrink-0">
+                                        {getInitials(session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N A')}
+                                      </div>
+                                      <div className="font-extrabold truncate text-gray-800 dark:text-white text-[11px] leading-tight">
+                                        {session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N/A'}
+                                      </div>
+                                    </div>
+                                    {cardColor.badge && (
+                                      <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold shrink-0 ${cardColor.badge.color}`}>
+                                        {cardColor.badge.text}
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {session.room && (
+                                    <div className="flex items-center justify-end gap-1 text-[9px] text-gray-500 dark:text-gray-400 mt-1.5 font-semibold bg-white/40 dark:bg-black/10 px-1.5 py-0.5 rounded w-max self-end font-mono">
+                                      <span>{session.room.name || session.room.code}</span>
+                                      <MapPin size={9} className="text-gray-400 dark:text-gray-500" />
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })()
+                          ) : selectedWaitlistEntry ? (
                           /* Interactive cell in assign mode */
                           <div className="border border-dashed border-indigo-300 hover:border-indigo-500 dark:border-indigo-800 dark:hover:border-indigo-600 rounded-xl p-2.5 text-center text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/10 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition duration-300 flex items-center justify-center gap-1 shadow-sm">
                             <Plus size={12} className="shrink-0" />

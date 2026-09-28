@@ -184,9 +184,9 @@ export default function PatientSearch({ onSelectPatient }) {
                   <span>{p.phone || p.phone_number || '-'}</span>
                 </div>
                 <div className="flex items-center gap-2 font-mono">
-                  {p.patient_code && (
+                  {(p.patient_code || (!p.patient_code && !p.profile_number)) && (
                     <span className="bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded font-semibold">
-                      كود: {p.patient_code}
+                      كود: {p.patient_code || (p.id ? p.id.slice(0, 8) : 'N/A')}
                     </span>
                   )}
                   {p.profile_number && (

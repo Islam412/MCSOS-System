@@ -51,7 +51,14 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
   const currentAge = calculateAge(regForm.date_of_birth)
   
   // Booking Fields
-  const [sessionType, setSessionType] = useState('TREATMENT')
+  const [sessionType, setSessionType] = useState(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      return urlParams.get('type') || 'TREATMENT'
+    } catch (e) {
+      return 'TREATMENT'
+    }
+  })
   const [scheduledDuration, setScheduledDuration] = useState(60)
   const [roomId, setRoomId] = useState('')
   const [receptionNotes, setReceptionNotes] = useState('')
@@ -398,12 +405,13 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                 className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="TREATMENT">{isRTL ? 'جلسة علاج طبيعي' : 'Treatment Session'}</option>
-                <option value="ASSESSMENT">{isRTL ? 'كشف / تقييم' : 'Assessment'}</option>
+                <option value="ASSESSMENT">{isRTL ? 'كشف / تقييم مبدئي' : 'Initial Assessment'}</option>
+                <option value="RE_ASSESSMENT">{isRTL ? '🩺 إعادة تقييم (Re-assessment)' : '🩺 Re-assessment'}</option>
                 <option value="FOLLOWUP">{isRTL ? 'متابعة' : 'Followup'}</option>
               </select>
             </div>
 
-            {sessionType === 'ASSESSMENT' && (
+            {(sessionType === 'ASSESSMENT' || sessionType === 'RE_ASSESSMENT') && (
               <div className="col-span-2 p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-2 shadow-xs transition-all">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-extrabold text-amber-900 dark:text-amber-300">

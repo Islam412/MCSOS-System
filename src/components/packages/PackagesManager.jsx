@@ -1,7 +1,7 @@
 // src/components/packages/PackagesManager.jsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Package, Plus, Edit, Trash2, DollarSign, Clock, CheckCircle, XCircle, RefreshCw, Loader2, X, LayoutGrid, List } from 'lucide-react'
+import { Package, Plus, Edit, Trash2, DollarSign, Clock, CheckCircle, XCircle, RefreshCw, Loader2, X, LayoutGrid, List, Search, ChevronDown, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
@@ -25,6 +25,96 @@ const getLocalData = (key) => {
   }
 }
 
+// ========== مكون البحث عن الخدمة واختيارها ==========
+function ServiceSearchSelect({ services, selectedServiceId, onChange, isRTL }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const dropdownRef = useRef(null)
+
+  const selectedService = services.find(s => s.id === selectedServiceId)
+
+  const filtered = services.filter(s => {
+    if (!search.trim()) return true
+    const term = search.toLowerCase()
+    const name = (s.name || s.nameAr || s.nameEn || '').toLowerCase()
+    return name.includes(term)
+  })
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="relative flex-1" ref={dropdownRef}>
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-white cursor-pointer flex items-center justify-between transition hover:border-blue-400"
+      >
+        <span className={selectedService ? 'font-bold text-indigo-700 dark:text-indigo-300 truncate' : 'text-gray-400 truncate'}>
+          {selectedService ? `${selectedService.name || selectedService.nameAr || selectedService.nameEn} (${selectedService.price || 0} ر.س)` : (isRTL ? '🔍 ابحث أو اختر خدمة...' : '🔍 Search or choose a service...')}
+        </span>
+        <ChevronDown size={14} className="text-gray-400 shrink-0 ml-1" />
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto p-2 space-y-1">
+          <div className="relative mb-2">
+            <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+            <input
+              type="text"
+              autoFocus
+              placeholder={isRTL ? 'اكتب للبحث في اسم الخدمة...' : 'Type to search service name...'}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full pl-8 pr-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="max-h-44 overflow-y-auto space-y-0.5">
+            {filtered.length === 0 ? (
+              <div className="text-center py-3 text-xs text-gray-400">
+                {isRTL ? 'لا توجد خدمات مطابقة' : 'No matching services'}
+              </div>
+            ) : (
+              filtered.map(s => {
+                const isSelected = s.id === selectedServiceId
+                const name = s.name || s.nameAr || s.nameEn || 'خدمة'
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => {
+                      onChange(s.id)
+                      setIsOpen(false)
+                      setSearch('')
+                    }}
+                    className={`p-2 rounded-lg text-xs cursor-pointer flex items-center justify-between transition ${
+                      isSelected
+                        ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-bold'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    <span>{name}</span>
+                    <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                      {s.price || 0} ر.س
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PackagesManager() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
@@ -42,6 +132,8 @@ export default function PackagesManager() {
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [targetPatientName, setTargetPatientName] = useState('')
   const [assignDoctorName, setAssignDoctorName] = useState('د. أحمد رمزي (العلاج الطبيعي والتأهيل)')
+  const [reassessmentAction, setReassessmentAction] = useState(null)
+  const [recommendedPkgParam, setRecommendedPkgParam] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState('grid')
   const [formData, setFormData] = useState({
@@ -71,6 +163,15 @@ export default function PackagesManager() {
   // ========== تحميل البيانات ==========
   useEffect(() => {
     loadAllData()
+    const params = new URLSearchParams(window.location.search)
+    const pName = params.get('patientName')
+    const docName = params.get('doctorName')
+    const act = params.get('action')
+    const rec = params.get('recommendedPackage')
+    if (pName) setTargetPatientName(pName)
+    if (docName) setAssignDoctorName(docName)
+    if (act) setReassessmentAction(act)
+    if (rec) setRecommendedPkgParam(rec)
   }, [])
 
   const loadAllData = async () => {
@@ -499,6 +600,49 @@ export default function PackagesManager() {
         </div>
       </div>
 
+      {/* Target Patient / Re-assessment Banner */}
+      {targetPatientName && (
+        <div className={`p-4 rounded-2xl border-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-md ${
+          reassessmentAction === 'repeat' 
+            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-950 dark:text-emerald-200' 
+            : 'bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 text-blue-950 dark:text-blue-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-xl text-white shadow-md shrink-0 ${reassessmentAction === 'repeat' ? 'bg-emerald-600' : 'bg-blue-600'}`}>
+              <Package size={24} />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-extrabold text-sm">
+                  {reassessmentAction === 'repeat' 
+                    ? (isRTL ? '🔁 وضع تكرار نفس الباقة بناءً على إعادة التقييم' : '🔁 Repeat Package (Re-assessment Decision)')
+                    : (isRTL ? '📦 وضع تعيين باقة علاجية موصى بها للمريض' : '📦 Assign Recommended Treatment Package')}
+                </span>
+                {assignDoctorName && (
+                  <span className="text-xs bg-white/80 dark:bg-gray-800 px-2.5 py-0.5 rounded-full font-bold shadow-xs">
+                    {isRTL ? `الطبيب الموصي: ${assignDoctorName}` : `Doctor: ${assignDoctorName}`}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs mt-1 opacity-90 leading-relaxed">
+                {isRTL 
+                  ? `المريض المحدد: (${targetPatientName}). اختر الباقة واضغط على "تسكين للمريض" لاعتماد الخطة العلاجية وإصدار الفاتورة فورياً.`
+                  : `Target Patient: (${targetPatientName}). Select a package and click "Assign to Patient" to confirm the plan.`}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setTargetPatientName('')
+              setReassessmentAction(null)
+            }}
+            className="text-xs px-3 py-1.5 bg-white/80 hover:bg-white dark:bg-gray-800 rounded-xl font-bold transition shadow-xs shrink-0 self-end md:self-center"
+          >
+            {isRTL ? 'إلغاء التحديد' : 'Dismiss'}
+          </button>
+        </div>
+      )}
+
       {/* Search Bar & View Mode Toggle for Packages */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-slate-200 dark:border-gray-700 shadow-sm flex flex-col md:flex-row items-center gap-3 justify-between">
         <div className="relative w-full md:flex-1 flex items-center gap-3">
@@ -894,18 +1038,12 @@ export default function PackagesManager() {
 
                 {formData.services.map((service, index) => (
                   <div key={index} className="flex gap-3 mb-2 items-center">
-                    <select
-                      className="flex-1 p-3 border rounded-lg dark:bg-gray-900"
-                      value={service.service_id}
-                      onChange={(e) => handleServiceChange(index, 'service_id', e.target.value)}
-                    >
-                      <option value="">اختر خدمة</option>
-                      {services.map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.name || s.nameAr || s.nameEn || 'خدمة'} - {s.price || 0} ر.س
-                        </option>
-                      ))}
-                    </select>
+                    <ServiceSearchSelect
+                      services={services}
+                      selectedServiceId={service.service_id}
+                      onChange={(id) => handleServiceChange(index, 'service_id', id)}
+                      isRTL={isRTL}
+                    />
                     <input
                       type="number"
                       min="1"

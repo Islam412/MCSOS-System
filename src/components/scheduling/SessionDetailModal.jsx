@@ -1,7 +1,7 @@
 // src/components/scheduling/SessionDetailModal.jsx
 import { useState, useEffect } from 'react'
 import { confirmAlert } from '../../utils/confirmAlert'
-import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award, Package } from 'lucide-react'
+import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award, Package, RefreshCw, CheckCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 
@@ -24,11 +24,25 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
     roomId: ''
   })
   
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelCustomNotes, setCancelCustomNotes] = useState('')
+
   const [evaluationData, setEvaluationData] = useState({
     diagnosis: '',
     goals: '',
     recommended_package: '12_sessions',
     weekly_sessions: '3'
+  })
+
+  const [showReAssessment, setShowReAssessment] = useState(false)
+  const [reassessmentData, setReassessmentData] = useState({
+    clinical_progress: '',
+    decision: 'REPEAT',
+    recommended_package: '12_sessions',
+    range_of_motion: '',
+    pain_score: '2',
+    notes: ''
   })
 
   useEffect(() => {
@@ -43,11 +57,18 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
         roomId: session.room?.id || session.room_id || ''
       })
 
+      if (session.session_type === 'RE_ASSESSMENT') {
+        setShowReAssessment(true)
+      }
+
       if (session.evaluation_report) {
         try {
           const parsed = JSON.parse(session.evaluation_report)
           if (parsed && typeof parsed === 'object') {
             setEvaluationData(parsed)
+            if (parsed.reassessment) {
+              setReassessmentData(parsed.reassessment)
+            }
           } else {
             setEvaluationData({ diagnosis: session.evaluation_report, goals: '', recommended_package: '12_sessions', weekly_sessions: '3' })
           }
@@ -134,7 +155,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
     } else if (actionType === 'cancel') {
       url = `${API_BASE}/sessions/${session.id}`
       method = 'PUT'
-      body = { status: 'CANCELED' }
+      body = { status: 'CANCELED', ...body }
     } else if (actionType === 'delete') {
       url = `${API_BASE}/sessions/${session.id}`
       method = 'DELETE'
@@ -200,6 +221,150 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
       setSubmitting(false)
     }
   }
+
+  const handleSaveReAssessment = async () => {
+    setSubmitting(true)
+    const token = localStorage.getItem('mcsos_token')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${session.id}/evaluation-report`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          evaluation_report: JSON.stringify({
+            ...evaluationData,
+            reassessment: reassessmentData,
+            reassessment_saved_at: new Date().toISOString()
+          })
+        })
+      })
+      if (!res.ok) throw new Error('فشلت العملية')
+      toast.success(isRTL ? 'تم حفظ واعتماد تقرير إعادة التقييم بنجاح 📋🩺' : 'Re-assessment report saved successfully!')
+      const updated = await res.json()
+      if (onUpdate) onUpdate(updated)
+    } catch (err) {
+      toast.error(isRTL ? 'حدث خطأ أثناء حفظ تقرير إعادة التقييم' : 'Failed to save re-assessment report')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handlePrintReAssessment = () => {
+    const pName = session.patient ? (session.patient.full_name_ar || session.patient.name || `${session.patient.first_name || ''} ${session.patient.last_name || ''}`.trim() || 'مريض') : 'N/A';
+    const docName = session.doctor?.name || (isRTL ? 'طبيب التأهيل' : 'Rehab Doctor');
+    const dateFormatted = new Date(session.session_date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const packageMap = {
+      '6_sessions': isRTL ? 'باقة التأهيل السريع (6 جلسات)' : 'Quick Rehab Package (6 Sessions)',
+      '12_sessions': isRTL ? 'باقة التميز العلاجي (12 جلسة - مكثف)' : 'Premium Rehab Package (12 Sessions)',
+      '24_sessions': isRTL ? 'باقة التأهيل الشامل والمتكامل (24 جلسة)' : 'Comprehensive Rehab Package (24 Sessions)',
+      'hydrotherapy': isRTL ? 'باقة العلاج المائي الرياضي (Hydrotherapy)' : 'Hydrotherapy Sports Package',
+      'spine_special': isRTL ? 'باقة علاج آلام الظهر والعمود الفقري المتخصصة' : 'Spinal Pain Specialized Therapy'
+    };
+
+    const decisionMap = {
+      'REPEAT': isRTL ? 'تكرار نفس الباقة العلاجية لاستكمال التأهيل' : 'Repeat Same Package for Continued Therapy',
+      'CHANGE': isRTL ? 'تغيير وتعديل الباقة لخطة علاجية جديدة' : 'Change/Modify to a New Treatment Package',
+      'DISCHARGE': isRTL ? 'اكتمال الخطة العلاجية والتعافي الكامل (خروج)' : 'Complete Treatment & Discharge'
+    };
+
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <title>${isRTL ? 'تقرير إعادة التقييم السريري' : 'Clinical Re-assessment Report'} - ${pName}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap');
+          body { font-family: 'Cairo', sans-serif; padding: 40px; color: #1e293b; background: #fff; line-height: 1.6; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0d9488; padding-bottom: 20px; margin-bottom: 30px; }
+          .logo { font-size: 22px; font-weight: 800; color: #0d9488; }
+          .subtitle { font-size: 13px; color: #64748b; }
+          .box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 25px; background: #f8fafc; }
+          .title { font-size: 16px; font-weight: 800; color: #0f172a; border-bottom: 2px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 12px; }
+          .label { font-size: 13px; color: #475569; font-weight: 600; }
+          .value { font-size: 15px; font-weight: 700; color: #0f172a; margin-top: 4px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+          .decision-badge { background: #ccfbf1; color: #115e59; font-size: 16px; font-weight: 800; padding: 12px 18px; border-radius: 8px; border: 1px solid #99f6e4; display: inline-block; margin-top: 8px; }
+          .footer { display: flex; justify-content: space-between; margin-top: 60px; padding-top: 20px; border-top: 1px solid #cbd5e1; text-align: center; }
+          .sig-box { width: 220px; }
+          .sig-line { border-bottom: 1px solid #334155; margin: 40px 0 10px 0; }
+          @media print { button { display: none; } body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="logo">🏥 Medical Center Specialist Orthopedic Services</div>
+            <div class="subtitle">المستشفى المتخصص للتأهيل والعلاج الطبيعي وجراحة العظام</div>
+          </div>
+          <div style="text-align: ${isRTL ? 'left' : 'right'}">
+            <h2 style="margin:0; color:#0d9488;">${isRTL ? '🩺 تقرير إعادة التقييم وقرار الباقة' : 'Clinical Re-assessment Report'}</h2>
+            <div class="subtitle" style="margin-top:4px;">التاريخ: ${dateFormatted}</div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="title">👤 ${isRTL ? 'بيانات المريض والموعد' : 'Patient Information'}</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div><span class="label">${isRTL ? 'الاسم الكامل:' : 'Full Name:'}</span> <div class="value">${pName}</div></div>
+            <div><span class="label">${isRTL ? 'الطبيب المعالج:' : 'Doctor:'}</span> <div class="value">د. ${docName}</div></div>
+            <div><span class="label">${isRTL ? 'كود المريض:' : 'Patient ID:'}</span> <div class="value">${session.patient?.patient_code || 'N/A'}</div></div>
+            <div><span class="label">${isRTL ? 'نوع الجلسة:' : 'Session Type:'}</span> <div class="value" style="color:#0d9488;">${isRTL ? 'إعادة تقييم سريري (Re-assessment)' : 'Re-assessment Session'}</div></div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="title">🩺 ${isRTL ? 'نتائج الفحص والتحسن السريري' : 'Clinical Progress & Evaluation'}</div>
+          <div style="margin-bottom: 15px;">
+            <div class="label">${isRTL ? 'التحسن السريري وملاحظات التعافي:' : 'Clinical Progress & Findings:'}</div>
+            <div class="value" style="min-height: 50px;">${reassessmentData.clinical_progress || (isRTL ? 'تحسن ملحوظ في الحالة الحركية' : 'Significant mobility improvement')}</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div><span class="label">${isRTL ? 'المدى الحركي (ROM):' : 'Range of Motion:'}</span> <div class="value">${reassessmentData.range_of_motion || (isRTL ? 'طبيعي مع تحسن' : 'Normal with improvement')}</div></div>
+            <div><span class="label">${isRTL ? 'مقياس الألم (0-10):' : 'Pain Scale (0-10):'}</span> <div class="value">${reassessmentData.pain_score || '2'} / 10</div></div>
+          </div>
+        </div>
+
+        <div class="box" style="background:#f0fdfa; border-color:#99f6e4;">
+          <div class="title" style="color:#0f766e; border-color:#5eead4;">🎯 ${isRTL ? 'القرار الطبي للباقة اللاحقة' : 'Doctor Next Step Decision'}</div>
+          <div style="margin-bottom: 12px;">
+            <div class="label" style="color:#0f766e;">${isRTL ? 'قرار الطبيب المعالج:' : 'Medical Decision:'}</div>
+            <div class="decision-badge">✨ ${decisionMap[reassessmentData.decision] || reassessmentData.decision}</div>
+          </div>
+          ${reassessmentData.decision !== 'DISCHARGE' ? `
+            <div style="margin-top: 15px;">
+              <span class="label" style="color:#0f766e;">${isRTL ? 'الباقة المعتمدة:' : 'Selected Package:'}</span> 
+              <strong style="font-size:15px; margin: 0 5px; color:#115e59;">${packageMap[reassessmentData.recommended_package] || reassessmentData.recommended_package}</strong>
+            </div>
+          ` : ''}
+          ${reassessmentData.notes ? `
+            <div style="margin-top: 12px;">
+              <div class="label" style="color:#0f766e;">${isRTL ? 'ملاحظات إضافية:' : 'Notes:'}</div>
+              <div class="value">${reassessmentData.notes}</div>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="footer">
+          <div class="sig-box">
+            <div><strong>${isRTL ? 'توقيع الطبيب المعالج' : "Doctor's Signature"}</strong></div>
+            <div class="sig-line"></div>
+            <div>د. ${docName}</div>
+          </div>
+          <div class="sig-box">
+            <div><strong>${isRTL ? 'اعتماد إدارة المركز' : 'Center Approval'}</strong></div>
+            <div class="sig-line"></div>
+            <div>ختم المستشفى / الإدارة</div>
+          </div>
+        </div>
+        <script>setTimeout(() => window.print(), 600);</script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const handlePrintEvaluation = () => {
     const pName = session.patient ? (session.patient.full_name_ar || session.patient.name || `${session.patient.first_name || ''} ${session.patient.last_name || ''}`.trim() || 'مريض') : 'N/A';
@@ -308,6 +473,15 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
     const d = new Date(dateStr)
     return d.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
   }
+
+  const plan = session?.treatment_plan
+  const patient = session?.patient
+  const totalSessions = plan?.total_sessions || patient?.totalSessions || session?.total_sessions || 0
+  const completedSessions = plan?.sessions?.filter(sess => sess.status === 'ATTENDED' || sess.status === 'COMPLETED').length
+    ?? patient?.completedSessions 
+    ?? session?.completed_sessions 
+    ?? 0
+  const isNearCompletion = (totalSessions > 0 && (totalSessions - completedSessions) <= 1) || (totalSessions > 0 && (completedSessions / totalSessions) >= 0.9)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
@@ -504,14 +678,21 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                   </div>
                 )}
 
-                {session.session_type === 'ASSESSMENT' && session.payment_verified && (
-                  <div className="col-span-2 p-3 bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 font-semibold shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>{isRTL ? '✅ تم اعتماد وتأكيد دفعة جلسة التقييم مالياً ومبينة للبأ' : '✅ Assessment session payment verified & ready to start'}</span>
+                {session.status === 'CANCELED' && (
+                  <div className="col-span-2 p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded-xl space-y-1 text-xs">
+                    <div className="font-extrabold text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
+                      <span>🚫</span>
+                      <span>{isRTL ? 'هذا الموعد تم إلغاؤه' : 'This appointment was cancelled'}</span>
                     </div>
-                    {session.payment_verified_by && (
-                      <span className="text-[11px] opacity-80 font-mono">({session.payment_verified_by})</span>
+                    <div className="text-gray-700 dark:text-gray-300">
+                      <span className="font-bold">{isRTL ? 'سبب الإلغاء: ' : 'Cancellation Reason: '}</span>
+                      <span className="font-semibold text-rose-700 dark:text-rose-400">{session.cancellation_reason || (isRTL ? 'غير محدد' : 'Not specified')}</span>
+                    </div>
+                    {session.cancelled_by && (
+                      <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                        <span>{isRTL ? 'بواسطة: ' : 'Cancelled by: '}</span>
+                        <span className="font-medium">{session.cancelled_by}</span>
+                      </div>
                     )}
                   </div>
                 )}
@@ -613,10 +794,10 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
               <div className="flex gap-2 pt-1">
                 <button
                   disabled={submitting}
-                  onClick={async () => {
-                    if ((await confirmAlert({ title: 'تأكيد', text: isRTL ? 'هل أنت متأكد من إلغاء هذه الجلسة؟' : 'Are you sure you want to cancel this session?' }))) {
-                      handleAction('cancel')
-                    }
+                  onClick={() => {
+                    setCancelReason('')
+                    setCancelCustomNotes('')
+                    setShowCancelModal(true)
                   }}
                   className="flex-1 border border-rose-200 hover:bg-rose-50 text-rose-600 dark:border-rose-900/30 dark:hover:bg-rose-950/20 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1"
                 >
@@ -734,8 +915,14 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                     type="button"
                     onClick={() => {
                       const patientId = session.patient_id || (session.patient && session.patient.id);
-                      if (patientId) window.location.href = `/packages?patientId=${patientId}`;
-                      else toast.error(isRTL ? 'بيانات المريض غير متاحة للاستكمال' : 'Patient ID not available');
+                      const pName = encodeURIComponent(session.patient ? `${session.patient.first_name} ${session.patient.last_name || ''}`.trim() : '');
+                      const docName = encodeURIComponent(session.doctor?.name || currentUser?.name || '');
+                      const docId = session.doctor?.id || session.doctor_id || '';
+                      if (patientId) {
+                        window.location.href = `/packages?patientId=${patientId}&patientName=${pName}&doctorId=${docId}&doctorName=${docName}&recommendedPackage=${encodeURIComponent(evaluationData.recommended_package || '')}`;
+                      } else {
+                        toast.error(isRTL ? 'بيانات المريض غير متاحة للاستكمال' : 'Patient ID not available');
+                      }
                     }}
                     className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white p-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
                   >
@@ -745,6 +932,227 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Re-Assessment Section (Item 9) */}
+          {(session.session_type === 'RE_ASSESSMENT' || showReAssessment || (isNearCompletion && session.session_type !== 'ASSESSMENT')) ? (
+            <div className="p-5 bg-gradient-to-br from-teal-50 to-emerald-50/80 dark:from-gray-900/90 dark:to-teal-950/40 rounded-2xl border-2 border-teal-300 dark:border-teal-700/80 shadow-md space-y-4">
+              <div className="flex flex-wrap items-center justify-between border-b pb-3 border-teal-200 dark:border-teal-800/60 gap-2">
+                <div>
+                  <h5 className="text-xs font-extrabold text-teal-950 dark:text-teal-200 flex items-center gap-2">
+                    <Stethoscope className="text-teal-600 dark:text-teal-400 shrink-0" size={18} />
+                    {isRTL ? '🩺 تقرير إعادة التقييم وقرار الباقة (Re-assessment)' : 'Clinical Re-assessment & Package Decision'}
+                  </h5>
+                  <p className="text-[11px] text-teal-700 dark:text-teal-300 mt-0.5">
+                    {isRTL ? 'تقييم التحسن السريري لتحديد تكرار أو تغيير الباقة العلاجية' : 'Evaluate progress to repeat, change or complete treatment'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handlePrintReAssessment}
+                    className="px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-teal-600 hover:text-white text-teal-700 dark:text-teal-300 border border-teal-300 dark:border-teal-700 rounded-xl text-xs font-extrabold shadow-xs transition flex items-center gap-1.5 shrink-0"
+                  >
+                    <Printer size={14} />
+                    {isRTL ? 'طباعة التقرير' : 'Print'}
+                  </button>
+                  {session.session_type !== 'RE_ASSESSMENT' && (
+                    <button
+                      type="button"
+                      onClick={() => setShowReAssessment(false)}
+                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3.5">
+                {/* Clinical progress notes */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    {isRTL ? '🩺 نتائج الفحص السريري ونسبة التحسن:' : '🩺 Clinical Findings & Progress:'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={reassessmentData.clinical_progress}
+                    onChange={(e) => setReassessmentData({ ...reassessmentData, clinical_progress: e.target.value })}
+                    placeholder={isRTL ? 'أدخل نتائج التحسن الحركي، تخفيف الألم، والقدرة الوظيفية...' : 'Enter recovery notes, mobility improvements, functional state...'}
+                    className="w-full p-2.5 bg-white dark:bg-gray-800 border border-teal-200 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500 outline-none shadow-inner text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'المدى الحركي (Range of Motion):' : 'Range of Motion (ROM):'}
+                    </label>
+                    <input
+                      type="text"
+                      value={reassessmentData.range_of_motion}
+                      onChange={(e) => setReassessmentData({ ...reassessmentData, range_of_motion: e.target.value })}
+                      placeholder={isRTL ? 'مثال: 90 درجة، تحسن 40%' : 'e.g. 90 deg, 40% gain'}
+                      className="w-full p-2 bg-white dark:bg-gray-800 border border-teal-200 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-teal-500 text-gray-800 dark:text-gray-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'مقياس الألم المتبقي (0-10):' : 'Remaining Pain Score (0-10):'}
+                    </label>
+                    <select
+                      value={reassessmentData.pain_score}
+                      onChange={(e) => setReassessmentData({ ...reassessmentData, pain_score: e.target.value })}
+                      className="w-full p-2 bg-white dark:bg-gray-800 border border-teal-200 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-teal-500 text-gray-800 dark:text-gray-200"
+                    >
+                      <option value="0">{isRTL ? '0 - لا يوجد ألم إطلاقاً (تعافي تام)' : '0 - No Pain'}</option>
+                      <option value="1">{isRTL ? '1 - خفيف جداً' : '1 - Very Mild'}</option>
+                      <option value="2">{isRTL ? '2 - ألم خفيف' : '2 - Mild'}</option>
+                      <option value="4">{isRTL ? '4 - ألم متوسط' : '4 - Moderate'}</option>
+                      <option value="6">{isRTL ? '6 - ألم ملحوظ' : '6 - Noticeable'}</option>
+                      <option value="8">{isRTL ? '8 - ألم شديد' : '8 - Severe'}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Medical Decision 3 Cards */}
+                <div>
+                  <label className="block text-[11px] font-extrabold text-teal-900 dark:text-teal-300 uppercase mb-2">
+                    {isRTL ? '🎯 قرار الطبيب المعالج للباقة القادمة:' : '🎯 Doctor Medical Decision for Next Step:'}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReassessmentData({ ...reassessmentData, decision: 'REPEAT' })}
+                      className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center gap-1 ${
+                        reassessmentData.decision === 'REPEAT'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-md font-bold'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-emerald-400'
+                      }`}
+                    >
+                      <RefreshCw size={16} />
+                      <span className="text-[11px] font-bold">{isRTL ? '🔁 تكرار نفس الباقة' : 'Repeat Package'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setReassessmentData({ ...reassessmentData, decision: 'CHANGE' })}
+                      className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center gap-1 ${
+                        reassessmentData.decision === 'CHANGE'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-md font-bold'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-400'
+                      }`}
+                    >
+                      <Package size={16} />
+                      <span className="text-[11px] font-bold">{isRTL ? '📦 تغيير / ترقية الباقة' : 'Change Package'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setReassessmentData({ ...reassessmentData, decision: 'DISCHARGE' })}
+                      className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center gap-1 ${
+                        reassessmentData.decision === 'DISCHARGE'
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-md font-bold'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-amber-400'
+                      }`}
+                    >
+                      <CheckCircle size={16} />
+                      <span className="text-[11px] font-bold">{isRTL ? '🏁 تعافي واكتمال الخطة' : 'Discharge'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Package select if REPEAT or CHANGE */}
+                {reassessmentData.decision !== 'DISCHARGE' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'الباقة العلاجية المقررة للمرحلة القادمة:' : 'Assigned Package for Next Phase:'}
+                    </label>
+                    <select
+                      value={reassessmentData.recommended_package}
+                      onChange={(e) => setReassessmentData({ ...reassessmentData, recommended_package: e.target.value })}
+                      className="w-full p-2 bg-white dark:bg-gray-800 border-2 border-teal-300 dark:border-teal-700 rounded-xl text-xs font-bold text-teal-950 dark:text-teal-200 outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="6_sessions">{isRTL ? 'باقة التأهيل السريع (6 جلسات)' : 'Quick Rehab (6 Sessions)'}</option>
+                      <option value="12_sessions">{isRTL ? 'باقة التميز العلاجي (12 جلسة - مكثف)' : 'Premium Rehab (12 Sessions)'}</option>
+                      <option value="24_sessions">{isRTL ? 'باقة التأهيل الشامل (24 جلسة)' : 'Comprehensive (24 Sessions)'}</option>
+                      <option value="hydrotherapy">{isRTL ? 'باقة العلاج المائي الرياضي' : 'Hydrotherapy Sports'}</option>
+                      <option value="spine_special">{isRTL ? 'باقة علاج العمود الفقري المتخصصة' : 'Spinal Specialized Therapy'}</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveReAssessment}
+                    disabled={submitting}
+                    className="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white p-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                  >
+                    <ClipboardCheck size={16} />
+                    {isRTL ? 'حفظ واعتماد تقرير إعادة التقييم 💾' : 'Save & Submit Re-assessment Report 💾'}
+                  </button>
+
+                  {reassessmentData.decision === 'REPEAT' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const patientId = session.patient_id || session.patient?.id;
+                        const pName = encodeURIComponent(session.patient ? `${session.patient.first_name || ''} ${session.patient.last_name || ''}`.trim() : '');
+                        const docName = encodeURIComponent(session.doctor?.name || currentUser?.name || '');
+                        const docId = session.doctor?.id || session.doctor_id || '';
+                        if (patientId) {
+                          window.location.href = `/packages?patientId=${patientId}&patientName=${pName}&doctorId=${docId}&doctorName=${docName}&action=repeat&recommendedPackage=${encodeURIComponent(reassessmentData.recommended_package)}`;
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white p-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw size={16} />
+                      {isRTL ? 'الانتقال لتكرار نفس الباقة للمريض 🔁' : 'Proceed to Repeat Package 🔁'}
+                    </button>
+                  )}
+
+                  {reassessmentData.decision === 'CHANGE' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const patientId = session.patient_id || session.patient?.id;
+                        const pName = encodeURIComponent(session.patient ? `${session.patient.first_name || ''} ${session.patient.last_name || ''}`.trim() : '');
+                        const docName = encodeURIComponent(session.doctor?.name || currentUser?.name || '');
+                        const docId = session.doctor?.id || session.doctor_id || '';
+                        if (patientId) {
+                          window.location.href = `/packages?patientId=${patientId}&patientName=${pName}&doctorId=${docId}&doctorName=${docName}&action=change&recommendedPackage=${encodeURIComponent(reassessmentData.recommended_package)}`;
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                    >
+                      <Package size={16} />
+                      {isRTL ? 'الانتقال لاختيار وتعيين الباقة الجديدة 📦' : 'Proceed to Assign New Package 📦'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            session.session_type !== 'ASSESSMENT' && (
+              <div className="p-3 bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/40 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Stethoscope size={18} className="text-teal-600 dark:text-teal-400" />
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {isRTL ? 'إجراء جلسة إعادة تقييم سريري (Re-assessment)' : 'Perform Clinical Re-assessment'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReAssessment(true)}
+                  className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs"
+                >
+                  <Plus size={13} />
+                  <span>{isRTL ? 'فتح التقييم' : 'Open'}</span>
+                </button>
+              </div>
+            )
           )}
 
           {/* Notes Fields */}
@@ -785,6 +1193,85 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
           </div>
         </div>
       </div>
+
+      {/* Cancellation Modal with Mandatory Reason */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-60 p-4 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-4 text-left rtl:text-right">
+            <div className="flex justify-between items-center border-b pb-3 border-gray-100 dark:border-gray-700">
+              <h4 className="text-sm font-extrabold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                <span>🚫</span>
+                <span>{isRTL ? 'إلغاء الموعد - تحديد سبب الإلغاء (إلزامي)' : 'Cancel Appointment - Mandatory Reason'}</span>
+              </h4>
+              <button onClick={() => setShowCancelModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  {isRTL ? 'اختر سبب الإلغاء:' : 'Select Cancellation Reason:'} <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-rose-500 font-medium"
+                >
+                  <option value="">{isRTL ? '-- الرجاء اختيار سبب الإلغاء --' : '-- Please select a reason --'}</option>
+                  <option value="المريض طلب الإلغاء">{isRTL ? 'المريض طلب الإلغاء' : 'Patient requested cancellation'}</option>
+                  <option value="المريض لم يحضر (غياب بدون إشعار)">{isRTL ? 'المريض لم يحضر (غياب بدون إشعار)' : 'Patient No-Show'}</option>
+                  <option value="الطبيب غير متاح أو في إجازة">{isRTL ? 'الطبيب غير متاح أو في إجازة' : 'Doctor unavailable / on leave'}</option>
+                  <option value="تعارض في المواعيد والجدول">{isRTL ? 'تعارض في المواعيد والجدول' : 'Schedule conflict'}</option>
+                  <option value="سبب صحي أو ظرف طارئ للمريض">{isRTL ? 'سبب صحي أو ظرف طارئ للمريض' : 'Medical emergency'}</option>
+                  <option value="أخرى">{isRTL ? 'أخرى (حدد في الملاحظات)' : 'Other (specify below)'}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  {isRTL ? 'تفاصيل إضافية / ملاحظات الإلغاء:' : 'Additional Details / Notes:'}
+                  {cancelReason === 'أخرى' && <span className="text-rose-500"> *</span>}
+                </label>
+                <textarea
+                  rows={2}
+                  value={cancelCustomNotes}
+                  onChange={(e) => setCancelCustomNotes(e.target.value)}
+                  placeholder={isRTL ? 'أدخل تفاصيل إضافية عن سبب الإلغاء...' : 'Enter details about cancellation reason...'}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-rose-500 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <button
+                disabled={submitting || !cancelReason || (cancelReason === 'أخرى' && !cancelCustomNotes.trim())}
+                onClick={() => {
+                  const fullReason = cancelReason === 'أخرى'
+                    ? `أخرى: ${cancelCustomNotes.trim()}`
+                    : (cancelCustomNotes.trim() ? `${cancelReason} (${cancelCustomNotes.trim()})` : cancelReason)
+
+                  handleAction('cancel', {
+                    cancellation_reason: fullReason,
+                    cancelled_by: currentUser?.name || (isRTL ? 'موظف الاستقبال' : 'Reception Staff')
+                  })
+                  setShowCancelModal(false)
+                }}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+              >
+                <span>🚫</span>
+                <span>{isRTL ? 'تأكيد إلغاء الموعد' : 'Confirm Cancellation'}</span>
+              </button>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-xl text-xs font-bold transition"
+              >
+                {isRTL ? 'تراجع' : 'Back'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

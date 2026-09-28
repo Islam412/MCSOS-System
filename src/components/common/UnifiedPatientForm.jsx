@@ -31,6 +31,7 @@ export default function UnifiedPatientForm({
     sameAsPhone: initialValues.sameAsPhone !== undefined ? initialValues.sameAsPhone : true,
     referral_source: initialValues.referral_source || 'Social Media',
     referral_doctor_name: initialValues.referral_doctor_name || '',
+    referral_friend_name: initialValues.referral_friend_name || '',
     national_id_front: initialValues.national_id_front || '',
     national_id_back: initialValues.national_id_back || '',
     email: initialValues.email || '',
@@ -58,21 +59,14 @@ export default function UnifiedPatientForm({
   const handleSubmit = async (e) => {
     if (e) e.preventDefault()
 
-    // Validate Required Fields
-    const fullName = form.full_name_ar.trim() || `${form.first_name} ${form.last_name}`.trim()
-    if (!fullName || !form.phone.trim()) {
-      toast.error(isRTL ? 'الرجاء إدخال الاسم ورقم الهاتف' : 'Please enter patient name and phone number')
-      return
-    }
-
-    if (!form.national_id_front) {
-      toast.error(isRTL ? 'الرجاء رفع صورة الوجه الأمامي للهوية الوطنية (إلزامي)' : 'Please upload Front view of National ID (Required)')
-      return
-    }
-
     setLoading(true)
 
-    // Name parts logic
+    // Name parts logic - soft fallback if name is completely empty
+    let fullName = form.full_name_ar.trim() || `${form.first_name} ${form.last_name}`.trim()
+    if (!fullName) {
+      fullName = isRTL ? 'مريض جديد' : 'New Patient'
+    }
+
     let firstName = form.first_name.trim()
     let lastName = form.last_name.trim()
     if (!firstName && fullName) {
@@ -80,21 +74,25 @@ export default function UnifiedPatientForm({
       firstName = parts[0]
       lastName = parts.slice(1).join(' ') || parts[0]
     }
+    if (!firstName) firstName = isRTL ? 'مريض' : 'Patient'
     if (!lastName) lastName = firstName
 
     let finalReferralSource = form.referral_source || 'Social Media'
     if (form.referral_source === 'Doctor Referral' && form.referral_doctor_name?.trim()) {
       finalReferralSource = `Doctor Referral (${form.referral_doctor_name.trim()})`
+    } else if (form.referral_source === 'Friend' && form.referral_friend_name?.trim()) {
+      finalReferralSource = `Friend (${form.referral_friend_name.trim()})`
     }
 
     const patientPayload = {
       first_name: firstName,
       last_name: lastName,
       full_name_ar: fullName,
-      phone: form.phone.trim(),
-      whatsapp_number: form.sameAsPhone ? form.phone.trim() : (form.whatsapp_number.trim() || form.phone.trim()),
+      phone: form.phone.trim() || undefined,
+      whatsapp_number: form.sameAsPhone ? (form.phone.trim() || undefined) : (form.whatsapp_number.trim() || form.phone.trim() || undefined),
       referral_source: finalReferralSource,
       referral_doctor_name: form.referral_doctor_name?.trim() || undefined,
+      referral_friend_name: form.referral_friend_name?.trim() || undefined,
       national_id_front: form.national_id_front || undefined,
       national_id_back: form.national_id_back || undefined,
       national_id_photo: form.national_id_front || undefined,
@@ -144,11 +142,10 @@ export default function UnifiedPatientForm({
       {/* Full Name (4 Parts) */}
       <div>
         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-          {isRTL ? 'الاسم رباعي (بالكامل)' : 'Full Name (4 Parts)'} <span className="text-rose-500">*</span>
+          {isRTL ? 'الاسم رباعي (بالكامل)' : 'Full Name (4 Parts)'}
         </label>
         <input
           type="text"
-          required
           value={form.full_name_ar}
           onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })}
           placeholder={isRTL ? 'مثال: أحمد محمد علي حسن' : 'e.g., Ahmed Mohamed Ali Hassan'}
@@ -160,11 +157,10 @@ export default function UnifiedPatientForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-            {isRTL ? 'رقم الجوال' : 'Phone Number'} <span className="text-rose-500">*</span>
+            {isRTL ? 'رقم الجوال' : 'Phone Number'}
           </label>
           <input
             type="text"
-            required
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             placeholder="+20 100 000 0000"
@@ -174,7 +170,7 @@ export default function UnifiedPatientForm({
 
         <div>
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-            {isRTL ? 'الجنسية' : 'Nationality'} <span className="text-rose-500">*</span>
+            {isRTL ? 'الجنسية' : 'Nationality'}
           </label>
           <select
             value={form.nationality}
@@ -245,14 +241,30 @@ export default function UnifiedPatientForm({
             <div className="mt-2">
               <label className="block text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
                 <Stethoscope size={13} />
-                <span>{isRTL ? 'اسم الطبيب المحوّل *' : "Referring Doctor's Name *"}</span>
+                <span>{isRTL ? 'اسم الطبيب المحوّل' : "Referring Doctor's Name"}</span>
               </label>
               <input
                 type="text"
-                required
                 value={form.referral_doctor_name || ''}
                 onChange={(e) => setForm({ ...form, referral_doctor_name: e.target.value })}
                 placeholder={isRTL ? 'مثال: د. أحمد فؤاد...' : "e.g. Dr. Ahmed Fouad..."}
+                className="w-full p-2 bg-indigo-50/50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
+              />
+            </div>
+          )}
+
+          {/* Conditional input when Friend Referral is selected */}
+          {form.referral_source === 'Friend' && (
+            <div className="mt-2">
+              <label className="block text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
+                <User size={13} />
+                <span>{isRTL ? 'اسم الصديق / المُرشّح' : "Friend / Recommender's Name"}</span>
+              </label>
+              <input
+                type="text"
+                value={form.referral_friend_name || ''}
+                onChange={(e) => setForm({ ...form, referral_friend_name: e.target.value })}
+                placeholder={isRTL ? 'مثال: محمد علي...' : "e.g. Mohamed Ali..."}
                 className="w-full p-2 bg-indigo-50/50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
               />
             </div>
@@ -335,7 +347,7 @@ export default function UnifiedPatientForm({
           <div className="p-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl bg-gray-50/60 dark:bg-gray-900/40">
             <span className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
               <span>{isRTL ? '• الوجه الأمامي (Front)' : '• Front View'}</span>
-              <span className="text-rose-500 font-bold">* ({isRTL ? 'إلزامي' : 'Required'})</span>
+              <span className="text-gray-400 font-normal">({isRTL ? 'اختياري' : 'Optional'})</span>
             </span>
             <input
               type="file"
