@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck, DoorOpen, Activity, ChevronRight, ChevronLeft, UserCog, Lock } from 'lucide-react'
+import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck, DoorOpen, Activity, ChevronRight, ChevronLeft, UserCog, Lock, Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -111,6 +111,7 @@ export default function DashboardLayout() {
         { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
         { to: '/rooms-manager', label: 'sidebar.rooms_manager', icon: DoorOpen },
         { to: '/services-manager', label: 'sidebar.services_manager', icon: Activity },
+        { to: '/contracts', label: 'sidebar.contracts', icon: Building2 },
         profileItem
       ]
     } else if (userRole === 'doctor') {
@@ -141,6 +142,7 @@ export default function DashboardLayout() {
         { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
         { to: '/reports', label: 'sidebar.reports', icon: Activity },
         { to: '/daily-followup', label: 'sidebar.daily_followup', icon: Clock },
+        { to: '/contracts', label: 'sidebar.contracts', icon: Building2 },
         profileItem
       ]
     } else if (userRole === 'user' || userRole === 'patient') {

@@ -8,6 +8,7 @@ export { packagesService } from './services/packagesService'
 export { prescriptionsService } from './services/prescriptionsService'
 export { whatsappService } from './services/whatsappService'
 export { servicesService } from './services/servicesService'
+export { contractsService } from './services/contractsService'
 
 export { API_CONFIG, ENDPOINTS, ERROR_MESSAGES } from './config'
 export { get, post, put, patch, del, uploadFile, setToken, setUser, apiRequest } from './client'

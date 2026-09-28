@@ -226,6 +226,25 @@ export const ENDPOINTS = {
     THEME: '/api/v1/settings/theme',
     LANGUAGE: '/api/v1/settings/language',
   },
+  // التعاقدات
+  CONTRACTS: {
+    LIST: '/api/v1/contracts',
+    CREATE: '/api/v1/contracts',
+    ACTIVE: '/api/v1/contracts/active',
+    STATS: '/api/v1/contracts/stats',
+    GET: (id) => `/api/v1/contracts/${id}`,
+    UPDATE: (id) => `/api/v1/contracts/${id}`,
+    DELETE: (id) => `/api/v1/contracts/${id}`,
+    RECORD_PAYMENT: (id) => `/api/v1/contracts/${id}/payment`,
+    LETTERS: {
+      ALL: '/api/v1/contracts/letters/all',
+      BY_CONTRACT: (contractId) => `/api/v1/contracts/${contractId}/letters`,
+      CREATE: '/api/v1/contracts/letters',
+      GET: (id) => `/api/v1/contracts/letters/${id}`,
+      UPDATE: (id) => `/api/v1/contracts/letters/${id}`,
+      DELETE: (id) => `/api/v1/contracts/letters/${id}`,
+    },
+  },
   // أوامر الشراء
   PURCHASE_ORDERS: {
     LIST: '/api/v1/finance/purchase-orders',

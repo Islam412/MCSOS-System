@@ -32,6 +32,7 @@ import DailyFollowUp from './pages/DailyFollowUp'
 import ReportsDashboard from './pages/reports/ReportsDashboard'
 import EmployeesManagerPage from './pages/admin/EmployeesManagerPage'
 import RbacManagerPage from './pages/admin/RbacManagerPage'
+import ContractsManager from './components/contracts/ContractsManager'
 
 function App() {
   return (
@@ -81,6 +82,7 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="book-appointment" element={<BookAppointment />} />
           <Route path="reports" element={<ReportsDashboard />} />
+          <Route path="contracts" element={<ContractsManager />} />
           
           {/* الصفحة الرئيسية الافتراضية */}
           <Route index element={<AdminDashboard />} />
