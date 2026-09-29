@@ -58,6 +58,7 @@ const STATUS_COLORS = {
   IN_PROGRESS: { bg: 'linear-gradient(135deg, #f97316, #c2410c)', text: '#ffffff', label: 'جاري العمل', dot: '#f97316' },
   COMPLETED: { bg: 'linear-gradient(135deg, #64748b, #334155)', text: '#ffffff', label: 'مكتمل', dot: '#64748b' },
   CANCELLED: { bg: 'linear-gradient(135deg, #ef4444, #b91c1c)', text: '#ffffff', label: 'ملغي', dot: '#ef4444' },
+  CANCELED: { bg: 'linear-gradient(135deg, #ef4444, #b91c1c)', text: '#ffffff', label: 'ملغي', dot: '#ef4444' },
   MISSED: { bg: 'linear-gradient(135deg, #991b1b, #450a0a)', text: '#ffffff', label: 'عدم حضور', dot: '#991b1b' }
 }
 
@@ -67,6 +68,12 @@ const CustomEvent = ({ event }) => {
     `${event.resource?.patient?.first_name || ''} ${event.resource?.patient?.last_name || ''}`.trim() || 
     event.title || 'مريض'
   const profileNum = event.resource?.patient?.profile_number
+  const isCancelled = event.resource?.status === 'CANCELED' || 
+    event.resource?.status === 'CANCELLED' || 
+    event.status === 'CANCELED' || 
+    event.status === 'CANCELLED' || 
+    event.resource?.confirm_status === 'DECLINED' || 
+    Boolean(event.resource?.cancellation_reason)
 
   const startTimeStr = event.start instanceof Date ? format(event.start, 'hh:mm a') : ''
   const endTimeStr = event.end instanceof Date ? format(event.end, 'hh:mm a') : ''
@@ -74,12 +81,18 @@ const CustomEvent = ({ event }) => {
   return (
     <div className="flex flex-col h-full justify-start text-white overflow-hidden text-left rtl:text-right w-full leading-tight">
       <div className="flex items-center justify-between gap-1.5 w-full">
-        <span className="font-extrabold text-[12px] truncate drop-shadow-sm">{patientName}</span>
-        {profileNum && (
+        <span className={`font-extrabold text-[12px] truncate drop-shadow-sm ${isCancelled ? 'line-through opacity-90' : ''}`}>
+          {isCancelled && '🚫 '}{patientName}
+        </span>
+        {isCancelled ? (
+          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-rose-900/80 rounded-md shadow-sm shrink-0">
+            ملغي
+          </span>
+        ) : profileNum ? (
           <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-black/25 rounded-md shadow-sm shrink-0">
             {profileNum}
           </span>
-        )}
+        ) : null}
       </div>
       {startTimeStr && (
         <div className="flex items-center gap-1 text-[11px] font-medium opacity-95 truncate mt-1">
@@ -311,6 +324,7 @@ export default function BookingCalendar() {
     PAYMENT_PENDING: { bg: 'linear-gradient(135deg, #eab308, #ca8a04)', text: '#1c1917', label: isRTL ? 'في انتظار الدفع' : 'Payment Pending', dot: '#eab308' },
     AWAITING_FINANCE_APPROVAL: { bg: 'linear-gradient(135deg, #9333ea, #6b21a8)', text: '#ffffff', label: isRTL ? 'اعتماد المالية' : 'Finance Approval', dot: '#9333ea' },
     CANCELLED: { bg: 'linear-gradient(135deg, #ef4444, #b91c1c)', text: '#ffffff', label: isRTL ? 'ملغي' : 'Cancelled', dot: '#ef4444' },
+    CANCELED: { bg: 'linear-gradient(135deg, #ef4444, #b91c1c)', text: '#ffffff', label: isRTL ? 'ملغي' : 'Cancelled', dot: '#ef4444' },
     NO_SHOW: { bg: 'linear-gradient(135deg, #7f1d1d, #450a0a)', text: '#ffffff', label: isRTL ? 'لم يحضر بدون إشعار' : 'No Show', dot: '#7f1d1d' },
     FULLY_BOOKED: { bg: 'linear-gradient(135deg, #18181b, #09090b)', text: '#ffffff', label: isRTL ? 'مكتمل العدد' : 'Fully Booked', dot: '#18181b' },
     PACKAGE_ENDING_SOON: { bg: 'linear-gradient(135deg, #d97706, #b45309)', text: '#ffffff', label: isRTL ? 'باقة تنتهي قريباً' : 'Ending Soon', dot: '#d97706' }
@@ -319,6 +333,17 @@ export default function BookingCalendar() {
   // ========== تخصيص شكل كارت الموعد في الكالندر ==========
   const eventStyleGetter = (event) => {
     const s = event.resource || {}
+    const isCancelled = 
+      event.status === 'CANCELED' || 
+      event.status === 'CANCELLED' || 
+      s.status === 'CANCELED' || 
+      s.status === 'CANCELLED' || 
+      s.confirm_status === 'DECLINED' || 
+      s.confirm_status === 'CANCELLED' || 
+      s.confirm_status === 'CANCELED' || 
+      s.is_cancelled || 
+      Boolean(s.cancellation_reason)
+
     const plan = s.treatment_plan
     const patient = s.patient
     const totalSessions = plan?.total_sessions || patient?.totalSessions || s.total_sessions || 0
@@ -338,7 +363,9 @@ export default function BookingCalendar() {
     let bg = 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
     let text = '#ffffff'
 
-    if (isFinishedNotRenewed) {
+    if (isCancelled) {
+      bg = 'linear-gradient(135deg, #ef4444, #b91c1c)' // Red: Cancelled
+    } else if (isFinishedNotRenewed) {
       bg = 'linear-gradient(135deg, #ef4444, #b91c1c)' // Red: finished not renewed
     } else if (isNearCompletion && totalSessions > 0) {
       bg = 'linear-gradient(135deg, #f59e0b, #d97706)' // Yellow: 90% finished

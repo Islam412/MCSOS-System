@@ -93,6 +93,87 @@ export default function ReportsDashboard() {
     }
   });
 
+  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`;
+
+  const fetchRealReportData = async () => {
+    setLoading(true);
+    const token = localStorage.getItem('mcsos_token');
+    try {
+      const res = await fetch(`${API_BASE}/sessions?limit=100`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const rawData = await res.json();
+        const sessions = Array.isArray(rawData) ? rawData : (rawData.data || []);
+        
+        if (sessions.length > 0) {
+          const totalSessions = sessions.length;
+          const attended = sessions.filter(s => s.status === 'ATTENDED' || s.status === 'COMPLETED').length;
+          const cancelled = sessions.filter(s => 
+            s.status === 'CANCELED' || 
+            s.status === 'CANCELLED' || 
+            s.confirm_status === 'DECLINED' || 
+            s.confirm_status === 'CANCELLED' || 
+            s.is_cancelled || 
+            Boolean(s.cancellation_reason)
+          );
+          const noShow = sessions.filter(s => s.status === 'MISSED' || s.status === 'NO_SHOW').length;
+
+          // Process real cancellation reasons
+          const reasonCounts = {};
+          const recentCancels = [];
+
+          cancelled.forEach(s => {
+            const reason = s.cancellation_reason || (isRTL ? 'إلغاء مباشر' : 'Direct Cancellation');
+            reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+
+            const pName = s.patient ? `${s.patient.first_name || ''} ${s.patient.last_name || ''}`.trim() : (isRTL ? 'مريض' : 'Patient');
+            const dName = s.doctor?.name || (isRTL ? 'غير محدد' : 'N/A');
+            const dateStr = s.session_date ? s.session_date.split('T')[0] : '';
+            
+            recentCancels.push({
+              patientName: pName,
+              doctorName: dName,
+              date: dateStr,
+              reason: reason,
+              cancelledBy: s.cancelled_by || (isRTL ? 'موظف الاستقبال' : 'Reception')
+            });
+          });
+
+          const formattedReasons = Object.entries(reasonCounts).map(([reason, count]) => ({
+            reason,
+            count,
+            percentage: cancelled.length > 0 ? Math.round((count / cancelled.length) * 100) : 0
+          }));
+
+          setReportData(prev => ({
+            ...prev,
+            attendance: {
+              ...prev.attendance,
+              totalSessions,
+              attendedCount: attended,
+              attendedPercentage: totalSessions > 0 ? Math.round((attended / totalSessions) * 100) : prev.attendance.attendedPercentage,
+              noShowCount: noShow,
+              noShowPercentage: totalSessions > 0 ? Math.round((noShow / totalSessions) * 100) : prev.attendance.noShowPercentage,
+              cancelledCount: cancelled.length,
+              cancelledPercentage: totalSessions > 0 ? Math.round((cancelled.length / totalSessions) * 100) : prev.attendance.cancelledPercentage,
+              cancellationReasons: formattedReasons.length > 0 ? formattedReasons : prev.attendance.cancellationReasons,
+              recentCancellations: recentCancels.length > 0 ? recentCancels : prev.attendance.recentCancellations
+            }
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching report sessions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRealReportData();
+  }, []);
+
   const handleExportPDF = () => {
     toast.success(isRTL ? 'تم تجهيز وتصدير التقرير بنجاح 📑' : 'Report exported successfully!');
     window.print();
@@ -117,7 +198,7 @@ export default function ReportsDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { setLoading(true); setTimeout(() => { setLoading(false); toast.success('تم تحديث البيانات 🔄'); }, 600); }}
+            onClick={() => { fetchRealReportData(); toast.success('تم تحديث البيانات 🔄'); }}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 font-bold text-gray-700 dark:text-gray-200 rounded-xl text-xs transition flex items-center gap-2 shadow-xs"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />

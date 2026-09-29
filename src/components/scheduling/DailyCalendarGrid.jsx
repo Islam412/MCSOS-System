@@ -30,6 +30,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSpecialization, setSelectedSpecialization] = useState('')
   const [selectedShift, setSelectedShift] = useState('all') // 'all', 'morning', 'evening'
+  const [selectedStatus, setSelectedStatus] = useState('all') // 'all', 'confirmed', 'cancelled', 'pending'
 
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
@@ -73,10 +74,29 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   }
 
   // Booking Card Color Rules:
-  // - Green with confirmed
-  // - Yellow when package is 90% to finish
-  // - Red if Package finished and not renewed
+  // - 1. Red if Cancelled or Declined (Priority 1)
+  // - 2. Red if Package finished and not renewed
+  // - 3. Yellow when package is 90% to finish
+  // - 4. Green with confirmed
   const getSessionCardColor = (s) => {
+    // 1. First priority: Check if cancelled / rejected
+    const isCancelled = 
+      s.status === 'CANCELED' || 
+      s.status === 'CANCELLED' || 
+      s.confirm_status === 'DECLINED' || 
+      s.confirm_status === 'CANCELLED' || 
+      s.confirm_status === 'CANCELED' ||
+      s.is_cancelled || 
+      Boolean(s.cancellation_reason)
+
+    if (isCancelled) {
+      return {
+        classes: 'bg-rose-50/95 border-rose-300 text-rose-950 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-200 border-l-rose-600',
+        badge: { text: isRTL ? 'ملغي' : 'Cancelled', color: 'bg-rose-600 text-white' },
+        isCancelled: true
+      }
+    }
+
     const plan = s.treatment_plan
     const patient = s.patient
     const totalSessions = plan?.total_sessions || patient?.totalSessions || s.total_sessions || 0
@@ -96,7 +116,8 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     if (isFinishedNotRenewed) {
       return {
         classes: 'bg-rose-50/95 border-rose-300 text-rose-950 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-200 border-l-rose-600',
-        badge: { text: isRTL ? 'منتهية لم تجدد' : 'Expired', color: 'bg-rose-600 text-white' }
+        badge: { text: isRTL ? 'منتهية لم تجدد' : 'Expired', color: 'bg-rose-600 text-white' },
+        isCancelled: false
       }
     }
 
@@ -105,7 +126,8 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     if (isNearCompletion && totalSessions > 0) {
       return {
         classes: 'bg-amber-50/95 border-amber-300 text-amber-950 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-200 border-l-amber-500',
-        badge: { text: isRTL ? 'شارفت على الانتهاء' : '90% done', color: 'bg-amber-500 text-white' }
+        badge: { text: isRTL ? 'شارفت على الانتهاء' : '90% done', color: 'bg-amber-500 text-white' },
+        isCancelled: false
       }
     }
 
@@ -113,20 +135,15 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     if (s.confirm_status === 'CONFIRMED' || s.status === 'CONFIRMED') {
       return {
         classes: 'bg-emerald-50/95 border-emerald-300 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-200 border-l-emerald-600',
-        badge: { text: isRTL ? 'مؤكد' : 'Confirmed', color: 'bg-emerald-600 text-white' }
-      }
-    }
-
-    if (s.confirm_status === 'DECLINED') {
-      return {
-        classes: 'bg-rose-50/80 border-rose-200 text-rose-900 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300 border-l-rose-400',
-        badge: { text: isRTL ? 'مرفوض' : 'Declined', color: 'bg-rose-400 text-white' }
+        badge: { text: isRTL ? 'مؤكد' : 'Confirmed', color: 'bg-emerald-600 text-white' },
+        isCancelled: false
       }
     }
 
     return {
       classes: 'bg-indigo-50/70 border-indigo-200 text-indigo-950 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-200 border-l-indigo-400',
-      badge: null
+      badge: null,
+      isCancelled: false
     }
   }
 
@@ -204,7 +221,20 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
       const minutes = sessionDateObj.getMinutes().toString().padStart(2, '0')
       const sessionTime = `${hours}:${minutes}`
       
-      return sessionTime === timeStr
+      if (sessionTime !== timeStr) return false
+
+      if (selectedStatus === 'cancelled') {
+        const isCancelled = s.status === 'CANCELED' || s.status === 'CANCELLED' || s.confirm_status === 'DECLINED' || s.confirm_status === 'CANCELLED' || s.is_cancelled || Boolean(s.cancellation_reason)
+        return isCancelled
+      }
+      if (selectedStatus === 'confirmed') {
+        return s.confirm_status === 'CONFIRMED' || s.status === 'CONFIRMED'
+      }
+      if (selectedStatus === 'pending') {
+        return s.confirm_status === 'PENDING' || s.status === 'PENDING'
+      }
+
+      return true
     })
   }
 
@@ -449,46 +479,104 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
 
         {/* Filter controls */}
         {viewMode === 'grid' && (
-          <div className="flex flex-wrap gap-3 items-center pt-3 border-t border-gray-200/40 dark:border-gray-700/50">
-            {/* Search Doctor */}
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute right-3 top-2.5 text-gray-400" size={16} />
-              <input 
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={isRTL ? 'البحث عن طبيب بالاسم...' : 'Search doctor by name...'}
-                className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm"
-              />
+          <div className="space-y-3 pt-3 border-t border-gray-200/40 dark:border-gray-700/50">
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Search Doctor */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute right-3 top-2.5 text-gray-400" size={16} />
+                <input 
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={isRTL ? 'البحث عن طبيب بالاسم...' : 'Search doctor by name...'}
+                  className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm"
+                />
+              </div>
+
+              {/* Specialization Filter */}
+              <div className="relative min-w-[180px]">
+                <Filter className="absolute right-3 top-2.5 text-gray-400" size={16} />
+                <select
+                  value={selectedSpecialization}
+                  onChange={(e) => setSelectedSpecialization(e.target.value)}
+                  className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
+                >
+                  <option value="">{isRTL ? 'كل التخصصات' : 'All Specializations'}</option>
+                  {specializations.map(spec => (
+                    <option key={spec} value={spec}>{spec}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Shift Filter */}
+              <div className="relative min-w-[160px]">
+                <Clock className="absolute right-3 top-2.5 text-gray-400" size={16} />
+                <select
+                  value={selectedShift}
+                  onChange={(e) => setSelectedShift(e.target.value)}
+                  className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
+                >
+                  <option value="all">{isRTL ? 'اليوم بالكامل' : 'Full Day'}</option>
+                  <option value="morning">{isRTL ? 'شيفت صباحي' : 'Morning Shift'}</option>
+                  <option value="evening">{isRTL ? 'شيفت مسائي' : 'Evening Shift'}</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="relative min-w-[160px]">
+                <Filter className="absolute right-3 top-2.5 text-gray-400" size={16} />
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none font-bold"
+                >
+                  <option value="all">{isRTL ? '📌 كل الحالات' : 'All Statuses'}</option>
+                  <option value="confirmed">{isRTL ? '✅ المؤكدة فقط' : 'Confirmed Only'}</option>
+                  <option value="cancelled">{isRTL ? '🚫 الملغية فقط' : 'Cancelled Only'}</option>
+                  <option value="pending">{isRTL ? '⏳ قيد الانتظار' : 'Pending'}</option>
+                </select>
+              </div>
             </div>
 
-            {/* Specialization Filter */}
-            <div className="relative min-w-[200px]">
-              <Filter className="absolute right-3 top-2.5 text-gray-400" size={16} />
-              <select
-                value={selectedSpecialization}
-                onChange={(e) => setSelectedSpecialization(e.target.value)}
-                className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
+            {/* Quick Status Filter Pills */}
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <button
+                onClick={() => setSelectedStatus('all')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedStatus === 'all'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
               >
-                <option value="">{isRTL ? 'كل التخصصات' : 'All Specializations'}</option>
-                {specializations.map(spec => (
-                  <option key={spec} value={spec}>{spec}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Shift Filter */}
-            <div className="relative min-w-[200px]">
-              <Clock className="absolute right-3 top-2.5 text-gray-400" size={16} />
-              <select
-                value={selectedShift}
-                onChange={(e) => setSelectedShift(e.target.value)}
-                className="w-full pr-9 pl-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-sm appearance-none"
+                <span>{isRTL ? 'كل المواعيد' : 'All'}</span>
+                <span className="px-1.5 py-0.2 bg-black/20 rounded-full text-[10px]">{sessions.length}</span>
+              </button>
+              <button
+                onClick={() => setSelectedStatus('confirmed')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedStatus === 'confirmed'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
+                }`}
               >
-                <option value="all">{isRTL ? 'اليوم بالكامل' : 'Full Day'}</option>
-                <option value="morning">{isRTL ? 'شيفت صباحي' : 'Morning Shift'}</option>
-                <option value="evening">{isRTL ? 'شيفت مسائي' : 'Evening Shift'}</option>
-              </select>
+                <span>{isRTL ? 'مؤكدة' : 'Confirmed'}</span>
+                <span className="px-1.5 py-0.2 bg-emerald-200/80 dark:bg-emerald-900/60 rounded-full text-[10px]">
+                  {sessions.filter(s => s.confirm_status === 'CONFIRMED' || s.status === 'CONFIRMED').length}
+                </span>
+              </button>
+              <button
+                onClick={() => setSelectedStatus('cancelled')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedStatus === 'cancelled'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40'
+                }`}
+              >
+                <span>🚫 {isRTL ? 'ملغية' : 'Cancelled'}</span>
+                <span className="px-1.5 py-0.2 bg-rose-200/80 dark:bg-rose-900/60 rounded-full text-[10px] font-extrabold">
+                  {sessions.filter(s => s.status === 'CANCELED' || s.status === 'CANCELLED' || s.confirm_status === 'DECLINED' || s.confirm_status === 'CANCELLED' || s.confirm_status === 'CANCELED' || s.is_cancelled || Boolean(s.cancellation_reason)).length}
+                </span>
+              </button>
             </div>
           </div>
         )}
@@ -570,7 +658,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                               const cardColor = getSessionCardColor(session)
                               return (
                                 <div 
-                                  draggable={true}
+                                  draggable={!cardColor.isCancelled}
                                   onDragStart={(e) => {
                                     const data = JSON.stringify({ type: 'SESSION', session })
                                     e.dataTransfer.setData('application/json', data)
@@ -584,10 +672,16 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                                 >
                                   <div className="flex items-center justify-between gap-1">
                                     <div className="flex items-center gap-2 truncate">
-                                      <div className="w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[9px] font-bold flex items-center justify-center shrink-0">
+                                      <div className={`w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center shrink-0 ${
+                                        cardColor.isCancelled 
+                                          ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300' 
+                                          : 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400'
+                                      }`}>
                                         {getInitials(session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N A')}
                                       </div>
-                                      <div className="font-extrabold truncate text-gray-800 dark:text-white text-[11px] leading-tight">
+                                      <div className={`font-extrabold truncate text-[11px] leading-tight ${
+                                        cardColor.isCancelled ? 'line-through text-rose-900 dark:text-rose-200' : 'text-gray-800 dark:text-white'
+                                      }`}>
                                         {session.patient ? `${session.patient.first_name} ${session.patient.last_name}` : 'N/A'}
                                       </div>
                                     </div>
@@ -598,12 +692,19 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                                     )}
                                   </div>
                                   
-                                  {session.room && (
-                                    <div className="flex items-center justify-end gap-1 text-[9px] text-gray-500 dark:text-gray-400 mt-1.5 font-semibold bg-white/40 dark:bg-black/10 px-1.5 py-0.5 rounded w-max self-end font-mono">
-                                      <span>{session.room.name || session.room.code}</span>
-                                      <MapPin size={9} className="text-gray-400 dark:text-gray-500" />
-                                    </div>
-                                  )}
+                                  <div className="flex items-center justify-between gap-1 mt-1.5">
+                                    {cardColor.isCancelled && session.cancellation_reason ? (
+                                      <span className="text-[9px] font-bold text-rose-700 dark:text-rose-300 truncate max-w-[90px]" title={session.cancellation_reason}>
+                                        🚫 {session.cancellation_reason}
+                                      </span>
+                                    ) : <span />}
+                                    {session.room && (
+                                      <div className="flex items-center justify-end gap-1 text-[9px] text-gray-500 dark:text-gray-400 font-semibold bg-white/40 dark:bg-black/10 px-1.5 py-0.5 rounded w-max font-mono">
+                                        <span>{session.room.name || session.room.code}</span>
+                                        <MapPin size={9} className="text-gray-400 dark:text-gray-500" />
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               )
                             })()
