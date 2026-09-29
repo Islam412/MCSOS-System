@@ -172,8 +172,19 @@ export const apiRequest = async (url, options = {}, retryCount = 0) => {
         }
       }
 
-      const errorMessage = data?.message || data?.error || ERROR_MESSAGES.SERVER_ERROR
-      throw new Error(errorMessage)
+      // Preserve Nest body (incl. bilingual ConflictException message: { ar, en })
+      // so callers can read status + structured message off the thrown error.
+      const rawMessage = data?.message ?? data?.error ?? ERROR_MESSAGES.SERVER_ERROR
+      const errorText = typeof rawMessage === 'string'
+        ? rawMessage
+        : Array.isArray(rawMessage)
+          ? rawMessage.filter((part) => typeof part === 'string').join(', ')
+          : (typeof data?.error === 'string' ? data.error : ERROR_MESSAGES.SERVER_ERROR)
+      const error = new Error(errorText || ERROR_MESSAGES.SERVER_ERROR)
+      error.status = response.status
+      error.data = data
+      error.apiMessage = data?.message ?? data?.error ?? null
+      throw error
     }
 
     return data

@@ -29,6 +29,7 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { appointmentsService, doctorsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
 import { validateAppointmentReschedule } from '../../utils/schedulingValidation'
+import { getBilingualConflictMessage } from '../../utils/conflictToastMessage'
 
 // إعداد localizer المواعيد واللغة
 const locales = {
@@ -294,24 +295,51 @@ export default function BookingCalendar() {
 
   // تأكيد السحب والإفلات
   const confirmReschedule = async () => {
-    const { event, start, validation } = dragConfirmModal
+    const { event, start } = dragConfirmModal
     if (!event || !start) return
 
-    if (validation && !validation.isValid) {
-      toast.error(validation.errors[0] || 'توجد تعارضات في الموعد الجديد')
-      return
-    }
+    // Client validation is a hint in the modal only — still call the server so 409
+    // returns the Nest bilingual ConflictException message.
+    const previousSessionDate = event.resource?.session_date
 
     try {
       if (isOnline) {
         await appointmentsService.rescheduleAppointment(event.id, start.toISOString())
+      } else {
+        toast.error(isRTL ? 'لا يوجد اتصال بالخادم' : 'No server connection')
+        setDragConfirmModal({ isOpen: false, event: null, start: null, end: null, validation: null })
+        loadCalendarSessions()
+        return
       }
       toast.success(`تم نقل الموعد إلى ${format(start, 'yyyy-MM-dd HH:mm')} بنجاح 🗓️`)
       setDragConfirmModal({ isOpen: false, event: null, start: null, end: null, validation: null })
       loadCalendarSessions()
     } catch (error) {
       console.error('Reschedule error:', error)
-      toast.error('حدث خطأ في إعادة الجدولة (تأكد من المواعيد المتاحة)')
+
+      // Do not leave the event on the new time — restore from server / prior date
+      if (previousSessionDate != null) {
+        setSessions(prev => prev.map(s => {
+          if (String(s.id) === String(event.id)) {
+            return { ...s, session_date: previousSessionDate }
+          }
+          return s
+        }))
+      }
+      setDragConfirmModal({ isOpen: false, event: null, start: null, end: null, validation: null })
+      loadCalendarSessions()
+
+      const bilingual = getBilingualConflictMessage(error)
+      if (bilingual || error?.status === 409) {
+        toast.error(bilingual || (typeof error?.message === 'string' ? error.message : ''), {
+          style: { whiteSpace: 'pre-line' },
+          duration: 6000
+        })
+      } else {
+        toast.error(typeof error?.message === 'string' && error.message
+          ? error.message
+          : 'حدث خطأ في إعادة الجدولة (تأكد من المواعيد المتاحة)')
+      }
     }
   }
 
@@ -600,9 +628,8 @@ export default function BookingCalendar() {
               </button>
               <button
                 type="button"
-                disabled={dragConfirmModal.validation && !dragConfirmModal.validation.isValid}
                 onClick={confirmReschedule}
-                className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1"
+                className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1"
               >
                 <CheckCircle2 size={14} />
                 {isRTL ? 'تأكيد النقل' : 'Confirm'}

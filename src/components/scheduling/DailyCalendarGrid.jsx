@@ -8,6 +8,7 @@ import AddPatientModal from '../common/AddPatientModal'
 import BookingCalendar from './BookingCalendar'
 import { appointmentsService } from '../../services/api'
 import { validateAppointmentReschedule } from '../../utils/schedulingValidation'
+import { getBilingualConflictMessage } from '../../utils/conflictToastMessage'
 
 export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignComplete, onViewSession, refreshTrigger }) {
   const { t, i18n } = useTranslation()
@@ -344,20 +345,29 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
         if (session) {
           const startTime = new Date(isoSessionDate)
           const endTime = new Date(startTime.getTime() + 45 * 60 * 1000)
+          const roomId = session.room_id || session.room?.id || ''
 
+          // Client-side check is a hint only — conflicting drops must still hit the server
+          // so a 409 surfaces the Nest bilingual message.
           const validation = validateAppointmentReschedule({
             sessionId: session.id,
             doctorId: doc.id,
-            roomId: session.room_id || session.room?.id,
+            roomId,
             startTime,
             endTime,
             sessions,
             rooms
           })
-
           if (!validation.isValid) {
-            toast.error(validation.errors[0] || (isRTL ? 'توجد تعارضات تمنع نقل الموعد' : 'Schedule conflicts prevent moving appointment'))
-            return
+            console.warn('Client schedule hint:', validation.errors)
+          }
+
+          const previousPlacement = {
+            doctor_id: session.doctor_id || session.doctor?.id,
+            doctor: session.doctor,
+            room_id: session.room_id || session.room?.id,
+            room: session.room,
+            session_date: session.session_date
           }
 
           // Optimistic local state update
@@ -374,11 +384,34 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
           }))
 
           try {
-            await appointmentsService.rescheduleAppointment(session.id, isoSessionDate, session.room_id || session.room?.id || '', doc.id)
+            await appointmentsService.rescheduleAppointment(session.id, isoSessionDate, roomId, doc.id)
             toast.success(isRTL ? `تم نقل موعد المريض إلى الساعة ${timeStr} عند ${doc.name} 🗓️` : `Rescheduled session to ${timeStr}`)
           } catch (err) {
             console.error('Error rescheduling session:', err)
-            toast.error(isRTL ? 'حدث خطأ في نقل الموعد بالسيرفر' : 'Failed to reschedule on server')
+            // Snap card back to the cell it left (doctor / room / session_date)
+            setSessions(prev => prev.map(s => {
+              if (String(s.id) === String(session.id)) {
+                return {
+                  ...s,
+                  doctor_id: previousPlacement.doctor_id,
+                  doctor: previousPlacement.doctor,
+                  room_id: previousPlacement.room_id,
+                  room: previousPlacement.room,
+                  session_date: previousPlacement.session_date
+                }
+              }
+              return s
+            }))
+
+            const bilingual = getBilingualConflictMessage(err)
+            if (bilingual || err?.status === 409) {
+              toast.error(bilingual || (typeof err?.message === 'string' ? err.message : ''), {
+                style: { whiteSpace: 'pre-line' },
+                duration: 6000
+              })
+            } else {
+              toast.error(isRTL ? 'حدث خطأ في نقل الموعد بالسيرفر' : 'Failed to reschedule on server')
+            }
           } finally {
             fetchSessions()
           }
