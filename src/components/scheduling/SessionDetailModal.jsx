@@ -1,7 +1,7 @@
 // src/components/scheduling/SessionDetailModal.jsx
 import { useState, useEffect } from 'react'
 import { confirmAlert } from '../../utils/confirmAlert'
-import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award, Package, RefreshCw, CheckCircle } from 'lucide-react'
+import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award, Package, RefreshCw, CheckCircle, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 

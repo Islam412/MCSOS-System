@@ -61,7 +61,17 @@ export default function UnifiedPatientForm({
 
     setLoading(true)
 
-    // Name parts logic - soft fallback if name is completely empty
+    // Require at least a name or phone to avoid accidental empty clicks
+    const hasName = Boolean(form.full_name_ar.trim() || form.first_name.trim() || form.last_name.trim())
+    const hasPhone = Boolean(form.phone.trim())
+
+    if (!hasName && !hasPhone) {
+      toast.error(isRTL ? 'الرجاء إدخال اسم المريض أو رقم الهاتف على الأقل' : 'Please enter patient name or phone')
+      setLoading(false)
+      return
+    }
+
+    // Name parts logic
     let fullName = form.full_name_ar.trim() || `${form.first_name} ${form.last_name}`.trim()
     if (!fullName) {
       fullName = isRTL ? 'مريض جديد' : 'New Patient'
@@ -109,7 +119,7 @@ export default function UnifiedPatientForm({
       let createdPatient
       if (isOnline) {
         const response = await patientsService.createPatient(patientPayload)
-        createdPatient = response?.patient || response
+        createdPatient = response?.patient || response?.data || response
         toast.success(isRTL ? `تم تسجيل المريض (${fullName}) بنجاح!` : `Patient (${fullName}) registered successfully!`)
       } else {
         // Offline Fallback
@@ -129,7 +139,10 @@ export default function UnifiedPatientForm({
       if (onSuccess) onSuccess(createdPatient)
     } catch (error) {
       console.error('Unified Patient Registration error:', error)
-      toast.error(isRTL ? 'فشل تسجيل المريض الجديد' : 'Failed to register patient')
+      const errorMsg = error?.response?.data?.message
+        ? (Array.isArray(error.response.data.message) ? error.response.data.message.join(' - ') : error.response.data.message)
+        : (error?.message || (isRTL ? 'فشل تسجيل المريض الجديد' : 'Failed to register patient'))
+      toast.error(errorMsg)
     } finally {
       setLoading(false)
     }
