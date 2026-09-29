@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, Check, User, Mail, Phone, Briefcase, Clock, DollarSign, Shield, AlertCircle, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
+import PhoneInputWithCountry from '../common/PhoneInputWithCountry'
 
 export default function EmployeeCrudModal({ isOpen, onClose, onSave, employee, rolesList = [] }) {
   const { t, i18n } = useTranslation()
@@ -177,13 +178,9 @@ export default function EmployeeCrudModal({ isOpen, onClose, onSave, employee, r
                 <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>{t('employee_mgmt.phone_label', 'رقم التواصل / الجوال')} <span className="text-rose-500">*</span></span>
               </label>
-              <input
-                type="text"
-                name="phone"
+              <PhoneInputWithCountry
                 value={formData.phone}
-                onChange={handleChange}
-                placeholder="+20 100 123 4567"
-                className={`${inputClassName} dir-ltr text-left font-mono`}
+                onChange={(val) => setFormData((prev) => ({ ...prev, phone: val }))}
               />
               {errors.phone && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.phone}</p>}
             </div>

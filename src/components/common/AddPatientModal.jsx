@@ -12,7 +12,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-fadeIn">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col my-8 text-gray-800 dark:text-white">
+      <div className="bg-white dark:bg-gray-800 w-full max-w-2xl lg:max-w-3xl rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col my-8 text-gray-800 dark:text-white transition-all">
         
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-gray-900 dark:to-gray-900">

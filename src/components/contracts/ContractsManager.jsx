@@ -419,12 +419,12 @@ export default function ContractsManager() {
 
   const formatCurrency = (val) => {
     const num = Number(val) || 0
-    return num.toLocaleString('ar-SA', { style: 'currency', currency: 'SAR', maximumFractionDigits: 0 })
+    return isRTL ? `${num.toLocaleString('ar-EG')} ج.م` : `${num.toLocaleString('en-US')} EGP`
   }
 
   const formatDate = (d) => {
     if (!d) return '-'
-    return new Date(d).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    return new Date(d).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })
   }
 
   // ===== Progress bar percentage =====
@@ -714,7 +714,7 @@ export default function ContractsManager() {
 
             {/* القيمة الإجمالية */}
             <div>
-              <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">{isRTL ? 'القيمة الإجمالية (ر.س)' : 'Total Value (SAR)'}</label>
+              <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">{isRTL ? 'القيمة الإجمالية (ج.م)' : 'Total Value (EGP)'}</label>
               <input type="number" value={contractForm.total_value} onChange={(e) => setContractForm({ ...contractForm, total_value: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white" min="0" />
             </div>
@@ -1103,7 +1103,7 @@ export default function ContractsManager() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">{isRTL ? 'المبلغ (ر.س) *' : 'Amount (SAR) *'}</label>
+                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">{isRTL ? 'المبلغ (ج.م) *' : 'Amount (EGP) *'}</label>
                 <input type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none text-gray-900 dark:text-white"
                   min="0" placeholder="0" />

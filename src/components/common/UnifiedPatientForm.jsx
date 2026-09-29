@@ -6,6 +6,23 @@ import toast from 'react-hot-toast'
 import { compressImage } from '../../utils/imageCompressor'
 import { patientsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+import PhoneInputWithCountry from './PhoneInputWithCountry'
+
+const nationalityToCountryCode = (nat) => {
+  if (!nat) return 'EG'
+  if (nat.includes('سعودي') || nat.includes('Saudi')) return 'SA'
+  if (nat.includes('إماراتي') || nat.includes('UAE')) return 'AE'
+  if (nat.includes('كويتي') || nat.includes('Kuwait')) return 'KW'
+  if (nat.includes('قطري') || nat.includes('Qatar')) return 'QA'
+  if (nat.includes('أردني') || nat.includes('Jordan')) return 'JO'
+  if (nat.includes('سوري') || nat.includes('Syria')) return 'SY'
+  if (nat.includes('لبناني') || nat.includes('Lebanon')) return 'LB'
+  if (nat.includes('عراقي') || nat.includes('Iraq')) return 'IQ'
+  if (nat.includes('فلسطيني') || nat.includes('Palestine')) return 'PS'
+  if (nat.includes('عُمان') || nat.includes('Oman')) return 'OM'
+  if (nat.includes('بحرين') || nat.includes('Bahrain')) return 'BH'
+  return 'EG'
+}
 
 export default function UnifiedPatientForm({
   variant = 'modal', // 'modal' | 'inline' | 'compact'
@@ -172,12 +189,11 @@ export default function UnifiedPatientForm({
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
             {isRTL ? 'رقم الجوال' : 'Phone Number'}
           </label>
-          <input
-            type="text"
+          <PhoneInputWithCountry
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            placeholder="+20 100 000 0000"
-            className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 dir-ltr text-left font-mono transition"
+            defaultCountry={nationalityToCountryCode(form.nationality)}
+            onChange={(val) => setForm((prev) => ({ ...prev, phone: val }))}
+            disabled={loading}
           />
         </div>
 
@@ -210,7 +226,7 @@ export default function UnifiedPatientForm({
         <input
           type="checkbox"
           id="unifiedSameAsPhone"
-          className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+          className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 cursor-pointer"
           checked={form.sameAsPhone}
           onChange={(e) => setForm({ ...form, sameAsPhone: e.target.checked })}
         />
@@ -222,11 +238,11 @@ export default function UnifiedPatientForm({
       {!form.sameAsPhone && (
         <div>
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">{isRTL ? 'رقم الواتساب' : 'WhatsApp Number'}</label>
-          <input
-            type="text"
+          <PhoneInputWithCountry
             value={form.whatsapp_number}
-            onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
-            className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 dir-ltr text-left font-mono"
+            defaultCountry={nationalityToCountryCode(form.nationality)}
+            onChange={(val) => setForm((prev) => ({ ...prev, whatsapp_number: val }))}
+            disabled={loading}
           />
         </div>
       )}
@@ -359,7 +375,7 @@ export default function UnifiedPatientForm({
           {/* Front */}
           <div className="p-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl bg-gray-50/60 dark:bg-gray-900/40">
             <span className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
-              <span>{isRTL ? '• الوجه الأمامي (Front)' : '• Front View'}</span>
+              <span>{isRTL ? 'الوجه الأمامي (Front)' : 'Front View'}</span>
               <span className="text-gray-400 font-normal">({isRTL ? 'اختياري' : 'Optional'})</span>
             </span>
             <input
@@ -398,8 +414,9 @@ export default function UnifiedPatientForm({
 
           {/* Back */}
           <div className="p-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl bg-gray-50/60 dark:bg-gray-900/40">
-            <span className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5">
-              {isRTL ? '• الوجه الخلفي (Back - اختياري)' : '• Back View (Optional)'}
+            <span className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+              <span>{isRTL ? 'الوجه الخلفي (Back)' : 'Back View'}</span>
+              <span className="text-gray-400 font-normal">({isRTL ? 'اختياري' : 'Optional'})</span>
             </span>
             <input
               type="file"

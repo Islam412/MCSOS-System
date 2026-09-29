@@ -932,8 +932,8 @@ export default function ReceptionDashboard() {
       {/* باقي المودالات - نفس الكود مع تحديث الدوال */}
       {/* Modal تسجيل مريض جديد */}
       {showNewPatientModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">تسجيل مريض جديد</h2><button onClick={() => setShowNewPatientModal(false)} className="p-1 hover:bg-gray-700 rounded"><X size={20} className="text-gray-400" /></button></div>
             <div className="space-y-3">
                <input type="text" placeholder="الاسم الكامل *" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={newPatient.name} onChange={(e) => setNewPatient({...newPatient, name: e.target.value})} />
@@ -1282,7 +1282,7 @@ export default function ReceptionDashboard() {
               {t('attendance_mgmt.absence_modal_title', 'تسجيل غياب المريض')}
             </h3>
             <p className="text-sm text-gray-300 mb-4">
-              {t('attendance_mgmt.patient_modal_prefix', 'المريض:')} <strong className="text-white font-bold">{absentModal.patient}</strong>
+              {t('attendance_mgmt.patient_modal_prefix', 'المريض:')} <strong className="text-white font-bold">{typeof absentModal.patient === 'object' ? (absentModal.patient?.full_name_ar || absentModal.patient?.name || 'مريض') : (absentModal.patient || 'مريض')}</strong>
             </p>
             <div className="space-y-2 mb-6">
               <label className="block text-xs font-semibold text-gray-300">

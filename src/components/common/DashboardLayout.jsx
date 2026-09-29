@@ -5,7 +5,8 @@ import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
 import { useTheme } from '../../context/ThemeContext'
 import { useState, useEffect } from 'react'
-import { authService } from '../../services/api' // ✅ إضافة استيراد الخدمة
+import toast from 'react-hot-toast'
+import { authService } from '../../services/api'
 
 export default function DashboardLayout() {
   const { t, i18n } = useTranslation()

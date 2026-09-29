@@ -724,7 +724,7 @@ export default function AdminDashboard() {
               <div key={treatment.id} className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50 hover:border-green-500/30 transition">
                 <div className="flex justify-between items-start">
                   <div><h3 className="text-lg font-bold text-white">{treatment.name}</h3><p className="text-green-400">{treatment.nameEn}</p></div>
-                  <div className="text-right"><p className="text-2xl font-bold text-green-400">{treatment.price} <span className="text-xs">ر.س</span></p></div>
+                  <div className="text-right"><p className="text-2xl font-bold text-green-400">{treatment.price} <span className="text-xs">ج.م</span></p></div>
                 </div>
                 <p className="text-gray-400 text-sm mt-2">{treatment.description}</p>
                 <div className="mt-3 flex gap-3 text-sm">

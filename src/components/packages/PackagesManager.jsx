@@ -57,7 +57,7 @@ function ServiceSearchSelect({ services, selectedServiceId, onChange, isRTL }) {
         className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-white cursor-pointer flex items-center justify-between transition hover:border-blue-400"
       >
         <span className={selectedService ? 'font-bold text-indigo-700 dark:text-indigo-300 truncate' : 'text-gray-400 truncate'}>
-          {selectedService ? `${selectedService.name || selectedService.nameAr || selectedService.nameEn} (${selectedService.price || 0} ر.س)` : (isRTL ? '🔍 ابحث أو اختر خدمة...' : '🔍 Search or choose a service...')}
+          {selectedService ? `${selectedService.name || selectedService.nameAr || selectedService.nameEn} (${selectedService.price || 0} ج.م)` : (isRTL ? '🔍 ابحث أو اختر خدمة...' : '🔍 Search or choose a service...')}
         </span>
         <ChevronDown size={14} className="text-gray-400 shrink-0 ml-1" />
       </div>
@@ -102,7 +102,7 @@ function ServiceSearchSelect({ services, selectedServiceId, onChange, isRTL }) {
                   >
                     <span>{name}</span>
                     <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                      {s.price || 0} ر.س
+                      {s.price || 0} ج.م
                     </span>
                   </div>
                 )
@@ -1005,7 +1005,7 @@ export default function PackagesManager() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر (ر.س) *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر (ج.م) *</label>
                   <input
                     type="number"
                     className="w-full p-3 border rounded-lg dark:bg-gray-900"
@@ -1101,7 +1101,7 @@ export default function PackagesManager() {
 
             <div className="p-3.5 bg-purple-50 dark:bg-purple-950/30 rounded-2xl border border-purple-200 dark:border-purple-800 flex justify-between items-center text-xs font-extrabold">
               <span className="text-purple-900 dark:text-purple-300">{getPackageName(assigningPackage)}</span>
-              <span className="text-sm font-black text-green-600 dark:text-green-400">{assigningPackage.price} ر.س</span>
+              <span className="text-sm font-black text-green-600 dark:text-green-400">{assigningPackage.price} ج.م</span>
             </div>
 
             <div className="space-y-4">

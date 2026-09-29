@@ -195,43 +195,82 @@ export default function DoctorDashboard() {
     }
   }
 
-  // ========== تحميل مواعيد اليوم ==========
+  // ========== أدوات تنظيف البيانات ومنع انهيار React ==========
+  const extractPatientName = (p) => {
+    if (!p) return 'مريض'
+    if (typeof p === 'string') return p
+    if (typeof p === 'object') {
+      return p.full_name_ar || p.name || p.nameAr || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'مريض'
+    }
+    return String(p)
+  }
+
+  const extractDiagnosis = (d) => {
+    if (!d) return 'قيد التشخيص'
+    if (typeof d === 'string') return d
+    if (typeof d === 'object') return d.name || d.title || d.description || 'قيد التشخيص'
+    return String(d)
+  }
+
+  const extractAge = (a) => {
+    if (typeof a === 'number') return a
+    if (typeof a === 'string') {
+      const num = parseInt(a, 10)
+      return isNaN(num) ? 30 : num
+    }
+    return 30
+  }
+
+  const formatSession = (s) => {
+    const patientObj = s.patient && typeof s.patient === 'object' ? s.patient : null
+    const patientName = s.patientName || (patientObj ? extractPatientName(patientObj) : (typeof s.patient === 'string' ? s.patient : 'مريض'))
+    return {
+      id: s.id,
+      time: s.time || s.startTime || (s.session_date ? new Date(s.session_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:00'),
+      patient: patientName,
+      patientId: s.patient_id || s.patientId || patientObj?.id,
+      age: extractAge(s.patientAge || s.age || patientObj?.age),
+      type: typeof s.type === 'string' ? s.type : (s.sessionType || s.session_type || 'ASSESSMENT'),
+      status: s.status || 'scheduled',
+      date: s.date || s.session_date,
+      raw: s
+    }
+  }
+
+  const formatPatientItem = (p) => ({
+    id: p.id,
+    name: extractPatientName(p),
+    age: extractAge(p.age),
+    lastVisit: typeof p.lastVisit === 'string' ? p.lastVisit : (p.updatedAt?.split('T')[0] || 'اليوم'),
+    diagnosis: extractDiagnosis(p.diagnosis || p.notes),
+    progress: typeof p.progress === 'number' ? p.progress : 0
+  })
+
+  // ========== تحميل جدول مواعيد اليوم ==========
   const loadTodaySchedule = async () => {
     try {
       if (isOnline) {
         const today = new Date().toISOString().split('T')[0]
-        // ✅ استخدام الـ API الجديد /sessions مع فلتر التاريخ والدكتور
         const response = await get(`/sessions?doctorId=${user?.id}&date=${today}`)
-        
         const sessions = response?.data || response?.sessions || (Array.isArray(response) ? response : [])
-        
-        // تحويل البيانات إلى شكل متوافق مع الواجهة
-        const formattedSessions = sessions.map(s => ({
-          id: s.id,
-          time: s.time || s.startTime || (s.session_date ? new Date(s.session_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:00'),
-          patient: s.patientName || 
-                   (s.patient ? (typeof s.patient === 'object' ? (s.patient.full_name_ar || s.patient.name || `${s.patient.first_name || ''} ${s.patient.last_name || ''}`.trim()) : s.patient) : null) || 
-                   'مريض',
-          patientId: s.patient_id || s.patientId,
-          age: s.patientAge || s.age || 30,
-          type: s.type || s.sessionType || s.session_type || 'ASSESSMENT',
-          status: s.status || 'scheduled',
-          date: s.date || s.session_date,
-          raw: s
-        }))
+        const formattedSessions = sessions.map(formatSession)
         
         setTodaySchedule(formattedSessions)
         localStorage.setItem('mcsos_today_sessions', JSON.stringify(formattedSessions))
       } else {
         const saved = localStorage.getItem('mcsos_today_sessions')
-        if (saved) setTodaySchedule(JSON.parse(saved))
+        if (saved) setTodaySchedule(JSON.parse(saved).map(formatSession))
       }
     } catch (error) {
       console.error('Error loading today schedule:', error)
-      // ✅ استخدام localStorage كاحتياطي
-      const saved = localStorage.getItem('mcsos_today_appointments')
+      const saved = localStorage.getItem('mcsos_today_appointments') || localStorage.getItem('mcsos_today_sessions')
       if (saved) {
-        setTodaySchedule(JSON.parse(saved))
+        try {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) {
+            setTodaySchedule(parsed.map(formatSession))
+          }
+        } catch (e) {}
       }
     }
   }
@@ -240,30 +279,17 @@ export default function DoctorDashboard() {
   const loadRecentPatients = async () => {
     try {
       if (isOnline) {
-        // ✅ جلب المرضى من الـ API
         const response = await get('/patients')
-        
         const patients = response?.data || response?.patients || (Array.isArray(response) ? response : [])
-        
-        // فلتر مرضى هذا الدكتور
         const myPatients = patients.filter(p => p.doctorId === user?.id || p.assignedDoctor === user?.id)
         
-        // ترتيب حسب آخر زيارة
         const sorted = myPatients.sort((a, b) => {
           const dateA = new Date(a.lastVisit || a.updatedAt || 0)
           const dateB = new Date(b.lastVisit || b.updatedAt || 0)
           return dateB - dateA
         })
         
-        const formattedPatients = sorted.slice(0, 5).map(p => ({
-          id: p.id,
-          name: p.nameAr || p.name || 'مريض',
-          age: p.age || 0,
-          lastVisit: p.lastVisit || p.updatedAt?.split('T')[0] || 'اليوم',
-          diagnosis: p.diagnosis || p.notes || 'قيد التشخيص',
-          progress: p.progress || 0
-        }))
-        
+        const formattedPatients = sorted.slice(0, 5).map(formatPatientItem)
         setRecentPatients(formattedPatients)
         localStorage.setItem('mcsos_all_patients', JSON.stringify(patients))
       } else {
@@ -276,23 +302,20 @@ export default function DoctorDashboard() {
             const dateB = new Date(b.lastVisit || b.updatedAt || 0)
             return dateB - dateA
           })
-          const formattedPatients = sorted.slice(0, 5).map(p => ({
-            id: p.id,
-            name: p.nameAr || p.name || 'مريض',
-            age: p.age || 0,
-            lastVisit: p.lastVisit || p.updatedAt?.split('T')[0] || 'اليوم',
-            diagnosis: p.diagnosis || p.notes || 'قيد التشخيص',
-            progress: p.progress || 0
-          }))
+          const formattedPatients = sorted.slice(0, 5).map(formatPatientItem)
           setRecentPatients(formattedPatients)
         }
       }
     } catch (error) {
       console.error('Error loading recent patients:', error)
-      // ✅ استخدام localStorage كاحتياطي
-      const saved = localStorage.getItem('mcsos_recent_patients')
+      const saved = localStorage.getItem('mcsos_recent_patients') || localStorage.getItem('mcsos_all_patients')
       if (saved) {
-        setRecentPatients(JSON.parse(saved))
+        try {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) {
+            setRecentPatients(parsed.slice(0, 5).map(formatPatientItem))
+          }
+        } catch (e) {}
       }
     }
   }
@@ -583,8 +606,8 @@ export default function DoctorDashboard() {
                   <div className="flex items-center gap-3">
                     <div className="w-14 text-white text-sm font-bold text-center bg-gray-800/80 py-1 rounded-md">{app.time}</div>
                     <div>
-                      <p className="text-white text-sm font-bold">{app.patient}</p>
-                      <span className="text-[11px] font-semibold text-blue-300 bg-blue-950/40 px-2 py-0.5 rounded border border-blue-800/50 inline-block mt-0.5">{app.type}</span>
+                      <p className="text-white text-sm font-bold">{extractPatientName(app.patient)}</p>
+                      <span className="text-[11px] font-semibold text-blue-300 bg-blue-950/40 px-2 py-0.5 rounded border border-blue-800/50 inline-block mt-0.5">{String(app.type || 'ASSESSMENT')}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -614,8 +637,17 @@ export default function DoctorDashboard() {
               recentPatients.map((patient) => (
                 <div key={patient.id} className="p-2 bg-gray-700/30 rounded-lg">
                   <div className="flex justify-between items-start">
-                    <div><p className="font-semibold text-white text-sm">{patient.name}</p><p className="text-xs text-gray-400">{patient.age} سنة - آخر زيارة: {patient.lastVisit}</p><p className="text-xs text-gray-300 mt-1">{patient.diagnosis}</p></div>
-                    <div className="text-right"><div className="text-xs text-blue-400">{patient.progress || 0}%</div><div className="w-16 bg-gray-600 rounded-full h-1 mt-1"><div className="bg-blue-500 h-1 rounded-full" style={{ width: `${patient.progress || 0}%` }}></div></div></div>
+                    <div>
+                      <p className="font-semibold text-white text-sm">{extractPatientName(patient.name)}</p>
+                      <p className="text-xs text-gray-400">{extractAge(patient.age)} سنة - آخر زيارة: {String(patient.lastVisit || 'اليوم')}</p>
+                      <p className="text-xs text-gray-300 mt-1">{extractDiagnosis(patient.diagnosis)}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-blue-400">{patient.progress || 0}%</div>
+                      <div className="w-16 bg-gray-600 rounded-full h-1 mt-1">
+                        <div className="bg-blue-500 h-1 rounded-full" style={{ width: `${patient.progress || 0}%` }}></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))
@@ -682,9 +714,9 @@ export default function DoctorDashboard() {
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-semibold text-white text-sm">{patient.patient}</p>
+                          <p className="font-semibold text-white text-sm">{extractPatientName(patient.patient || patient.name)}</p>
                           <p className="text-xs text-gray-400">الوقت: {patient.time} - {patient.type}</p>
-                          <p className="text-xs text-gray-500">العمر: {patient.age} سنة</p>
+                          <p className="text-xs text-gray-500">العمر: {extractAge(patient.age)} سنة</p>
                         </div>
                         {selectedPatientForCheckIn?.id === patient.id && <CheckCircle size={16} className="text-green-400" />}
                       </div>
