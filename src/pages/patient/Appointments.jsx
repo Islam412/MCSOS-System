@@ -33,33 +33,103 @@ export default function Appointments() {
   const [user, setUser] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const isUuid = (value) =>
+    typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+
+  const doctorLabel = (doctor) => {
+    if (!doctor) return ''
+    if (typeof doctor === 'string') return doctor
+    return doctor.name || doctor.full_name || doctor.nameAr || ''
+  }
+
+  const normalizeAppointment = (raw) => {
+    if (!raw || typeof raw !== 'object') return null
+    if (typeof raw.doctor === 'string' && raw.date) return raw
+
+    const doctor = raw.doctor
+    const sessionDate = raw.session_date || raw.date
+    const dateStr = sessionDate ? String(sessionDate).slice(0, 10) : ''
+    const timeRaw = raw.start_time || raw.time || ''
+    const time = typeof timeRaw === 'string' ? timeRaw.slice(0, 5) : String(timeRaw || '')
+    const statusRaw = String(raw.status || '').toUpperCase()
+    let status = 'upcoming'
+    if (['COMPLETED', 'MISSED', 'NO_SHOW', 'PAST'].includes(statusRaw)) status = 'completed'
+    else if (['CANCELLED', 'CANCELED'].includes(statusRaw)) status = 'cancelled'
+    else if (['SCHEDULED', 'CONFIRMED', 'BOOKED', 'CHECKED_IN', 'IN_PROGRESS', 'UPCOMING'].includes(statusRaw)) {
+      status = 'upcoming'
+    } else if (statusRaw) {
+      status = statusRaw.toLowerCase()
+    }
+
+    const roomName =
+      (typeof raw.room === 'string' && raw.room) ||
+      raw.room?.name ||
+      raw.location ||
+      ''
+
+    return {
+      id: raw.id,
+      doctor: doctorLabel(doctor),
+      doctorName: doctor?.name || doctorLabel(doctor),
+      specialization: doctor?.specialization || raw.specialization || '',
+      date: dateStr,
+      time,
+      status,
+      type: raw.session_type || raw.type || 'جلسة',
+      location: roomName,
+      room: roomName,
+      phone: doctor?.phone || raw.phone || '',
+      whatsapp: doctor?.phone || raw.whatsapp || '',
+      email: doctor?.email || raw.email || '',
+      notes: raw.doctor_notes || raw.reception_notes || raw.notes || '',
+      icon: raw.icon || '🩺',
+      color: raw.color || 'blue',
+    }
+  }
+
+  const resolvePatientId = (currentUser) => {
+    if (!currentUser) return null
+    if (isUuid(currentUser.patientId) || isUuid(currentUser.patient_id)) {
+      return currentUser.patientId || currentUser.patient_id
+    }
+    const role = String(currentUser.role || '').toLowerCase()
+    if (['admin', 'doctor', 'reception', 'receptionist', 'finance', 'operations_manager'].includes(role)) {
+      return null
+    }
+    return isUuid(currentUser.id) ? currentUser.id : null
+  }
+
   useEffect(() => {
     const userData = localStorage.getItem('mcsos_user')
-    if (userData) {
-      setUser(JSON.parse(userData))
-    }
-    loadAppointments()
+    const parsed = userData ? JSON.parse(userData) : null
+    if (parsed) setUser(parsed)
+    // Pass user now — state is still null in this tick
+    loadAppointments(parsed)
   }, [])
 
   // ========== تحميل المواعيد من API ==========
-  const loadAppointments = async () => {
+  const loadAppointments = async (currentUser = user) => {
     setLoading(true)
     try {
       if (isOnline) {
+        const patientId = resolvePatientId(currentUser)
+        const params = patientId ? { patientId } : {}
         const response = await executeWithOfflineSupport(
-          () => appointmentsService.getAppointments({ patientId: user?.id }),
+          () => appointmentsService.getAppointments(params),
           'appointments',
           JSON.parse(localStorage.getItem('mcsos_appointments_v2') || '[]')
         )
-        const data = response || []
+        const list = Array.isArray(response) ? response : []
+        const data = list.map(normalizeAppointment).filter(Boolean)
         setAppointments(data)
         localStorage.setItem('mcsos_appointments_v2', JSON.stringify(data))
       } else {
         const saved = localStorage.getItem('mcsos_appointments_v2')
         if (saved) {
-          setAppointments(JSON.parse(saved))
+          const parsed = JSON.parse(saved)
+          setAppointments(Array.isArray(parsed) ? parsed.map(normalizeAppointment).filter(Boolean) : [])
         } else {
-          // بيانات تجريبية في حالة عدم وجود بيانات محلية
           const demoAppointments = getDemoAppointments()
           setAppointments(demoAppointments)
           localStorage.setItem('mcsos_appointments_v2', JSON.stringify(demoAppointments))
@@ -68,10 +138,10 @@ export default function Appointments() {
     } catch (error) {
       console.error('Error loading appointments:', error)
       toast.error('حدث خطأ في تحميل المواعيد')
-      // استخدام البيانات المحلية كاحتياطي
       const saved = localStorage.getItem('mcsos_appointments_v2')
       if (saved) {
-        setAppointments(JSON.parse(saved))
+        const parsed = JSON.parse(saved)
+        setAppointments(Array.isArray(parsed) ? parsed.map(normalizeAppointment).filter(Boolean) : [])
       }
     } finally {
       setLoading(false)
@@ -288,10 +358,13 @@ export default function Appointments() {
     if (filter === 'past') return apt.status === 'completed'
     if (filter === 'cancelled') return apt.status === 'cancelled'
     return true
-  }).filter(apt => 
-    apt.doctor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (apt.specialization && apt.specialization.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  }).filter(apt => {
+    const q = searchTerm.toLowerCase()
+    if (!q) return true
+    const doctor = doctorLabel(apt.doctor).toLowerCase()
+    const spec = String(apt.specialization || '').toLowerCase()
+    return doctor.includes(q) || spec.includes(q)
+  })
 
   const upcomingApps = filteredApps.filter(a => a.status === 'upcoming' || a.status === 'scheduled')
   const pastApps = filteredApps.filter(a => a.status === 'completed')

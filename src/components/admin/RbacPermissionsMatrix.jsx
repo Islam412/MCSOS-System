@@ -6,7 +6,15 @@ import {
   Search, Lock, Unlock, CheckCircle2, Sliders, Layers, FileText, Users, DollarSign, Box, Calendar
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { usersService } from '../../services/api'
+import { permissionsService } from '../../services/api'
+
+const SYSTEM_ROLE_API = {
+  SYS_ADMIN: 'ADMIN',
+  SYS_DOCTOR: 'DOCTOR',
+  SYS_RECEPTIONIST: 'RECEPTIONIST',
+  SYS_FINANCE: 'FINANCE',
+  SYS_OPERATIONS: 'OPERATIONS_MANAGER',
+}
 
 export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onSelectRole }) {
   const { t, i18n } = useTranslation()
@@ -70,6 +78,10 @@ export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onS
       color: 'text-purple-600 dark:text-purple-400 bg-purple-50/80 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/40',
       iconBg: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300',
       permissions: [
+        { key: 'packages.assign', label: t('rbac.packages_assign', 'تسكين الباقات العلاجية للمرضى') },
+        { key: 'finance.verify_payment', label: t('rbac.finance_verify_payment', 'اعتماد دفع جلسات التقييم') },
+        { key: 'sessions.evaluation_report', label: t('rbac.sessions_evaluation_report', 'تقارير تقييم الجلسات') },
+        { key: 'settings.manage', label: t('rbac.settings_manage', 'إدارة إعدادات النظام') },
         { key: 'perm_manage_users', label: t('rbac.perm_manage_users', 'إضافة وتعديل وحذف ملفات الموظفين (CRUD)') },
         { key: 'perm_manage_roles', label: t('rbac.perm_manage_roles', 'إنشاء الأدوار وتخصيص صلاحيات RBAC') },
         { key: 'perm_view_audit', label: t('rbac.perm_view_audit', 'مطالعة سجلات الحوكمة وتتبع حركة النظام') }
@@ -96,7 +108,7 @@ export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onS
       title: t('rbac.default_doctor', 'طبيب مختص'),
       isSystem: true,
       description: isRTL ? 'إدارة الجلسات الطبية، الملفات، وكتابة التقارير والتوصيات' : 'Manage medical sessions, patient files, diagnoses and clinical treatments',
-      permissions: ['perm_view_medical_records', 'perm_edit_clinical_notes', 'perm_manage_treatment_plans', 'perm_record_noshow'],
+      permissions: ['sessions.evaluation_report', 'perm_view_medical_records', 'perm_edit_clinical_notes', 'perm_manage_treatment_plans', 'perm_record_noshow'],
       badgeColor: 'bg-emerald-600 text-white shadow-sm'
     },
     {
@@ -105,7 +117,7 @@ export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onS
       title: t('rbac.default_reception', 'مسؤول استقبال'),
       isSystem: true,
       description: isRTL ? 'إدارة حجز المواعيد، تسجيل الحضور، ومتابعة قوائم الانتظار' : 'Manage patient scheduling, attendance verification and waiting room queues',
-      permissions: ['perm_create_booking', 'perm_cancel_booking', 'perm_record_noshow', 'perm_create_invoice'],
+      permissions: ['packages.assign', 'finance.verify_payment', 'perm_create_booking', 'perm_cancel_booking', 'perm_record_noshow', 'perm_create_invoice'],
       badgeColor: 'bg-blue-600 text-white shadow-sm'
     },
     {
@@ -114,7 +126,7 @@ export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onS
       title: t('rbac.default_finance', 'مسؤول مالي ومحاسبة'),
       isSystem: true,
       description: isRTL ? 'المحاسبة العامة، سندات القبض والصرف، وعرض التقارير المالية' : 'Accounts billing, payment vouchers, refunds, and revenue analytics',
-      permissions: ['perm_create_invoice', 'perm_apply_discount', 'perm_issue_refund', 'perm_view_revenue', 'perm_view_audit'],
+      permissions: ['finance.verify_payment', 'perm_create_invoice', 'perm_apply_discount', 'perm_issue_refund', 'perm_view_revenue', 'perm_view_audit'],
       badgeColor: 'bg-amber-600 text-white shadow-sm'
     },
     {
@@ -142,45 +154,44 @@ export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onS
   const [searchTerm, setSearchTerm] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [newRoleData, setNewRoleData] = useState({ name: '', description: '' })
+  const [loadingRoles, setLoadingRoles] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [dirty, setDirty] = useState(false)
 
-  // Load from local storage or defaults
-  useEffect(() => {
-    const savedRoles = localStorage.getItem('mcsos_rbac_roles_matrix')
-    let initializedRoles = getSystemRoles()
-    
-    if (savedRoles) {
-      try {
-        const parsed = JSON.parse(savedRoles)
-        const currentSystem = getSystemRoles()
-        const merged = parsed.map(savedRole => {
-          if (savedRole.isSystem) {
-            const sys = currentSystem.find(s => s.id === savedRole.id) || savedRole
-            return { ...savedRole, title: sys.title, description: sys.description, badgeColor: sys.badgeColor }
-          }
-          return savedRole
-        })
-        initializedRoles = merged
-      } catch (e) {
-        console.error('Failed to parse RBAC roles from storage', e)
-      }
+  const hydrateRoleFromApi = async (roleDef) => {
+    const apiRole = SYSTEM_ROLE_API[roleDef.id]
+    if (!apiRole) return roleDef
+    try {
+      const data = await permissionsService.getRolePermissions(apiRole)
+      const granted = (data.permissions || []).filter(p => p.granted).map(p => p.key)
+      return { ...roleDef, permissions: granted, source: 'role' }
+    } catch {
+      return roleDef
     }
-    
-    setRoles(initializedRoles)
-    if (onRolesUpdated) onRolesUpdated(initializedRoles)
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoadingRoles(true)
+      const base = getSystemRoles()
+      const hydrated = await Promise.all(base.map(hydrateRoleFromApi))
+      if (cancelled) return
+      setRoles(hydrated)
+      if (onRolesUpdated) onRolesUpdated(hydrated)
+      setLoadingRoles(false)
+      setDirty(false)
+    }
+    load()
+    return () => { cancelled = true }
   }, [i18n.language])
 
   const currentActiveRole = roles.find(r => r.id === activeRoleId) || roles[0]
 
   const saveMatrixState = (updatedRoles) => {
     setRoles(updatedRoles)
-    localStorage.setItem('mcsos_rbac_roles_matrix', JSON.stringify(updatedRoles))
+    setDirty(true)
     if (onRolesUpdated) onRolesUpdated(updatedRoles)
-    // ✅ مزامنة إعدادات الصلاحيات مع الـ Backend
-    try {
-      usersService.saveRbacMatrix(updatedRoles).catch(() => {})
-    } catch (e) {
-      console.error('RBAC sync error:', e)
-    }
   }
 
   const handleTogglePermission = (roleId, permissionKey) => {
@@ -240,8 +251,27 @@ export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onS
     toast.success(`${t('rbac.role_deleted', 'تم حذف الدور الوظيفي بنجاح')} (${roleTitle})`, { style: { background: '#7f1d1d', color: '#fff' } })
   }
 
-  const handleConfirmSave = () => {
-    toast.success(t('rbac.perm_updated', 'تم تأكيد تعديلات الصلاحيات بنجاح'), { icon: '🛡️', style: { background: '#065f46', color: '#fff' } })
+  const handleConfirmSave = async () => {
+    const role = currentActiveRole
+    const apiRole = SYSTEM_ROLE_API[role?.id]
+    if (!apiRole) {
+      toast.error(isRTL ? 'الأدوار المخصصة تُدار محلياً فقط حالياً' : 'Custom roles are local-only for now')
+      return
+    }
+    setSaving(true)
+    try {
+      const permissions = allPermissionKeys.map(key => ({
+        key,
+        granted: role.permissions.includes(key),
+      }))
+      await permissionsService.setRolePermissions(apiRole, permissions)
+      toast.success(t('rbac.saved', 'تم حفظ صلاحيات الدور على الخادم'), { icon: '✅' })
+      setDirty(false)
+    } catch (e) {
+      toast.error(e.message || t('rbac.save_failed', 'فشل حفظ الصلاحيات'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -365,11 +395,17 @@ export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onS
                 />
               </div>
               <button
+                type="button"
+                disabled={saving || loadingRoles || !dirty || !SYSTEM_ROLE_API[currentActiveRole?.id]}
                 onClick={handleConfirmSave}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-md transition flex items-center gap-2 transform active:scale-95 flex-shrink-0"
+                className={`px-5 py-2 font-semibold text-sm rounded-xl flex items-center gap-2 flex-shrink-0 transition ${
+                  saving || loadingRoles || !dirty || !SYSTEM_ROLE_API[currentActiveRole?.id]
+                    ? 'bg-gray-400 text-white cursor-not-allowed opacity-80'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white shadow-md'
+                }`}
               >
                 <Check className="w-4 h-4" />
-                <span>{t('rbac.save_changes', 'حفظ التعديلات في المصفوفة')}</span>
+                <span>{saving ? t('rbac.saving', 'جاري الحفظ...') : t('rbac.save', 'حفظ على الخادم')}</span>
               </button>
             </div>
           </div>
@@ -438,8 +474,11 @@ export default function RbacPermissionsMatrix({ onRolesUpdated, currentRole, onS
                               <div className={`text-sm font-semibold transition ${isChecked ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
                                 {perm.label}
                               </div>
-                              <div className="text-[11px] font-mono text-gray-400 dark:text-gray-500 mt-0.5">
-                                {perm.key}
+                              <div className="text-[11px] font-mono text-gray-400 dark:text-gray-500 mt-0.5 flex flex-wrap items-center gap-2">
+                                <span>{perm.key}</span>
+                                <span className="px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-[10px] font-sans text-gray-500 dark:text-gray-400">
+                                  {isRTL ? 'افتراضي للدور' : 'Role default'}
+                                </span>
                               </div>
                             </div>
                             <div className="text-xs flex-shrink-0 mt-0.5">

@@ -1,4 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
+import { getToken, clearToken } from '../../services/api/client'
 import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck, DoorOpen, Activity, ChevronRight, ChevronLeft, UserCog, Lock, Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
@@ -16,47 +17,66 @@ export default function DashboardLayout() {
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState('')
   const [showNotifications, setShowNotifications] = useState(false)
-  const [notifications, setNotifications] = useState([
-    { id: 1, icon: '📦', colorClass: 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20', iconColor: 'text-amber-500', titleAr: 'تنبيه باقة على وشك الانتهاء', titleEn: 'Package Ending Soon Alert', descAr: 'باقة المريض (منى عبد المقصود) متبقي بها جلستان فقط. يُنصح بتجهيز الفاتورة للتجديد لتفادي انقطاع العلاج.', descEn: 'Patient package has only 2 sessions remaining. Prepare renewal invoice.', is_read: false },
-    { id: 2, icon: '🔴', colorClass: 'hover:bg-rose-50/50 dark:hover:bg-rose-950/20', iconColor: 'text-rose-600', titleAr: 'تنبيه السعة القصوى للطبيب', titleEn: 'Doctor Full Capacity Warning', descAr: 'د. محمود سعيد وصل للحد الأقصى اليوم (20 / 20 مريض). يتم تحويل المواعيد الجديدة تلقائيًا.', descEn: 'Dr. Mahmoud has reached daily maximum capacity (20/20).', is_read: false },
-    { id: 3, icon: '💳', colorClass: 'hover:bg-purple-50/50 dark:hover:bg-purple-950/20', iconColor: 'text-purple-600', titleAr: 'التحقق المالي لجلسة التقييم', titleEn: 'Payment Verification Pending', descAr: 'دفعة التقييم للمريض (ريماز عبد الرزاق) في انتظار اعتماد قسم المالية للسماح ببدء الجلسة.', descEn: 'Assessment session payment pending finance verification.', is_read: false },
-    { id: 4, icon: '🟢', colorClass: 'hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20', iconColor: 'text-emerald-500', titleAr: 'تسجيل دخول مريض وإصدار تقرير', titleEn: 'Patient Checked-in & Evaluated', descAr: 'تم تسجيل حضور المريض سعد الله وبدء جلسة العلاج في صالة Pool 1.', descEn: 'Patient checked in successfully at Pool 1.', is_read: true }
-  ])
+  const [notifications, setNotifications] = useState([])
   const isRTL = i18n.language === 'ar'
   
+  const apiBase = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
+
+  const mapNotification = (item) => ({
+    id: item.id,
+    icon: item.type === 'PACKAGE_ENDING_SOON' ? '📦' : item.type === 'PAYMENT_VERIFIED' ? '💳' : item.type === 'ASSESSMENT_ENDED_EARLIER' ? '⏱️' : '🔔',
+    colorClass: 'hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20',
+    iconColor: 'text-indigo-500',
+    titleAr: item.title,
+    titleEn: item.title,
+    descAr: item.message,
+    descEn: item.message,
+    is_read: item.is_read,
+  })
+
   useEffect(() => {
+    let stopped = false
     const fetchNotifications = async () => {
       try {
-        const token = localStorage.getItem('mcsos_token')
-        const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
-        const res = await fetch(`${API_BASE}/notifications`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const token = getToken()
+        if (!token) return
+        const res = await fetch(`${apiBase}/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
         })
-        if (res.ok) {
-          const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
-            setNotifications(data.map((item, idx) => ({
-              id: item.id || idx,
-              icon: item.type === 'PACKAGE_ENDING_SOON' ? '📦' : item.type === 'CAPACITY_LIMIT_REACHED' ? '🔴' : item.type === 'PAYMENT_VERIFIED' ? '💳' : '🔔',
-              colorClass: 'hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20',
-              iconColor: 'text-indigo-500',
-              titleAr: item.title,
-              titleEn: item.title,
-              descAr: item.message,
-              descEn: item.message,
-              is_read: item.is_read
-            })))
-          }
-        }
-      } catch (e) {
-        console.warn('Using local notification alerts')
+        if (!res.ok || stopped) return
+        const data = await res.json()
+        if (Array.isArray(data)) setNotifications(data.map(mapNotification))
+      } catch {
+        // Leave the last server list in place. Do not invent alerts.
       }
     }
     fetchNotifications()
-  }, [])
+    const timer = setInterval(fetchNotifications, 30000)
+    return () => {
+      stopped = true
+      clearInterval(timer)
+    }
+  }, [apiBase])
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    const token = getToken()
+    if (!token) return
+    await fetch(`${apiBase}/notifications/read-all`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {})
+  }
+
+  const handleMarkRead = async (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+    setShowNotifications(false)
+    const token = getToken()
+    if (!token) return
+    await fetch(`${apiBase}/notifications/${id}/read`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {})
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length
@@ -176,7 +196,7 @@ export default function DashboardLayout() {
     authService.logout() // استخدام خدمة المصادقة لتسجيل الخروج
     // authService.logout() تقوم بـ:
     // - localStorage.removeItem('mcsos_user')
-    // - localStorage.removeItem('mcsos_token')
+    // - clearToken()
     // - localStorage.removeItem('mcsos_remember')
     // - localStorage.removeItem('mcsos_saved_email')
     // - window.location.href = '/login'
@@ -361,10 +381,9 @@ export default function DashboardLayout() {
               >
                 <Activity size={18} className="text-indigo-600 dark:text-indigo-400" />
                 {unreadCount > 0 && (
-                  <>
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
-                  </>
+                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </span>
                 )}
               </button>
 
@@ -382,11 +401,11 @@ export default function DashboardLayout() {
                     </div>
                   </div>
                   <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-80 overflow-y-auto font-bold text-xs text-left rtl:text-right">
+                    {notifications.length === 0 && (
+                      <p className="p-4 text-gray-500 font-normal">{isRTL ? 'لا توجد إشعارات' : 'No notifications'}</p>
+                    )}
                     {notifications.map((notif) => (
-                      <div key={notif.id} className={`p-3 ${notif.colorClass || 'hover:bg-gray-50 dark:hover:bg-gray-800'} flex gap-3 transition cursor-pointer ${!notif.is_read ? 'bg-blue-50/20 dark:bg-blue-950/10' : 'opacity-75'}`} onClick={() => {
-                        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n))
-                        setShowNotifications(false)
-                      }}>
+                      <div key={notif.id} className={`p-3 ${notif.colorClass || 'hover:bg-gray-50 dark:hover:bg-gray-800'} flex gap-3 transition cursor-pointer ${!notif.is_read ? 'bg-blue-50/20 dark:bg-blue-950/10' : 'opacity-75'}`} onClick={() => handleMarkRead(notif.id)}>
                         <span className={`${notif.iconColor || 'text-indigo-500'} text-lg`}>{notif.icon || '🔔'}</span>
                         <div className="flex-1">
                           <div className="flex justify-between items-center">

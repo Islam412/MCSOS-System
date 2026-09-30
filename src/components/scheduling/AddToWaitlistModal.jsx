@@ -1,5 +1,6 @@
 // src/components/scheduling/AddToWaitlistModal.jsx
 import { useState, useEffect, useRef } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { X, Search, Plus, User, ClipboardList, Loader2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -43,7 +44,7 @@ export default function AddToWaitlistModal({ isOpen, onClose, doctors, onAddComp
 
   const fetchPatients = async (query = '') => {
     setSearching(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}/patients?limit=10&search=${encodeURIComponent(query)}`, {
         headers: {
@@ -72,7 +73,7 @@ export default function AddToWaitlistModal({ isOpen, onClose, doctors, onAddComp
       return
     }
 
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     
     try {
       setLoading(true)

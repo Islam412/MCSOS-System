@@ -658,11 +658,8 @@ export default function PatientProfile() {
       }
 
       if (isOnline) {
-        try {
-          await patientsService.addReport(selectedPatient.id, newReportObj)
-        } catch (error) {
-          console.warn('Failed to save report to server:', error)
-        }
+        const saved = await patientsService.addReport(selectedPatient.id, newReportObj)
+        if (saved?.id) newReportObj.id = saved.id
       }
 
       const updatedPatient = {
@@ -1566,7 +1563,7 @@ export default function PatientProfile() {
                 <button onClick={() => setShowPrescriptionModal(true)} className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm"><Pill size={16} /> روشتة</button>
                 <button onClick={() => setShowReportModal(true)} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm"><FileText size={16} /> تقرير طبي</button>
                 <button onClick={() => setShowXrayModal(true)} className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg text-sm"><Bone size={16} /> أشعة</button>
-                <button onClick={() => setShowImageUpload(true)} className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-lg text-sm"><Camera size={16} /> صورة</button>
+                <button type="button" disabled title="رفع الصور غير متاح حتى يتوفر تخزين الملفات" className="bg-gray-700/40 text-gray-500 px-3 py-1 rounded-lg text-sm cursor-not-allowed"><Camera size={16} /> صورة</button>
                 <button onClick={() => setShowPatientModal(false)}><X size={20} /></button>
               </div>
             </div>
@@ -1699,11 +1696,12 @@ export default function PatientProfile() {
                     <div className="text-sm text-gray-400">الجلسات المكتملة</div>
                   </div>
                 </div>
-                <div className="flex gap-4 justify-center mt-4">
-                  <button onClick={()=>handleUpdateSessionProgress(true)} disabled={isSubmitting} className="bg-green-500/20 text-green-400 px-6 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50">
+                <p className="text-center text-sm text-amber-300 mt-4">عداد التقدم اليدوي غير متصل بالخادم. الحضور يُسجّل من الجلسة.</p>
+                <div className="flex gap-4 justify-center mt-2">
+                  <button type="button" disabled className="bg-gray-700/40 text-gray-500 px-6 py-2 rounded-lg cursor-not-allowed">
                     تسجيل حضور +1
                   </button>
-                  <button onClick={()=>handleUpdateSessionProgress(false)} disabled={isSubmitting} className="bg-red-500/20 text-red-400 px-6 py-2 rounded-lg hover:bg-red-500/30 transition disabled:opacity-50">
+                  <button type="button" disabled className="bg-gray-700/40 text-gray-500 px-6 py-2 rounded-lg cursor-not-allowed">
                     تعديل -1
                   </button>
                 </div>
@@ -2002,8 +2000,8 @@ export default function PatientProfile() {
                     </div>
                   ))}
                 </div>
-                <button onClick={()=>setShowImageUpload(true)} className="w-full bg-orange-500/20 text-orange-400 py-2 rounded-lg mt-4">
-                  <Upload size={16}/> رفع صورة
+                <button type="button" disabled title="رفع الصور غير متاح حتى يتوفر تخزين الملفات" className="w-full bg-gray-700/40 text-gray-500 py-2 rounded-lg mt-4 cursor-not-allowed">
+                  <Upload size={16}/> رفع الصور غير متاح حتى يتوفر تخزين الملفات
                 </button>
               </div>
             )}
@@ -2024,9 +2022,9 @@ export default function PatientProfile() {
                     <div className="md:col-span-2"><label className="block text-sm text-gray-400 mb-1">تقرير الأشعة</label><textarea className="w-full p-2 bg-gray-700 rounded-lg text-white" rows="4" placeholder="اكتب تقرير الأشعة هنا..." value={xrayReport} onChange={(e)=>setXrayReport(e.target.value)} /></div>
                   </div>
                   <div className="flex gap-3 pt-4 mt-4 border-t border-gray-700">
-                    <button onClick={handleUploadXray} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50">
+                    <button type="button" disabled title="رفع الصور غير متاح حتى يتوفر تخزين الملفات" className="flex-1 bg-gray-700/40 text-gray-500 py-2 rounded-lg cursor-not-allowed">
                       {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : null}
-                      {isSubmitting ? 'جاري الرفع...' : 'حفظ الأشعة'}
+                      رفع الصور غير متاح حتى يتوفر تخزين الملفات
                     </button>
                     <button onClick={()=>setShowXrayModal(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
                   </div>
@@ -2065,9 +2063,9 @@ export default function PatientProfile() {
                   <input type="file" accept="image/*" onChange={handleFileSelect} className="w-full p-2 bg-gray-700 rounded-lg text-white mt-3"/>
                   {selectedFile && <p className="text-sm text-green-400 mt-2">✓ {selectedFile.name}</p>}
                   <div className="flex gap-3 mt-4">
-                    <button onClick={handleUploadImage} disabled={isSubmitting} className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg hover:bg-green-500/30 transition disabled:opacity-50">
+                    <button type="button" disabled title="رفع الصور غير متاح حتى يتوفر تخزين الملفات" className="flex-1 bg-gray-700/40 text-gray-500 py-2 rounded-lg cursor-not-allowed">
                       {isSubmitting ? <Loader2 size={16} className="animate-spin inline ml-1" /> : null}
-                      {isSubmitting ? 'جاري الرفع...' : 'رفع'}
+                      رفع الصور غير متاح حتى يتوفر تخزين الملفات
                     </button>
                     <button onClick={()=>setShowImageUpload(false)} className="flex-1 bg-gray-600 text-gray-300 py-2 rounded-lg hover:bg-gray-500 transition">إلغاء</button>
                   </div>

@@ -120,33 +120,16 @@ export const usersService = {
   // حظر مستخدم
   blockUser: async (id) => {
     try {
-      const response = await post(ENDPOINTS.USERS.BLOCK(id))
-      
-      // ✅ معالجة الاستجابة
-      if (response && typeof response === 'object') {
-        if (response.user) return response.user
-        if (response.data) return response.data
-        return response
-      }
-      return response
+      return await put(ENDPOINTS.USERS.UPDATE(id), { is_active: false })
     } catch (error) {
       console.error(`Error blocking user ${id}:`, error)
       throw error
     }
   },
 
-  // إلغاء حظر مستخدم
   unblockUser: async (id) => {
     try {
-      const response = await post(ENDPOINTS.USERS.UNBLOCK(id))
-      
-      // ✅ معالجة الاستجابة
-      if (response && typeof response === 'object') {
-        if (response.user) return response.user
-        if (response.data) return response.data
-        return response
-      }
-      return response
+      return await put(ENDPOINTS.USERS.UPDATE(id), { is_active: true })
     } catch (error) {
       console.error(`Error unblocking user ${id}:`, error)
       throw error
@@ -165,68 +148,12 @@ export const usersService = {
   },
 
   // ✅ مزامنة وحفظ إعدادات مصفوفة الصلاحيات (RBAC Matrix Sync)
-  saveRbacMatrix: async (rolesMatrix) => {
-    try {
-      const response = await post('/api/v1/settings/rbac-matrix', { matrix: rolesMatrix })
-      return response
-    } catch (error) {
-      console.warn('Backend endpoint for RBAC matrix sync not available or offline, relying on localized state:', error.message)
-      return false
-    }
+  changePassword: async () => {
+    throw new Error('تغيير كلمة المرور غير متاح من الخادم بعد. Password change is not available on the server yet.')
   },
 
-  // تغيير كلمة المرور
-  changePassword: async (id, passwordData) => {
-    try {
-      const response = await post(ENDPOINTS.USERS.CHANGE_PASSWORD(id), passwordData)
-      
-      // ✅ معالجة الاستجابة
-      if (response && typeof response === 'object') {
-        if (response.user) return response.user
-        if (response.data) return response.data
-        return response
-      }
-      return response
-    } catch (error) {
-      console.error(`Error changing password for user ${id}:`, error)
-      throw error
-    }
-  },
-
-  // إعادة تعيين كلمة المرور (للمدير)
-  resetPassword: async (id, newPassword) => {
-    try {
-      const response = await post(ENDPOINTS.USERS.RESET_PASSWORD(id), { newPassword })
-      
-      // ✅ معالجة الاستجابة
-      if (response && typeof response === 'object') {
-        if (response.user) return response.user
-        if (response.data) return response.data
-        return response
-      }
-      return response
-    } catch (error) {
-      console.error(`Error resetting password for user ${id}:`, error)
-      throw error
-    }
-  },
-
-  // مزامنة المستخدمين (للحفظ الجماعي)
-  syncUsers: async (users) => {
-    try {
-      const response = await post('/users/sync', { users })
-      
-      // ✅ معالجة الاستجابة
-      if (response && typeof response === 'object') {
-        if (response.users) return response.users
-        if (response.data) return response.data
-        return response
-      }
-      return response
-    } catch (error) {
-      console.error('Error syncing users:', error)
-      throw error
-    }
+  resetPassword: async () => {
+    throw new Error('إعادة تعيين كلمة المرور غير متاحة من الخادم بعد. Password reset is not available on the server yet.')
   },
 
   // ✅ دالة مساعدة للحصول على المستخدم الحالي من localStorage

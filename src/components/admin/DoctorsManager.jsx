@@ -54,7 +54,8 @@ export default function DoctorsManager() {
   // نموذج إضافة/تعديل طبيب
   const [doctorForm, setDoctorForm] = useState({
     nameAr: '', nameEn: '', specialization: '', experience: '', price: '',
-    phone: '', email: '', bioAr: '', bioEn: '', workDays: [], workHours: { start: '09:00', end: '17:00' }
+    phone: '', email: '', bioAr: '', bioEn: '', workDays: [], workHours: { start: '09:00', end: '17:00' },
+    max_sessions_per_day: ''
   })
   
   // نموذج إضافة موعد
@@ -268,7 +269,10 @@ export default function DoctorsManager() {
             name: doctorForm.nameAr,
             specialization: doctorForm.specialization,
             phone: doctorForm.phone || '',
-            email: doctorForm.email || ''
+            email: doctorForm.email || '',
+            ...(doctorForm.max_sessions_per_day !== ''
+              ? { max_sessions_per_day: parseInt(doctorForm.max_sessions_per_day, 10) }
+              : {}),
           }
           
           console.log('📤 Sending doctor data:', JSON.stringify(doctorData, null, 2))
@@ -319,7 +323,8 @@ export default function DoctorsManager() {
       bioAr: doctor.bioAr || '',
       bioEn: doctor.bioEn || '',
       workDays: doctor.workDays || [],
-      workHours: doctor.workHours || { start: '09:00', end: '17:00' }
+      workHours: doctor.workHours || { start: '09:00', end: '17:00' },
+      max_sessions_per_day: doctor.max_sessions_per_day ?? ''
     })
     setShowDoctorModal(true)
   }
@@ -354,7 +359,10 @@ export default function DoctorsManager() {
             specialization: doctorForm.specialization,
             phone: doctorForm.phone || '',
             email: doctorForm.email || '',
-            is_active: true
+            is_active: true,
+            max_sessions_per_day: doctorForm.max_sessions_per_day === ''
+              ? null
+              : parseInt(doctorForm.max_sessions_per_day, 10),
           }
           await doctorsService.updateDoctor(editingDoctor.id, doctorData)
           updatedDoctor._syncPending = false
@@ -521,7 +529,8 @@ export default function DoctorsManager() {
   const resetDoctorForm = () => {
     setDoctorForm({
       nameAr: '', nameEn: '', specialization: '', experience: '', price: '',
-      phone: '', email: '', bioAr: '', bioEn: '', workDays: [], workHours: { start: '09:00', end: '17:00' }
+      phone: '', email: '', bioAr: '', bioEn: '', workDays: [], workHours: { start: '09:00', end: '17:00' },
+      max_sessions_per_day: ''
     })
   }
 
@@ -800,6 +809,10 @@ export default function DoctorsManager() {
               <div className="md:col-span-2">
                 <label className="block text-sm text-gray-400 mb-1">البريد الإلكتروني *</label>
                 <input type="email" className="w-full p-2 bg-gray-700 rounded-lg text-white" value={doctorForm.email} onChange={(e) => setDoctorForm({...doctorForm, email: e.target.value})} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">{isRTL ? 'الحد اليومي للجلسات (فارغ = بلا حد)' : 'Max sessions / day (empty = unlimited)'}</label>
+                <input type="number" min={1} className="w-full p-2 bg-gray-700 rounded-lg text-white" value={doctorForm.max_sessions_per_day} onChange={(e) => setDoctorForm({...doctorForm, max_sessions_per_day: e.target.value})} />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm text-gray-400 mb-1">نبذة (عربي)</label>

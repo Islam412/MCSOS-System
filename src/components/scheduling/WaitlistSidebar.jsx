@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { User, ClipboardList, RefreshCw, Check, AlertCircle, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -20,7 +21,7 @@ export default function WaitlistSidebar({ onSelectEntry, selectedEntryId, refres
 
   const fetchWaitlist = async () => {
     setLoading(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}/waitlist?limit=50`, {
         headers: {

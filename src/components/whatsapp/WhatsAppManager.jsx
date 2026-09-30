@@ -502,30 +502,8 @@ export default function WhatsAppManager() {
   }
 
   // ==================== التدفقات الآلية ====================
-  const toggleAutoFlow = async (id) => {
-    try {
-      const flow = autoFlows.find(f => f.id === id)
-      if (!flow) return
-
-      const newEnabled = !flow.enabled
-      
-      if (isOnline) {
-        try {
-          await whatsappService.updateFlow(id, { enabled: newEnabled })
-        } catch (apiError) {
-          console.warn('API update flow failed, updating locally:', apiError)
-        }
-      }
-
-      const updated = autoFlows.map(f => 
-        f.id === id ? { ...f, enabled: newEnabled, _syncPending: !isOnline } : f
-      )
-      setAutoFlows(updated)
-      localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(updated))
-      toast.success('تم تحديث الإعدادات')
-    } catch (error) {
-      toast.error(error.message || 'حدث خطأ في تحديث التدفق')
-    }
+  const toggleAutoFlow = () => {
+    toast.error(isRTL ? 'تدفقات واتساب غير قابلة للتعديل بعد.' : 'WhatsApp flows are not configurable yet.')
   }
 
   const handlePreviewFlow = (flow) => {
@@ -564,23 +542,15 @@ export default function WhatsAppManager() {
         delayUnit: editFlowData.delayUnit
       }
 
-      if (isOnline) {
-        try {
-          await whatsappService.updateFlow(editingFlow.id, updatedFlow)
-        } catch (apiError) {
-          console.warn('API update flow failed, saving locally:', apiError)
-        }
-      }
-
-      const updated = autoFlows.map(flow => 
-        flow.id === editingFlow.id ? { ...updatedFlow, _syncPending: !isOnline } : flow
+      const updated = autoFlows.map(flow =>
+        flow.id === editingFlow.id ? { ...updatedFlow, _syncPending: true } : flow
       )
       setAutoFlows(updated)
       localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(updated))
       
       setShowEditFlowModal(false)
       setEditingFlow(null)
-      toast.success('تم تحديث التدفق بنجاح')
+      toast.error(isRTL ? 'تعديل التدفق غير محفوظ على الخادم بعد. النسخة على هذا الجهاز فقط.' : 'Flow edits are not saved on the server yet. This copy stays on this device.')
     } catch (error) {
       toast.error(error.message || 'حدث خطأ في تحديث التدفق')
     }
@@ -859,10 +829,13 @@ export default function WhatsAppManager() {
                     <p className="text-xs text-gray-400">{getDelayText(flow.delay, flow.delayUnit)}</p>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={flow.enabled} onChange={() => toggleAutoFlow(flow.id)} />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                </label>
+                <div className="text-end">
+                  <label className="relative inline-flex items-center cursor-not-allowed opacity-60">
+                    <input type="checkbox" className="sr-only peer" checked={flow.enabled} disabled onChange={toggleAutoFlow} />
+                    <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                  </label>
+                  <p className="text-[11px] text-amber-300 mt-1">{isRTL ? 'غير قابل للتعديل بعد' : 'Not configurable yet'}</p>
+                </div>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-3 mt-2">
                 <p className="text-sm text-gray-300 line-clamp-2">{flow.message}</p>

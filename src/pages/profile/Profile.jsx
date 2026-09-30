@@ -1,5 +1,6 @@
 // src/pages/profile/Profile.jsx
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { 
   User, Mail, Phone, MapPin, Calendar, Clock, Activity, 
@@ -206,7 +207,7 @@ export default function Profile() {
       if (isOnline) {
         const response = await fetch(`${API_BASE}/stats/user/${userId}`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+            'Authorization': `Bearer ${getToken()}`,
             'Content-Type': 'application/json'
           }
         })
@@ -235,7 +236,7 @@ export default function Profile() {
       if (isOnline) {
         const response = await fetch(`${API_BASE}/activities/recent`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+            'Authorization': `Bearer ${getToken()}`,
             'Content-Type': 'application/json'
           }
         })
@@ -630,9 +631,10 @@ export default function Profile() {
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => setShowPasswordModal(true)} className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 py-3 rounded-xl flex items-center justify-center gap-2 border border-yellow-500/30 transition">
+                  <button type="button" disabled className="w-full bg-gray-700/40 text-gray-400 py-3 rounded-xl flex items-center justify-center gap-2 border border-gray-600 cursor-not-allowed">
                     <Lock size={18} /> تغيير كلمة المرور
                   </button>
+                  <p className="text-sm text-amber-300">تغيير كلمة المرور غير متاح من الخادم بعد.</p>
                   <div className="bg-gray-700/30 rounded-lg p-4">
                     <h3 className="font-bold text-white mb-3 flex items-center gap-2"><Bell size={18} className="text-purple-400" /> إعدادات الأمان الإضافية</h3>
                     <div className="space-y-3">

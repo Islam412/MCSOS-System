@@ -102,17 +102,6 @@ export const packagesService = {
     }
   },
 
-  // مزامنة الباقات (للحفظ الجماعي)
-  syncPackages: async (packages) => {
-    try {
-      const response = await post('/api/v1/packages/sync', { packages })
-      return response
-    } catch (error) {
-      console.error('❌ syncPackages error:', error)
-      throw error
-    }
-  },
-
   // تعيين باقة لمريض
   assignPackage: async (data) => {
     try {

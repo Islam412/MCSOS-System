@@ -1,5 +1,6 @@
 // src/pages/OperationsDashboard.jsx
 import { useState, useEffect } from 'react'
+import { getToken } from '../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { 
   TrendingUp, Users, Calendar, Activity, Download, 
@@ -80,7 +81,7 @@ export default function OperationsDashboard() {
             `${API_BASE}/sessions`,
             {
               headers: {
-                'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+                'Authorization': `Bearer ${getToken()}`,
                 'Content-Type': 'application/json'
               }
             }
@@ -197,7 +198,7 @@ export default function OperationsDashboard() {
             `${API_BASE}/sessions?date=${today}`,
             {
               headers: {
-                'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+                'Authorization': `Bearer ${getToken()}`,
                 'Content-Type': 'application/json'
               }
             }
@@ -256,7 +257,7 @@ export default function OperationsDashboard() {
               `${API_BASE}/patients`,
               {
                 headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+                  'Authorization': `Bearer ${getToken()}`,
                   'Content-Type': 'application/json'
                 }
               }
@@ -265,7 +266,7 @@ export default function OperationsDashboard() {
               `${API_BASE}/sessions`,
               {
                 headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+                  'Authorization': `Bearer ${getToken()}`,
                   'Content-Type': 'application/json'
                 }
               }

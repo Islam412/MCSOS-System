@@ -7,10 +7,16 @@ export const appointmentsService = {
   // ========== الحصول على قائمة المواعيد (Sessions) ==========
   getAppointments: async (params = {}) => {
     try {
-      const queryString = new URLSearchParams(params).toString()
+      const clean = Object.fromEntries(
+        Object.entries(params).filter(
+          ([, v]) => v != null && v !== '' && v !== 'undefined' && v !== 'null',
+        ),
+      )
+      const queryString = new URLSearchParams(clean).toString()
       const endpoint = queryString ? `/api/v1/sessions?${queryString}` : '/api/v1/sessions'
       const response = await get(endpoint)
-      return response.sessions || response || []
+      const list = response?.sessions || response?.data || response
+      return Array.isArray(list) ? list : []
     } catch (error) {
       console.warn('⚠️ getAppointments failed:', error.message)
       return []

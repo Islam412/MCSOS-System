@@ -69,18 +69,6 @@ const defaultPrescriptions = [
   }
 ]
 
-const defaultPatients = [
-  { id: '550e8400-e29b-41d4-a716-446655440000', name: 'أحمد محمد', phone: '0501111111', email: 'ahmed@example.com' },
-  { id: '550e8400-e29b-41d4-a716-446655440001', name: 'سارة حسن', phone: '0502222222', email: 'sara@example.com' },
-  { id: '550e8400-e29b-41d4-a716-446655440002', name: 'محمود علي', phone: '0503333333', email: 'mahmoud@example.com' }
-]
-
-const defaultDoctors = [
-  { id: '550e8400-e29b-41d4-a716-446655440010', name: 'د. أحمد علي', specialization: 'جراحة عظام' },
-  { id: '550e8400-e29b-41d4-a716-446655440011', name: 'د. منى حسن', specialization: 'علاج طبيعي' },
-  { id: '550e8400-e29b-41d4-a716-446655440012', name: 'د. خالد محمود', specialization: 'أعصاب' }
-]
-
 export default function PrescriptionManager() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
@@ -168,16 +156,11 @@ export default function PrescriptionManager() {
       }
       
       const saved = getLocalData(STORAGE_KEYS.PATIENTS)
-      if (saved && saved.length > 0) {
-        setPatients(saved)
-      } else {
-        setPatients(defaultPatients)
-        localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(defaultPatients))
-      }
+      setPatients(saved && saved.length > 0 ? saved : [])
     } catch (error) {
       console.error('Error loading patients:', error)
       const saved = getLocalData(STORAGE_KEYS.PATIENTS)
-      setPatients(saved && saved.length > 0 ? saved : defaultPatients)
+      setPatients(saved && saved.length > 0 ? saved : [])
     }
   }
 
@@ -210,16 +193,11 @@ export default function PrescriptionManager() {
       }
       
       const saved = getLocalData(STORAGE_KEYS.DOCTORS)
-      if (saved && saved.length > 0) {
-        setDoctors(saved)
-      } else {
-        setDoctors(defaultDoctors)
-        localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(defaultDoctors))
-      }
+      setDoctors(saved && saved.length > 0 ? saved : [])
     } catch (error) {
       console.error('Error loading doctors:', error)
       const saved = getLocalData(STORAGE_KEYS.DOCTORS)
-      setDoctors(saved && saved.length > 0 ? saved : defaultDoctors)
+      setDoctors(saved && saved.length > 0 ? saved : [])
     }
   }
 

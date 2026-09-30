@@ -27,7 +27,7 @@
 * 🌍 **Multi-Language support** (Arabic, English, French)
 * 📱 **WhatsApp Integration** for automated patient communication
 * 📊 **Real-time Statistics** and reporting
-* 💾 **Offline Support** with localStorage fallback
+* 🌐 **Online-first** — requires a network connection; offline booking is not supported
 
 ---
 
@@ -267,90 +267,65 @@ MCSOS-System/
 | Service | Endpoint | Method | Description |
 | :--- | :--- | :--- | :--- |
 | **Auth Login** | `/api/v1/auth/login` | `POST` | Authenticate user |
-| **Auth Register** | `/api/v1/auth/register` | `POST` | Register new user |
+| **Auth Logout** | `/api/v1/auth/logout` | `POST` | End the session |
+| **Auth Refresh** | `/api/v1/auth/refresh` | `POST` | Refresh the access token |
 | **Users** | `/api/v1/users` | `GET/POST` | Manage users |
 | **Doctors** | `/api/v1/doctors` | `GET/POST` | Manage doctors |
-| **Patients** | `/api/v1/patients` | `GET/POST` | Manage patients |
-| **Appointments** | `/api/v1/sessions` | `GET/POST` | Manage appointments |
+| **Patients** | `/api/v1/patients` | `GET/POST` | Manage patients. Search is `GET /api/v1/patients?search=` |
+| **Patient reports** | `/api/v1/patients/:id/reports` | `GET/POST` | Chart reports stored with prescriptions |
+| **Sessions** | `/api/v1/sessions` | `GET/POST` | Scheduled visits. There is no `/appointments` path |
 | **Packages** | `/api/v1/packages` | `GET/POST` | Manage packages |
-| **Invoices** | `/api/v1/finance/invoices` | `GET/POST` | Manage invoices |
-| **Prescriptions** | `/api/v1/prescriptions` | `GET/POST` | Manage prescriptions |
-| **WhatsApp** | `/api/v1/whatsapp/*` | `Various` | WhatsApp integration |
+| **Invoices** | `/api/v1/finance/invoices` | `POST` | Create an invoice. Read one with `GET /api/v1/finance/invoices/:id`. Mark paid or cancel with `PATCH` |
+| **Prescriptions** | `/api/v1/prescriptions` | `GET/POST` | Create and list prescriptions. A patient's list is `GET /api/v1/prescriptions/patient/:id` |
+| **WhatsApp** | `/api/v1/whatsapp/send` | `POST` | Send a message. Flow settings are not editable yet |
 
 ---
 
-### Offline Support
-The system includes `localStorage` fallback for offline operation:
-
-* **ServiceContext:** Manages online/offline state
-* **Data Sync:** Automatic sync when reconnecting
-* **Local Cache:** All data is cached in `localStorage`
+### Network requirement
+The app is **online-only**. There is no offline write queue. If the API is unreachable, dashboards show an empty or error state instead of invented numbers. Theme and language preferences may still be stored in the browser.
 
 ---
 
 ## Installation & Setup
 
 ### Prerequisites
-* Node.js 18+ or 20+
-* npm or yarn
+* Node.js 20 or newer (see `.nvmrc`)
+* npm
+
+The API is a second repository, [Amratef0/Medical-Center-App](https://github.com/Amratef0/Medical-Center-App). Clone it as a sibling named `backend/`. The parent layout, ports, and seed steps are in the workspace README next to `docs/`.
 
 ### 1. Clone the Repository
 ```bash
-    git clone [https://github.com/Islam412/MCSOS-System.git](https://github.com/Islam412/MCSOS-System.git)
-    cd MCSOS-System
+git clone https://github.com/Islam412/MCSOS-System.git frontend
+cd frontend
 ```
 
 ### 2. Install Dependencies
 ```bash
-    npm install
+npm install
+cp .env.example .env
 ```
+
+`.env.example` sets `VITE_API_BASE_URL=http://localhost:3000`. That must match `PORT` in the backend `.env`. The client appends `/api/v1` itself.
 
 ### 3. Run Development Server
 ```bash
-    npm run dev
-``` 
+npm run dev
+```
 
-### Then open: http://localhost:5173
+Then open http://localhost:5173
+
+Local staff accounts come from the backend seed, not from this file. Do not point this app at production with a seed password.
+
 ### 4. Build for Production
 ```bash
-    npm run build
+npm run build
 ```
 
 ### 5. Preview Production Build
 ```bash
-    npm run preview
+npm run preview
 ```
-
-### Environment Variables (Optional)
-### Create a .env file in the root directory:
-```txt
-
-    Code snippet
-
-    VITE_API_BASE_URL=[https://medical-center-app-production.up.railway.app](https://medical-center-app-production.up.railway.app)
-```
-
-## Demo Accounts
-
-### 🏥 Medical Accounts
-| Email | Password | Role | Dashboard |
-| :--- | :--- | :--- | :--- |
-| admin@medical.com | admin123 | System Admin | Admin Dashboard |
-| doctor@medical.com | doctor123 | Doctor | Doctor Dashboard |
-| reception@medical.com | reception123 | Receptionist | Reception Dashboard |
-| finance@medical.com | finance123 | Finance | Finance Manager |
-| patient@medical.com | patient123 | Patient | Patient Dashboard |
-| user@medical.com | user123 | User | Patient Dashboard |
-
-### 🚀 MCSOS Accounts
-| Email | Password | Role | Dashboard |
-| :--- | :--- | :--- | :--- |
-| admin@mcsos.com | password123 | System Admin | Admin Dashboard |
-| doctor@mcsos.com | password123 | Doctor | Doctor Dashboard |
-| reception@mcsos.com | password123 | Receptionist | Reception Dashboard |
-| finance@mcsos.com | password123 | Finance | Finance Manager |
-| ops@mcsos.com | password123 | Operations | Admin Dashboard |
-| support@mcsos.com | password123 | Support | Patient Dashboard |
 
 ---
 

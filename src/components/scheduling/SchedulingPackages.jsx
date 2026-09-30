@@ -3,10 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { Package, Plus, User, Stethoscope, Clock, CheckCircle, Loader2, X, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { packagesService, servicesService } from '../../services/api'
+import { usePermissions } from '../../context/PermissionsContext'
 
 export default function SchedulingPackages() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
+  const { hasPermission } = usePermissions()
+  const canAssignPackages = hasPermission('packages.assign')
 
   const [sessions, setSessions] = useState([])
   const [packages, setPackages] = useState([])
@@ -213,13 +216,15 @@ export default function SchedulingPackages() {
                     <span>{session.doctor?.user?.name || session.doctor?.name || (isRTL ? 'طبيب غير معروف' : 'Unknown Doctor')}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleAssignClick(session)}
-                  className="w-full bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
-                >
-                  <Plus size={18} />
-                  {isRTL ? 'إضافة باقة مخصصة' : 'Add Custom Package'}
-                </button>
+                {canAssignPackages && (
+                  <button
+                    onClick={() => handleAssignClick(session)}
+                    className="w-full bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <Plus size={18} />
+                    {isRTL ? 'إضافة باقة مخصصة' : 'Add Custom Package'}
+                  </button>
+                )}
               </div>
             ))}
           </div>

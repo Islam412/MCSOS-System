@@ -489,18 +489,10 @@ export default function FinanceManager() {
     }
   }
 
-  const handleDeleteTransaction = async (id) => {
-    if (!(await confirmAlert({ title: isRTL ? 'تأكيد' : 'Confirm', text: isRTL ? 'هل أنت متأكد من حذف هذه المعاملة؟' : 'Are you sure you want to delete this transaction?' }))) return
-    try {
-      if (isOnline) {
-        try { await invoicesService.deleteInvoice(id) } catch (e) { console.warn(e) }
-      }
-      const updated = transactions.filter(t => t.id !== id)
-      await saveTransactions(updated)
-      toast.success(isRTL ? 'تم حذف المعاملة' : 'Transaction deleted')
-    } catch (error) {
-      toast.error(isRTL ? 'حدث خطأ في حذف المعاملة' : 'Error deleting transaction')
-    }
+  const handleDeleteTransaction = () => {
+    toast.error(isRTL
+      ? 'حذف الفاتورة غير متاح. يمكن إلغاؤها من الخادم.'
+      : 'Invoice delete is not available. Cancel the invoice on the server instead.')
   }
 
   const handleViewInvoice = (transaction) => {
@@ -1112,9 +1104,10 @@ export default function FinanceManager() {
                             </button>
                           )}
                           <button
-                            onClick={() => handleDeleteTransaction(transaction.id)}
-                            className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition"
-                            title={isRTL ? 'حذف' : 'Delete'}
+                            type="button"
+                            onClick={handleDeleteTransaction}
+                            className="p-1.5 text-gray-400 cursor-not-allowed rounded-lg"
+                            title={isRTL ? 'حذف الفاتورة غير متاح. يمكن إلغاؤها من الخادم.' : 'Invoice delete is not available. Cancel it on the server instead.'}
                           >
                             <Trash2 size={16} />
                           </button>

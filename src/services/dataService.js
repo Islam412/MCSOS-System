@@ -1,7 +1,7 @@
 // src/services/dataService.js
-// خدمة إدارة البيانات - تدعم API و localStorage كاحتياطي
+// API helpers for dashboards. No invented demo numbers — empty/error on failure (T-012 stage 1).
 
-import { doctorsService, appointmentsService } from './api'
+import { getToken } from './api/client'
 
 const STORAGE_KEYS = {
   STATS: 'mcsos_stats',
@@ -13,115 +13,61 @@ const STORAGE_KEYS = {
   PACKAGES: 'mcsos_packages'
 }
 
-// البيانات الافتراضية
-const defaultStats = {
-  totalAppointments: 156,
-  completedAppointments: 128,
-  cancelledAppointments: 18,
-  noShowAppointments: 10,
-  averageWaitTime: 12,
-  doctorUtilization: 78,
-  patientSatisfaction: 92,
-  revenueThisMonth: 12450
-}
-
-const defaultDoctors = [
-  { id: 1, nameAr: 'د. أحمد علي', nameEn: 'Dr. Ahmed Ali', specializationAr: 'جراحة عظام', specializationEn: 'Orthopedic', patients: 45, sessions: 38, attendance: 94, utilization: 85 },
-  { id: 2, nameAr: 'د. منى حسن', nameEn: 'Dr. Mona Hassan', specializationAr: 'علاج طبيعي', specializationEn: 'Physical Therapy', patients: 38, sessions: 32, attendance: 89, utilization: 78 },
-  { id: 3, nameAr: 'د. خالد محمود', nameEn: 'Dr. Khaled Mahmoud', specializationAr: 'أعصاب', specializationEn: 'Neurology', patients: 42, sessions: 40, attendance: 97, utilization: 92 },
-  { id: 4, nameAr: 'د. نورة سعيد', nameEn: 'Dr. Noura Saeed', specializationAr: 'أطفال', specializationEn: 'Pediatrics', patients: 52, sessions: 48, attendance: 92, utilization: 88 }
-]
-
-const defaultWeeklySchedule = [
-  { id: 1, day: 'السبت', date: '2024-05-20', morning: 12, evening: 8, total: 20 },
-  { id: 2, day: 'الأحد', date: '2024-05-21', morning: 14, evening: 10, total: 24 },
-  { id: 3, day: 'الإثنين', date: '2024-05-22', morning: 10, evening: 6, total: 16 },
-  { id: 4, day: 'الثلاثاء', date: '2024-05-23', morning: 15, evening: 9, total: 24 },
-  { id: 5, day: 'الأربعاء', date: '2024-05-24', morning: 13, evening: 7, total: 20 },
-  { id: 6, day: 'الخميس', date: '2024-05-25', morning: 11, evening: 5, total: 16 }
-]
-
-// ========== دوال مساعدة للـ API ==========
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
-const get = async (endpoint) => {
-  const token = localStorage.getItem('mcsos_token')
-  const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  })
-  return response.json()
-}
 
-const post = async (endpoint, data) => {
-  const token = localStorage.getItem('mcsos_token')
-  const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
-    method: 'POST',
+async function apiFetch(endpoint, options = {}) {
+  const token = getToken()
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
     },
-    body: JSON.stringify(data)
   })
+  if (!response.ok) {
+    const err = new Error(`API ${endpoint} failed: ${response.status}`)
+    err.status = response.status
+    throw err
+  }
+  if (response.status === 204) return null
   return response.json()
 }
 
-const put = async (endpoint, data) => {
-  const token = localStorage.getItem('mcsos_token')
-  const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  })
-  return response.json()
-}
+const get = (endpoint) => apiFetch(endpoint)
+const put = (endpoint, data) =>
+  apiFetch(endpoint, { method: 'PUT', body: JSON.stringify(data) })
 
-const del = async (endpoint) => {
-  const token = localStorage.getItem('mcsos_token')
-  const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
-  return response.json()
-}
-
-// ========== الحصول على البيانات (مع دعم API) ==========
+/** @returns {Promise<object|null>} null when the API is unreachable or empty */
 export const getStats = async () => {
   try {
     const response = await get('/stats/operations')
-    return response || defaultStats
+    return response ?? null
   } catch (error) {
-    console.warn('API getStats failed, using local:', error)
-    const saved = localStorage.getItem(STORAGE_KEYS.STATS)
-    return saved ? JSON.parse(saved) : defaultStats
+    console.warn('API getStats failed:', error)
+    return null
   }
 }
 
 export const getDoctors = async () => {
   try {
     const response = await get('/doctors')
-    return response?.doctors || response || defaultDoctors
+    const list = response?.doctors || response
+    return Array.isArray(list) ? list : []
   } catch (error) {
-    console.warn('API getDoctors failed, using local:', error)
-    const saved = localStorage.getItem(STORAGE_KEYS.DOCTORS)
-    return saved ? JSON.parse(saved) : defaultDoctors
+    console.warn('API getDoctors failed:', error)
+    return []
   }
 }
 
 export const getWeeklySchedule = async () => {
   try {
     const response = await get('/schedule/weekly')
-    return response?.schedule || response || defaultWeeklySchedule
+    const schedule = response?.schedule || response
+    return Array.isArray(schedule) ? schedule : []
   } catch (error) {
-    console.warn('API getWeeklySchedule failed, using local:', error)
-    const saved = localStorage.getItem(STORAGE_KEYS.WEEKLY_SCHEDULE)
-    return saved ? JSON.parse(saved) : defaultWeeklySchedule
+    console.warn('API getWeeklySchedule failed:', error)
+    return []
   }
 }
 
@@ -209,21 +155,8 @@ export const calculateStatsFromSchedule = (schedule) => {
   return { totalAppointments: total, completedAppointments: completed }
 }
 
-// ========== إعادة تعيين البيانات ==========
+/** Clear cached dashboard keys only — does not invent replacement figures. */
 export const resetAllData = async () => {
-  localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(defaultStats))
-  localStorage.setItem(STORAGE_KEYS.DOCTORS, JSON.stringify(defaultDoctors))
-  localStorage.setItem(STORAGE_KEYS.WEEKLY_SCHEDULE, JSON.stringify(defaultWeeklySchedule))
-  
-  try {
-    await put('/stats/operations', defaultStats)
-    for (const doctor of defaultDoctors) {
-      await put(`/doctors/${doctor.id}`, doctor)
-    }
-    await put('/schedule/weekly', { schedule: defaultWeeklySchedule })
-  } catch (error) {
-    console.warn('Failed to reset data on API:', error)
-  }
-  
-  return { stats: defaultStats, doctors: defaultDoctors, schedule: defaultWeeklySchedule }
+  Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key))
+  return { stats: null, doctors: [], schedule: [] }
 }

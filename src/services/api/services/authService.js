@@ -1,5 +1,5 @@
 import { ENDPOINTS } from '../config'
-import { post, get } from '../client'
+import { post, get, clearToken } from '../client'
 
 export const authService = {
   // تسجيل الدخول
@@ -24,19 +24,17 @@ export const authService = {
 
   // الحصول على معلومات المستخدم الحالي
   getMe: async () => {
-    try {
-      const response = await get(ENDPOINTS.AUTH.ME)
-      return response
-    } catch (error) {
-      throw error
-    }
+    const raw = localStorage.getItem('mcsos_user')
+    const stored = raw ? JSON.parse(raw) : null
+    if (!stored?.id) return stored
+    const response = await get(ENDPOINTS.USERS.GET(stored.id))
+    return response.user || response
   },
 
   // تسجيل الخروج
   logout: () => {
     localStorage.removeItem('mcsos_user')
-    localStorage.removeItem('mcsos_token')
-    localStorage.removeItem('mcsos_refresh_token')
+    clearToken()
     localStorage.removeItem('mcsos_remember')
     localStorage.removeItem('mcsos_saved_email')
     window.location.href = '/login'

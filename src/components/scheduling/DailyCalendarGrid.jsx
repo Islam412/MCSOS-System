@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, Plus, MapPin, Search, Filter, Clock, UserPlus } from 'lucide-react'
@@ -9,6 +10,7 @@ import BookingCalendar from './BookingCalendar'
 import { appointmentsService } from '../../services/api'
 import { validateAppointmentReschedule } from '../../utils/schedulingValidation'
 import { getBilingualConflictMessage } from '../../utils/conflictToastMessage'
+import { restoreSessionPlacement } from '../../utils/sessionPlacement'
 
 export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignComplete, onViewSession, refreshTrigger }) {
   const { t, i18n } = useTranslation()
@@ -157,7 +159,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   }, [selectedDate, refreshTrigger])
 
   const fetchInitialData = async () => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       // 1. Fetch Doctors
       const docsRes = await fetch(`${API_BASE}/doctors?limit=50`, {
@@ -183,7 +185,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
 
   const fetchSessions = async () => {
     setLoading(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}/sessions/date/${selectedDate}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -265,7 +267,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     if (!assigningSlot || !selectedWaitlistEntry) return
     
     const { doctor, timeStr } = assigningSlot
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     const isoSessionDate = createLocalIsoString(selectedDate, timeStr)
 
     try {
@@ -389,19 +391,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
           } catch (err) {
             console.error('Error rescheduling session:', err)
             // Snap card back to the cell it left (doctor / room / session_date)
-            setSessions(prev => prev.map(s => {
-              if (String(s.id) === String(session.id)) {
-                return {
-                  ...s,
-                  doctor_id: previousPlacement.doctor_id,
-                  doctor: previousPlacement.doctor,
-                  room_id: previousPlacement.room_id,
-                  room: previousPlacement.room,
-                  session_date: previousPlacement.session_date
-                }
-              }
-              return s
-            }))
+            setSessions(prev => restoreSessionPlacement(prev, session.id, previousPlacement))
 
             const bilingual = getBilingualConflictMessage(err)
             if (bilingual || err?.status === 409) {

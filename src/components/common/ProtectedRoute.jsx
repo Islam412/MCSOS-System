@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom'
+import { getToken } from '../../services/api/client'
 import { useState, useEffect } from 'react'
 import { authService } from '../../services/api'
 
@@ -10,7 +11,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
   useEffect(() => {
     const checkAuth = () => {
       const userData = localStorage.getItem('mcsos_user')
-      const token = localStorage.getItem('mcsos_token')
+      const token = getToken()
       
       if (!userData || !token) {
         setIsValid(false)

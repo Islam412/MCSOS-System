@@ -122,16 +122,6 @@ export default function UsersManager() {
   const saveUsers = async (usersList) => {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(usersList))
     setUsers(usersList)
-
-    // محاولة المزامنة مع الخادم إذا كان متصلاً
-    if (isOnline) {
-      try {
-        await usersService.syncUsers(usersList)
-      } catch (error) {
-        console.warn('Failed to sync users with server:', error)
-      }
-    }
-
     window.dispatchEvent(new Event('usersUpdated'))
   }
 
@@ -550,9 +540,10 @@ export default function UsersManager() {
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
-                            onClick={() => handleResetPassword(user)}
-                            className="p-1 text-yellow-400 hover:bg-yellow-500/20 rounded transition"
-                            title="تغيير كلمة المرور"
+                            type="button"
+                            disabled
+                            className="p-1 text-gray-500 cursor-not-allowed rounded"
+                            title="إعادة تعيين كلمة المرور غير متاحة من الخادم بعد"
                           >
                             <Key size={16} />
                           </button>

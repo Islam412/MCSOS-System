@@ -21,7 +21,6 @@ export const ENDPOINTS = {
     REGISTER: '/api/v1/auth/register',
     LOGOUT: '/api/v1/auth/logout',
     REFRESH: '/api/v1/auth/refresh',
-    ME: '/api/v1/auth/me',
     FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
     RESET_PASSWORD: '/api/v1/auth/reset-password',
   },
@@ -32,11 +31,7 @@ export const ENDPOINTS = {
     GET: (id) => `/api/v1/users/${id}`,
     UPDATE: (id) => `/api/v1/users/${id}`,
     DELETE: (id) => `/api/v1/users/${id}`,
-    BLOCK: (id) => `/api/v1/users/${id}/block`,
-    UNBLOCK: (id) => `/api/v1/users/${id}/unblock`,
     ASSIGN_ROLE: '/api/v1/users/assign-role',
-    CHANGE_PASSWORD: (id) => `/api/v1/users/${id}/change-password`,
-    RESET_PASSWORD: (id) => `/api/v1/users/${id}/reset-password`,
   },
   // الأطباء
   DOCTORS: {
@@ -47,8 +42,14 @@ export const ENDPOINTS = {
     DELETE: (id) => `/api/v1/doctors/${id}`,
     AVAILABILITY: (doctorId) => `/api/v1/doctors/${doctorId}/availability`,
     AVAILABILITY_SLOT: (doctorId, availabilityId) => `/api/v1/doctors/${doctorId}/availability/${availabilityId}`,
-    AVAILABLE: '/api/v1/doctors/available',
-    STATS: '/api/v1/doctors/stats',
+  },
+  ATTACHMENTS: {
+    PRESIGN: '/api/v1/attachments/presign',
+    CONFIRM: '/api/v1/attachments',
+    GET: (id) => `/api/v1/attachments/${id}`,
+    FILE: (id) => `/api/v1/attachments/${id}/file`,
+    DELETE: (id) => `/api/v1/attachments/${id}`,
+    LOCAL_UPLOAD: '/api/v1/attachments/local-upload',
   },
   // المرضى
   PATIENTS: {
@@ -57,38 +58,17 @@ export const ENDPOINTS = {
     GET: (id) => `/api/v1/patients/${id}`,
     UPDATE: (id) => `/api/v1/patients/${id}`,
     DELETE: (id) => `/api/v1/patients/${id}`,
-    SEARCH: '/api/v1/patients/search',
-    STATS: '/api/v1/patients/stats',
     MEDICAL_HISTORY: (patientId) => `/api/v1/patients/${patientId}/medical-history`,
-    PROGRESS: (id) => `/api/v1/patients/${id}/progress`,
-    SESSIONS: (id) => `/api/v1/patients/${id}/sessions`,
-  },
-  // المواعيد
-  APPOINTMENTS: {
-    LIST: '/api/v1/appointments',
-    CREATE: '/api/v1/appointments',
-    GET: (id) => `/api/v1/appointments/${id}`,
-    UPDATE: (id) => `/api/v1/appointments/${id}`,
-    DELETE: (id) => `/api/v1/appointments/${id}`,
-    BOOK: '/api/v1/appointments/book',
-    CONFIRM: (id) => `/api/v1/appointments/${id}/confirm`,
-    CANCEL: (id) => `/api/v1/appointments/${id}/cancel`,
-    CHECK_IN: (id) => `/api/v1/appointments/${id}/check-in`,
-    AVAILABLE_SLOTS: '/api/v1/appointments/available-slots',
-    TODAY: '/api/v1/appointments/today',
-    STATS: '/api/v1/appointments/stats',
+    REPORTS: (patientId) => `/api/v1/patients/${patientId}/reports`,
+    REPORT: (patientId, reportId) => `/api/v1/patients/${patientId}/reports/${reportId}`,
   },
   // الفواتير
-// src/services/api/config.js
   INVOICES: {
     LIST: '/api/v1/finance/invoices',
     CREATE: '/api/v1/finance/invoices',
     GET: (id) => `/api/v1/finance/invoices/${id}`,
-    UPDATE: (id) => `/api/v1/finance/invoices/${id}`,
-    DELETE: (id) => `/api/v1/finance/invoices/${id}`,
     MARK_PAID: (id) => `/api/v1/finance/invoices/${id}/mark-paid`,
     CANCEL: (id) => `/api/v1/finance/invoices/${id}/cancel`,
-    STATS: '/api/v1/finance/invoices/stats',
   },
   // المدفوعات
   PAYMENTS: {
@@ -113,7 +93,6 @@ export const ENDPOINTS = {
     DELETE: (id) => `/api/v1/prescriptions/${id}`,
     BY_PATIENT: (id) => `/api/v1/prescriptions/patient/${id}`,
     BY_DOCTOR: (id) => `/api/v1/prescriptions/doctor/${id}`,
-    PRINT: (id) => `/api/v1/prescriptions/${id}/print`,
   },
   // الباقات
   PACKAGES: {
@@ -156,6 +135,7 @@ export const ENDPOINTS = {
     GET: (id) => `/api/v1/waitlist/${id}`,
     UPDATE: (id) => `/api/v1/waitlist/${id}`,
     DELETE: (id) => `/api/v1/waitlist/${id}`,
+    ASSIGN: (id) => `/api/v1/waitlist/${id}/assign`,
   },
   // الخدمات
   SERVICES: {
@@ -191,16 +171,11 @@ export const ENDPOINTS = {
     DAILY: '/api/v1/reports/daily',
     DOCTOR_UTILIZATION: '/api/v1/reports/doctor-utilization',
     CONVERSION_RATE: '/api/v1/reports/conversion-rate',
-    GENERATE: '/api/v1/reports/generate',
-    DOWNLOAD: (id) => `/api/v1/reports/${id}/download`,
-    LIST: '/api/v1/reports',
-  },
-  // الصور والملفات
-  FILES: {
-    UPLOAD: '/api/v1/upload',
-    DELETE: (id) => `/api/v1/files/${id}`,
-    DOWNLOAD: (id) => `/api/v1/files/${id}/download`,
-    PATIENT_FILES: (id) => `/api/v1/files/patient/${id}`,
+    PATIENT_SOURCE: '/api/v1/reports/patient-source',
+    CAPACITY: '/api/v1/reports/capacity',
+    ATTENDANCE: '/api/v1/reports/attendance',
+    PACKAGES: '/api/v1/reports/packages',
+    FINANCE: '/api/v1/reports/finance',
   },
   // WhatsApp
   WHATSAPP: {
@@ -210,21 +185,6 @@ export const ENDPOINTS = {
     FLOWS: '/api/v1/whatsapp/flows',
     HISTORY: '/api/v1/whatsapp/history',
     CONTACTS: '/api/v1/whatsapp/contacts',
-  },
-  // الإحصائيات
-  STATS: {
-    DASHBOARD: '/api/v1/stats/dashboard',
-    DOCTOR: '/api/v1/stats/doctor',
-    RECEPTION: '/api/v1/stats/reception',
-    FINANCE: '/api/v1/stats/finance',
-    OPERATIONS: '/api/v1/stats/operations',
-  },
-  // الإعدادات
-  SETTINGS: {
-    HOSPITAL: '/api/v1/settings/hospital',
-    USER_PREFERENCES: '/api/v1/settings/preferences',
-    THEME: '/api/v1/settings/theme',
-    LANGUAGE: '/api/v1/settings/language',
   },
   // التعاقدات
   CONTRACTS: {

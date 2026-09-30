@@ -85,38 +85,4 @@ export const doctorsService = {
     }
   },
 
-  // الحصول على إحصائيات الأطباء
-  getDoctorsStats: async () => {
-    try {
-      const response = await get(ENDPOINTS.DOCTORS.STATS)
-      return response
-    } catch (error) {
-      console.error('❌ getDoctorsStats error:', error)
-      throw error
-    }
-  },
-
-  // الحصول على الأطباء المتاحين
-  getAvailableDoctors: async (params = {}) => {
-    try {
-      const queryString = new URLSearchParams(params).toString()
-      const endpoint = queryString ? `${ENDPOINTS.DOCTORS.AVAILABLE}?${queryString}` : ENDPOINTS.DOCTORS.AVAILABLE
-      const response = await get(endpoint)
-      return response.doctors || []
-    } catch (error) {
-      console.error('❌ getAvailableDoctors error:', error)
-      throw error
-    }
-  },
-
-  // مزامنة الأطباء (للحفظ الجماعي)
-  syncDoctors: async (doctors) => {
-    try {
-      const response = await post('/api/v1/doctors/sync', { doctors })
-      return response
-    } catch (error) {
-      console.error('❌ syncDoctors error:', error)
-      throw error
-    }
-  }
 }

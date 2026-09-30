@@ -33,7 +33,6 @@ export default function PatientDashboard() {
   const [patient, setPatient] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -135,7 +134,7 @@ export default function PatientDashboard() {
   // ========== بيانات من API ==========
   const [doctors, setDoctors] = useState([])
   const [patientData, setPatientData] = useState({
-    id: 1,
+    id: null,
     name: '',
     nameEn: '',
     age: 0,
@@ -173,25 +172,52 @@ export default function PatientDashboard() {
   // المواعيد المتاحة
   const [availableSlots, setAvailableSlots] = useState([])
 
+  const isUuid = (value) =>
+    typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+
+  const resolvePatientId = (user) => {
+    if (!user) return null
+    const fromQuery = new URLSearchParams(window.location.search).get('patientId')
+    if (isUuid(fromQuery)) return fromQuery
+    if (isUuid(user.patientId) || isUuid(user.patient_id)) return user.patientId || user.patient_id
+    const role = String(user.role || '').toLowerCase()
+    // Staff user ids are not patient ids — never call /patients/:userId
+    if (['admin', 'doctor', 'reception', 'receptionist', 'finance', 'operations_manager'].includes(role)) {
+      return null
+    }
+    return isUuid(user.id) ? user.id : null
+  }
+
   // ========== تحميل البيانات ==========
   useEffect(() => {
     const userData = localStorage.getItem('mcsos_user')
-    if (userData) {
-      const user = JSON.parse(userData)
-      setPatientData(prev => ({ ...prev, name: user.name, nameEn: user.nameEn, email: user.email, id: user.id }))
+    const user = userData ? JSON.parse(userData) : null
+    const patientId = resolvePatientId(user)
+
+    if (user) {
+      setPatientData(prev => ({
+        ...prev,
+        name: user.name || '',
+        nameEn: user.nameEn || '',
+        email: user.email || '',
+        id: patientId
+      }))
     }
-    loadAllData()
+
+    // Pass id explicitly — React state is still the default during this tick
+    loadAllData(patientId)
   }, [])
 
-  const loadAllData = async () => {
+  const loadAllData = async (patientId) => {
     setLoading(true)
     try {
       await Promise.all([
-        loadPatientData(),
+        loadPatientData(patientId),
         loadDoctors(),
-        loadAppointments(),
-        loadPrescriptions(),
-        loadReports()
+        loadAppointments(patientId),
+        loadPrescriptions(patientId),
+        loadReports(patientId)
       ])
     } catch (error) {
       console.error('Error loading patient data:', error)
@@ -202,11 +228,12 @@ export default function PatientDashboard() {
   }
 
   // ========== تحميل بيانات المريض ==========
-  const loadPatientData = async () => {
+  const loadPatientData = async (patientId) => {
+    if (!isUuid(patientId)) return
     try {
       if (isOnline) {
         const response = await executeWithOfflineSupport(
-          () => patientsService.getPatient(patientData.id),
+          () => patientsService.getPatient(patientId),
           'patient_data',
           JSON.parse(localStorage.getItem('mcsos_patient_data') || '{}')
         )
@@ -214,10 +241,11 @@ export default function PatientDashboard() {
         setPatientData(prev => ({
           ...prev,
           ...data,
+          id: data.id || patientId,
           age: data.age || 0,
           bloodType: data.bloodType || '',
-          allergies: data.allergies || [],
-          chronicDiseases: data.chronicDiseases || [],
+          allergies: Array.isArray(data.allergies) ? data.allergies : [],
+          chronicDiseases: Array.isArray(data.chronicDiseases) ? data.chronicDiseases : [],
           doctor: data.doctor || '',
           doctorSpecialization: data.doctorSpecialization || '',
           diagnosis: data.diagnosis || '',
@@ -251,9 +279,9 @@ export default function PatientDashboard() {
           'doctors',
           JSON.parse(localStorage.getItem('mcsos_doctors') || '[]')
         )
-        const data = response || []
-        setDoctors(data)
-        localStorage.setItem('mcsos_doctors', JSON.stringify(data))
+        const data = Array.isArray(response) ? response : (response?.data || [])
+        setDoctors(Array.isArray(data) ? data : [])
+        localStorage.setItem('mcsos_doctors', JSON.stringify(Array.isArray(data) ? data : []))
       } else {
         const saved = localStorage.getItem('mcsos_doctors')
         if (saved) setDoctors(JSON.parse(saved))
@@ -264,17 +292,18 @@ export default function PatientDashboard() {
   }
 
   // ========== تحميل المواعيد ==========
-  const loadAppointments = async () => {
+  const loadAppointments = async (patientId) => {
+    if (!isUuid(patientId)) return
     try {
       if (isOnline) {
         const response = await executeWithOfflineSupport(
-          () => appointmentsService.getAppointments({ patientId: patientData.id }),
+          () => appointmentsService.getAppointments({ patientId }),
           'appointments',
           JSON.parse(localStorage.getItem('mcsos_patient_appointments') || '[]')
         )
-        const data = response || []
-        const upcoming = data.filter(a => a.status === 'scheduled' || a.status === 'upcoming')
-        const past = data.filter(a => a.status === 'completed' || a.status === 'past')
+        const data = Array.isArray(response) ? response : []
+        const upcoming = data.filter(a => a.status === 'scheduled' || a.status === 'upcoming' || a.status === 'confirmed')
+        const past = data.filter(a => a.status === 'completed' || a.status === 'past' || a.status === 'cancelled')
         setPatientData(prev => ({
           ...prev,
           upcomingAppointments: upcoming,
@@ -285,6 +314,7 @@ export default function PatientDashboard() {
         const saved = localStorage.getItem('mcsos_patient_appointments')
         if (saved) {
           const data = JSON.parse(saved)
+          if (!Array.isArray(data)) return
           const upcoming = data.filter(a => a.status === 'scheduled' || a.status === 'upcoming')
           const past = data.filter(a => a.status === 'completed' || a.status === 'past')
           setPatientData(prev => ({ ...prev, upcomingAppointments: upcoming, pastAppointments: past }))
@@ -296,15 +326,16 @@ export default function PatientDashboard() {
   }
 
   // ========== تحميل الروشتات ==========
-  const loadPrescriptions = async () => {
+  const loadPrescriptions = async (patientId) => {
+    if (!isUuid(patientId)) return
     try {
       if (isOnline) {
         const response = await executeWithOfflineSupport(
-          () => prescriptionsService.getPrescriptionsByPatient(patientData.id),
+          () => prescriptionsService.getPrescriptionsByPatient(patientId),
           'prescriptions',
           JSON.parse(localStorage.getItem('mcsos_patient_prescriptions') || '[]')
         )
-        const data = response || []
+        const data = Array.isArray(response) ? response : []
         setPatientData(prev => ({ ...prev, prescriptions: data }))
         localStorage.setItem('mcsos_patient_prescriptions', JSON.stringify(data))
       } else {
@@ -317,15 +348,16 @@ export default function PatientDashboard() {
   }
 
   // ========== تحميل التقارير ==========
-  const loadReports = async () => {
+  const loadReports = async (patientId) => {
+    if (!isUuid(patientId)) return
     try {
       if (isOnline) {
         const response = await executeWithOfflineSupport(
-          () => get(`/reports/patient/${patientData.id}`),
+          () => patientsService.getReports(patientId),
           'reports',
           JSON.parse(localStorage.getItem('mcsos_patient_reports') || '[]')
         )
-        const data = response || []
+        const data = Array.isArray(response) ? response : []
         setPatientData(prev => ({ ...prev, medicalReports: data }))
         localStorage.setItem('mcsos_patient_reports', JSON.stringify(data))
       } else {
@@ -335,17 +367,6 @@ export default function PatientDashboard() {
     } catch (error) {
       console.error('Error loading reports:', error)
     }
-  }
-
-  // ========== دالة مساعدة للـ GET ==========
-  const get = async (endpoint) => {
-    const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
-        'Content-Type': 'application/json'
-      }
-    })
-    return response.json()
   }
 
   // ========== عرض النجوم ==========
@@ -466,6 +487,10 @@ export default function PatientDashboard() {
   const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedTime) {
       toast.error('الرجاء اختيار التاريخ والوقت')
+      return
+    }
+    if (!isUuid(patientData.id)) {
+      toast.error('لا يوجد ملف مريض مرتبط بهذا الحساب / No patient record linked to this account')
       return
     }
 

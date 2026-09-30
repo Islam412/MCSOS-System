@@ -2,8 +2,13 @@
 
 import { API_CONFIG, ENDPOINTS, ERROR_MESSAGES } from './config'
 
-// جلب التوكن من localStorage
-const getToken = () => localStorage.getItem('mcsos_token')
+// Single read path for the access token (T-005 option b / T-012 stage 5)
+export const getToken = () => localStorage.getItem('mcsos_token')
+
+export const clearToken = () => {
+  localStorage.removeItem('mcsos_token')
+  localStorage.removeItem('mcsos_refresh_token')
+}
 
 // جلب المستخدم الحالي
 const getCurrentUser = () => {
@@ -16,8 +21,7 @@ export const setToken = (token) => {
   if (token) {
     localStorage.setItem('mcsos_token', token)
   } else {
-    localStorage.removeItem('mcsos_token')
-    localStorage.removeItem('mcsos_refresh_token')
+    clearToken()
   }
 }
 
@@ -28,6 +32,7 @@ export const setUser = (user) => {
   } else {
     localStorage.removeItem('mcsos_user')
   }
+  window.dispatchEvent(new Event('mcsos-auth-changed'))
 }
 
 let isRefreshing = false

@@ -1,7 +1,57 @@
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, Search, CheckCircle, XCircle, Clock, Stethoscope, Tag } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { STATUS_COLORS } from '../../utils/statusColors'
+
+function capacityVisual(state) {
+  if (state === 'FULL') {
+    return {
+      barClass: 'bg-rose-500',
+      badge: STATUS_COLORS.FULLY_BOOKED,
+      labelKey: 'capacity_mgmt.status_full',
+      fallback: '🔴 ممتلئ بالكامل',
+    }
+  }
+  if (state === 'ALMOST_FULL') {
+    return {
+      barClass: 'bg-amber-500',
+      badge: STATUS_COLORS.PACKAGE_ENDING_SOON,
+      labelKey: 'capacity_mgmt.status_almost_full',
+      fallback: '🟡 شارف على الامتلاء',
+    }
+  }
+  return {
+    barClass: 'bg-emerald-500',
+    badge: STATUS_COLORS.AVAILABLE,
+    labelKey: 'capacity_mgmt.status_available',
+    fallback: '🟢 متاح (سعة شاغرة)',
+  }
+}
+
+function aggregateDoctors(rows, thresholds) {
+  const capped = (rows || []).filter((r) => r.limit != null)
+  if (capped.length === 0) {
+    return { used: 0, limit: null, remaining: null, pct: 0, state: 'AVAILABLE' }
+  }
+  const used = capped.reduce((s, r) => s + r.used, 0)
+  const limit = capped.reduce((s, r) => s + r.limit, 0)
+  const pct = Math.min(100, Math.round((used / limit) * 100))
+  let state = 'AVAILABLE'
+  if (pct >= thresholds.full_pct) state = 'FULL'
+  else if (pct >= thresholds.warn_pct) state = 'ALMOST_FULL'
+  return { used, limit, remaining: Math.max(0, limit - used), pct, state }
+}
+
+function applyThresholdState(row, thresholds) {
+  if (row.limit == null) return { ...row, pct: 0, state: 'AVAILABLE', remaining: null }
+  const pct = Math.min(100, Math.round((row.used / row.limit) * 100))
+  let state = 'AVAILABLE'
+  if (pct >= thresholds.full_pct) state = 'FULL'
+  else if (pct >= thresholds.warn_pct) state = 'ALMOST_FULL'
+  return { ...row, pct, state, remaining: Math.max(0, row.limit - row.used) }
+}
 
 export default function CapacityTab() {
   const { t, i18n } = useTranslation()
@@ -15,8 +65,23 @@ export default function CapacityTab() {
   const [slots, setSlots] = useState([])
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(false)
+  const [capacityOverview, setCapacityOverview] = useState(null)
+  const [capacitySettings, setCapacitySettings] = useState({
+    centerMax: '',
+    warnPct: '80',
+    fullPct: '100',
+  })
+  const [savingSettings, setSavingSettings] = useState(false)
 
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
+  const userRole = (() => {
+    try {
+      const raw = localStorage.getItem('mcsos_user')
+      return raw ? JSON.parse(raw).role : null
+    } catch {
+      return null
+    }
+  })()
 
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('day')
@@ -40,7 +105,7 @@ export default function CapacityTab() {
   }, [selectedDate, selectedDoctorId, debouncedSearch, dateFilter])
 
   const fetchDoctors = async () => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const res = await fetch(`${API_BASE}/doctors?limit=50`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -56,7 +121,7 @@ export default function CapacityTab() {
 
   const fetchData = async () => {
     setLoading(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       // If there is a search query, search globally in sessions
       if (debouncedSearch.trim().length > 0) {
@@ -121,10 +186,24 @@ export default function CapacityTab() {
         sessionsUrl += `doctor_id=${selectedDoctorId}&`;
       }
 
-      const [slotsRes, sessionsRes] = await Promise.all([
+      const overviewPromise =
+        dateFilter === 'day' && debouncedSearch.trim().length === 0
+          ? fetch(`${API_BASE}/capacity/overview?date=${selectedDate}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          : Promise.resolve(null)
+
+      const [slotsRes, sessionsRes, overviewRes] = await Promise.all([
         fetch(slotsUrl, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(sessionsUrl, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(sessionsUrl, { headers: { 'Authorization': `Bearer ${token}` } }),
+        overviewPromise,
       ])
+
+      if (overviewRes?.ok) {
+        setCapacityOverview(await overviewRes.json())
+      } else if (dateFilter !== 'day') {
+        setCapacityOverview(null)
+      }
 
       let slotsData = []
       let sessionsData = []
@@ -205,36 +284,92 @@ export default function CapacityTab() {
   }, [filterType, searchQuery, selectedDate, selectedDoctorId, dateFilter])
 
   const totalPages = Math.ceil(filteredSlots.length / itemsPerPage)
+  const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const indexOfLastItem = currentPage * itemsPerPage
   const currentItems = filteredSlots.slice(indexOfFirstItem, indexOfLastItem)
 
-  // Sections 9 & 10: Capacity Management & Alerts calculation
-  const reservedSlotsCount = filteredSlots.filter(s => s.booked_count > 0 || s.session).length || 0;
-  
-  // Doctor Capacity (Max 20 patients per doctor daily)
-  const docMaxCapacity = (doctors.length > 0 ? doctors.length : 4) * 20;
-  const docOccupancy = reservedSlotsCount;
-  const docOccupancyPercent = Math.min(100, Math.round((docOccupancy / (docMaxCapacity || 1)) * 100));
+  const thresholds = capacityOverview?.thresholds ?? { warn_pct: 80, full_pct: 100 }
+  const centerRow = capacityOverview?.center
+    ? applyThresholdState(capacityOverview.center, thresholds)
+    : { used: 0, limit: null, remaining: null, pct: 0, state: 'AVAILABLE' }
 
-  // Room Capacity (Max concurrent sessions)
-  const roomMaxCapacity = 60;
-  const roomOccupancy = Math.min(roomMaxCapacity, Math.round(reservedSlotsCount * 0.8));
-  const roomOccupancyPercent = Math.min(100, Math.round((roomOccupancy / roomMaxCapacity) * 100));
+  const doctorRow = aggregateDoctors(capacityOverview?.doctors ?? [], thresholds)
 
-  // Center Overall Capacity
-  const centerMaxCapacity = 150;
-  const centerOccupancy = reservedSlotsCount;
-  const centerOccupancyPercent = Math.min(100, Math.round((centerOccupancy / centerMaxCapacity) * 100));
+  const roomPeak = (capacityOverview?.rooms ?? []).reduce(
+    (best, r) => {
+      const row = applyThresholdState(r, thresholds)
+      return row.pct > best.pct ? row : best
+    },
+    { used: 0, limit: null, remaining: null, pct: 0, state: 'AVAILABLE' },
+  )
 
-  const getAlertBadge = (percent) => {
-    if (percent >= 85) {
-      return <span className="px-2.5 py-1 text-xs font-black rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-xs">{t('capacity_mgmt.status_full', '🔴 ممتلئ بالكامل')}</span>;
+  const renderAlertBadge = (state) => {
+    const visual = capacityVisual(state)
+    const label = isRTL ? visual.badge.labelAr : visual.badge.labelEn
+    return (
+      <span className={`px-2.5 py-1 text-xs font-black rounded-full border shadow-xs ${visual.badge.colorClass}`}>
+        {t(visual.labelKey, visual.fallback)} — {label}
+      </span>
+    )
+  }
+
+  const loadCapacitySettings = async () => {
+    if (userRole !== 'ADMIN') return
+    const token = getToken()
+    const keys = [
+      'capacity.center.max_sessions_per_day',
+      'capacity.warn_threshold_pct',
+      'capacity.full_threshold_pct',
+    ]
+    try {
+      const values = await Promise.all(
+        keys.map((key) =>
+          fetch(`${API_BASE}/settings/${encodeURIComponent(key)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).then((r) => (r.ok ? r.json() : { value: '' })),
+        ),
+      )
+      setCapacitySettings({
+        centerMax: values[0]?.value ?? '',
+        warnPct: values[1]?.value ?? '80',
+        fullPct: values[2]?.value ?? '100',
+      })
+    } catch (_) {}
+  }
+
+  useEffect(() => {
+    loadCapacitySettings()
+  }, [])
+
+  const saveCapacitySettings = async () => {
+    setSavingSettings(true)
+    const token = getToken()
+    const entries = [
+      ['capacity.center.max_sessions_per_day', capacitySettings.centerMax],
+      ['capacity.warn_threshold_pct', capacitySettings.warnPct],
+      ['capacity.full_threshold_pct', capacitySettings.fullPct],
+    ]
+    try {
+      await Promise.all(
+        entries.map(([key, value]) =>
+          fetch(`${API_BASE}/settings/${encodeURIComponent(key)}`, {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ value: String(value ?? '') }),
+          }),
+        ),
+      )
+      toast.success(isRTL ? 'تم حفظ إعدادات السعة' : 'Capacity settings saved')
+      fetchData()
+    } catch {
+      toast.error(isRTL ? 'فشل حفظ الإعدادات' : 'Failed to save settings')
+    } finally {
+      setSavingSettings(false)
     }
-    if (percent >= 60) {
-      return <span className="px-2.5 py-1 text-xs font-black rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-xs">{t('capacity_mgmt.status_almost_full', '🟡 شارف على الامتلاء')}</span>;
-    }
-    return <span className="px-2.5 py-1 text-xs font-black rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs">{t('capacity_mgmt.status_available', '🟢 متاح (سعة شاغرة)')}</span>;
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -369,6 +504,48 @@ export default function CapacityTab() {
         </div>
       </div>
 
+      {userRole === 'ADMIN' && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-lg">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4">
+            {isRTL ? 'إعدادات سعة المركز' : 'Centre capacity settings'}
+          </h3>
+          <div className="grid gap-4 md:grid-cols-4">
+            <input
+              type="number"
+              min={1}
+              placeholder={isRTL ? 'حد المركز اليومي (فارغ=بلا حد)' : 'Centre daily cap (empty=∞)'}
+              className="p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-sm"
+              value={capacitySettings.centerMax}
+              onChange={(e) => setCapacitySettings({ ...capacitySettings, centerMax: e.target.value })}
+            />
+            <input
+              type="number"
+              min={1}
+              max={100}
+              className="p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-sm"
+              value={capacitySettings.warnPct}
+              onChange={(e) => setCapacitySettings({ ...capacitySettings, warnPct: e.target.value })}
+            />
+            <input
+              type="number"
+              min={1}
+              max={100}
+              className="p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-sm"
+              value={capacitySettings.fullPct}
+              onChange={(e) => setCapacitySettings({ ...capacitySettings, fullPct: e.target.value })}
+            />
+            <button
+              type="button"
+              onClick={saveCapacitySettings}
+              disabled={savingSettings}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold disabled:opacity-50"
+            >
+              {isRTL ? 'حفظ' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Sections 9 & 10: Capacity Management & Capacity Alerts Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Doctor Capacity */}
@@ -376,19 +553,24 @@ export default function CapacityTab() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">{t('capacity_mgmt.doctor_capacity', 'سعة الأطباء اليومية')}</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{docOccupancy} / <span className="text-sm font-semibold text-gray-400">{docMaxCapacity} {t('capacity_mgmt.patients_per_day', 'مريض / اليوم')}</span></h3>
+              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">
+                {doctorRow.used} /{' '}
+                <span className="text-sm font-semibold text-gray-400">
+                  {doctorRow.limit ?? '∞'} {t('capacity_mgmt.patients_per_day', 'مريض / اليوم')}
+                </span>
+              </h3>
             </div>
-            {getAlertBadge(docOccupancyPercent)}
+            {renderAlertBadge(doctorRow.state)}
           </div>
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-bold text-gray-600 dark:text-gray-400">
-              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {docOccupancyPercent}%</span>
-              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {docMaxCapacity - docOccupancy}</span>
+              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {doctorRow.pct}%</span>
+              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {doctorRow.remaining ?? '∞'}</span>
             </div>
             <div className="w-full bg-gray-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-500 ${docOccupancyPercent >= 85 ? 'bg-rose-500' : docOccupancyPercent >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                style={{ width: `${docOccupancyPercent}%` }}
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${capacityVisual(doctorRow.state).barClass}`}
+                style={{ width: `${doctorRow.pct}%` }}
               ></div>
             </div>
           </div>
@@ -399,19 +581,24 @@ export default function CapacityTab() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">{t('capacity_mgmt.room_capacity', 'سعة الغرف والعيادات')}</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{roomOccupancy} / <span className="text-sm font-semibold text-gray-400">{roomMaxCapacity} {t('capacity_mgmt.sessions_per_room', 'جلسات بالتزامن')}</span></h3>
+              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">
+                {roomPeak.used} /{' '}
+                <span className="text-sm font-semibold text-gray-400">
+                  {roomPeak.limit ?? '—'} {t('capacity_mgmt.sessions_per_room', 'جلسات بالتزامن')}
+                </span>
+              </h3>
             </div>
-            {getAlertBadge(roomOccupancyPercent)}
+            {renderAlertBadge(roomPeak.state)}
           </div>
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-bold text-gray-600 dark:text-gray-400">
-              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {roomOccupancyPercent}%</span>
-              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {roomMaxCapacity - roomOccupancy}</span>
+              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {roomPeak.pct}%</span>
+              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {roomPeak.remaining ?? '—'}</span>
             </div>
             <div className="w-full bg-gray-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-500 ${roomOccupancyPercent >= 85 ? 'bg-rose-500' : roomOccupancyPercent >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                style={{ width: `${roomOccupancyPercent}%` }}
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${capacityVisual(roomPeak.state).barClass}`}
+                style={{ width: `${roomPeak.pct}%` }}
               ></div>
             </div>
           </div>
@@ -422,19 +609,24 @@ export default function CapacityTab() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">{t('capacity_mgmt.center_capacity', 'السعة الإجمالية للمركز')}</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{centerOccupancy} / <span className="text-sm font-semibold text-gray-400">{centerMaxCapacity} {t('capacity_mgmt.total_center_cap', 'إجمالي استيعاب المركز')}</span></h3>
+              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">
+                {centerRow.used} /{' '}
+                <span className="text-sm font-semibold text-gray-400">
+                  {centerRow.limit ?? '∞'} {t('capacity_mgmt.total_center_cap', 'إجمالي استيعاب المركز')}
+                </span>
+              </h3>
             </div>
-            {getAlertBadge(centerOccupancyPercent)}
+            {renderAlertBadge(centerRow.state)}
           </div>
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-bold text-gray-600 dark:text-gray-400">
-              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {centerOccupancyPercent}%</span>
-              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {centerMaxCapacity - centerOccupancy}</span>
+              <span>{t('capacity_mgmt.current_occupancy', 'الإشغال الحالي')}: {centerRow.pct}%</span>
+              <span>{t('capacity_mgmt.remaining_capacity', 'المتبقي')}: {centerRow.remaining ?? '∞'}</span>
             </div>
             <div className="w-full bg-gray-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-500 ${centerOccupancyPercent >= 85 ? 'bg-rose-500' : centerOccupancyPercent >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                style={{ width: `${centerOccupancyPercent}%` }}
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${capacityVisual(centerRow.state).barClass}`}
+                style={{ width: `${centerRow.pct}%` }}
               ></div>
             </div>
           </div>

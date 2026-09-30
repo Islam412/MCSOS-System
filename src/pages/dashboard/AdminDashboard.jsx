@@ -1,5 +1,6 @@
 // src/pages/dashboard/AdminDashboard.jsx
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { 
   TrendingUp, TrendingDown, DollarSign, Users, Calendar, Activity,
@@ -213,7 +214,7 @@ export default function AdminDashboard() {
 
       const response = await fetch(`${API_BASE}/services`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+          'Authorization': `Bearer ${getToken()}`,
           'Content-Type': 'application/json'
         }
       })
@@ -305,7 +306,7 @@ export default function AdminDashboard() {
         try {
           const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint.url}`, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+              'Authorization': `Bearer ${getToken()}`,
               'Content-Type': 'application/json'
             }
           })

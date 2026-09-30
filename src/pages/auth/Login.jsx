@@ -1,5 +1,6 @@
 // src/pages/auth/Login.jsx
 import { useState, useEffect } from 'react'
+import { setToken } from '../../services/api/client'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Mail, Lock, User, Shield, AlertCircle, Building, Heart } from 'lucide-react'
@@ -263,7 +264,7 @@ export default function Login() {
             localStorage.setItem('mcsos_user', JSON.stringify(userData))
             const token = response.token || response.access_token
             if (token) {
-              localStorage.setItem('mcsos_token', token)
+              setToken(token)
             }
             const refreshToken = response.refresh_token
             if (refreshToken) {
@@ -309,7 +310,7 @@ export default function Login() {
         }
         
         localStorage.setItem('mcsos_user', JSON.stringify(userData))
-        localStorage.setItem('mcsos_token', 'local_token_' + Date.now())
+        setToken('local_token_' + Date.now())
         
         if (rememberMe) {
           localStorage.setItem('mcsos_remember', 'true')

@@ -1,5 +1,6 @@
 // src/components/admin/RoomsManager.jsx
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { MapPin, Plus, Edit, Trash2, X, Save, Search, RefreshCw, Loader2, DoorOpen } from 'lucide-react'
@@ -21,7 +22,8 @@ export default function RoomsManager() {
   const [roomForm, setRoomForm] = useState({
     name: '',
     code: '',
-    is_active: true
+    is_active: true,
+    max_concurrent_sessions: 1
   })
 
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
@@ -32,7 +34,7 @@ export default function RoomsManager() {
 
   const loadRooms = async () => {
     setLoading(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}/rooms`, {
         headers: {
@@ -63,7 +65,8 @@ export default function RoomsManager() {
     setRoomForm({
       name: '',
       code: '',
-      is_active: true
+      is_active: true,
+      max_concurrent_sessions: 1
     })
     setEditingRoom(null)
     setShowRoomModal(true)
@@ -73,7 +76,8 @@ export default function RoomsManager() {
     setRoomForm({
       name: room.name,
       code: room.code,
-      is_active: room.is_active !== undefined ? room.is_active : true
+      is_active: room.is_active !== undefined ? room.is_active : true,
+      max_concurrent_sessions: room.max_concurrent_sessions ?? 1
     })
     setEditingRoom(room)
     setShowRoomModal(true)
@@ -86,7 +90,7 @@ export default function RoomsManager() {
     }
 
     setIsSubmitting(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     const url = editingRoom 
       ? `${API_BASE}/rooms/${editingRoom.id}`
       : `${API_BASE}/rooms`
@@ -95,7 +99,8 @@ export default function RoomsManager() {
     const payload = {
       name: roomForm.name.trim(),
       code: roomForm.code.trim().toUpperCase(),
-      is_active: roomForm.is_active !== undefined ? roomForm.is_active : true
+      is_active: roomForm.is_active !== undefined ? roomForm.is_active : true,
+      max_concurrent_sessions: Math.max(1, parseInt(roomForm.max_concurrent_sessions, 10) || 1)
     }
 
     try {
@@ -157,7 +162,7 @@ export default function RoomsManager() {
       return
     }
 
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}/rooms/${id}`, {
         method: 'DELETE',
@@ -265,6 +270,10 @@ export default function RoomsManager() {
                   <p className="text-xs text-gray-400 font-mono mt-1">
                     {isRTL ? 'الرمز: ' : 'Code: '}{room.code}
                   </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {isRTL ? 'الحد المتزامن: ' : 'Concurrent cap: '}
+                    {room.max_concurrent_sessions ?? 1}
+                  </p>
                 </div>
               </div>
 
@@ -330,6 +339,20 @@ export default function RoomsManager() {
                   className="w-full p-2.5 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                   value={roomForm.code}
                   onChange={(e) => setRoomForm({ ...roomForm, code: e.target.value })}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase">
+                  {isRTL ? 'الحد الأقصى للجلسات المتزامنة' : 'Max concurrent sessions'}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full p-2.5 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={roomForm.max_concurrent_sessions}
+                  onChange={(e) => setRoomForm({ ...roomForm, max_concurrent_sessions: e.target.value })}
                   disabled={isSubmitting}
                 />
               </div>

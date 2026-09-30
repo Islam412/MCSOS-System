@@ -1,6 +1,7 @@
 // src/pages/reports/ReportsDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { reportsService } from '../../services/api/services/reportsService';
 import { 
   BarChart2, PieChart, TrendingUp, Users, Calendar, Award, 
   DollarSign, Activity, CheckCircle, AlertTriangle, ShieldCheck,
@@ -14,157 +15,121 @@ export default function ReportsDashboard() {
   const isRTL = i18n.language === 'ar';
   const [activeReport, setActiveReport] = useState('source'); // source | capacity | attendance | package | finance
   const [loading, setLoading] = useState(false);
+  const defaultTo = new Date().toISOString().split('T')[0];
+  const defaultFrom = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+  const [rangeFrom, setRangeFrom] = useState(defaultFrom);
+  const [rangeTo, setRangeTo] = useState(defaultTo);
 
-  // Sample real/mock data calculated for reports
+  // Empty until API responds — never invent clinic numbers (T-012 / T-007)
   const [reportData, setReportData] = useState({
-    patientSources: [
-      { source: 'Social Media (إنستجرام / فيسبوك)', count: 145, percentage: 35, color: 'bg-blue-500' },
-      { source: 'Doctor Referral (تحويل طبيب عظام)', count: 112, percentage: 27, color: 'bg-emerald-500' },
-      { source: 'Google Search (بحث جوجل)', count: 78, percentage: 19, color: 'bg-amber-500' },
-      { source: 'Friend / Family (ترشيح صديق أو قريب)', count: 42, percentage: 10, color: 'bg-purple-500' },
-      { source: 'Walk-in (مرور مباشر بالمركز)', count: 25, percentage: 6, color: 'bg-rose-500' },
-      { source: 'Advertisement (حملة إعلانية / لوحات)', count: 12, percentage: 3, color: 'bg-cyan-500' },
-    ],
+    patientSources: [],
     capacities: {
-      centerOccupancy: 78,
-      totalCapacity: 120,
-      currentBookings: 94,
-      doctors: [
-        { name: 'د. أحمد رمزي - تأهيل العمود الفقري', current: 19, max: 20 },
-        { name: 'د. سارة فوزي - العلاج المائي والرياضي', current: 14, max: 20 },
-        { name: 'د. محمود سعيد - تأهيل ما بعد الجوانح', current: 20, max: 20 },
-        { name: 'د. علياء عادل - تأهيل القوام والأطفال', current: 11, max: 20 },
-      ],
-      rooms: [
-        { name: 'غرفة التأهيل الحركي المكثف (A101)', current: 8, max: 10 },
-        { name: 'صالة العلاج المائي الرياضي (Pool 1)', current: 10, max: 10 },
-        { name: 'غرفة العلاج بالليزر والموجات (L202)', current: 6, max: 8 },
-        { name: 'جناح تشخيص وتقييم المفاصل (V10)', current: 4, max: 6 },
-      ]
+      centerOccupancy: 0,
+      totalCapacity: 0,
+      currentBookings: 0,
+      doctors: [],
+      rooms: [],
     },
     attendance: {
-      totalSessions: 340,
-      attendedCount: 285,
-      attendedPercentage: 83.8,
-      noShowCount: 32,
-      noShowPercentage: 9.4,
-      cancelledCount: 23,
-      cancelledPercentage: 6.8,
-      reasons: [
-        { reason: 'ظرف طارئ للمريض (Patient Emergency)', count: 14 },
-        { reason: 'عدم الحضور دون إشعار (No Show)', count: 12 },
-        { reason: 'ازدحام مروري / تأخر عن الموعد', count: 9 },
-        { reason: 'تعديل جدول الطبيب (Doctor Rescheduled)', count: 6 },
-      ],
-      cancellationReasons: [
-        { reason: 'المريض طلب الإلغاء', count: 11, percentage: 48 },
-        { reason: 'المريض لم يحضر (غياب بدون إشعار)', count: 6, percentage: 26 },
-        { reason: 'الطبيب غير متاح أو في إجازة', count: 3, percentage: 13 },
-        { reason: 'تعارض في المواعيد والجدول', count: 2, percentage: 9 },
-        { reason: 'سبب صحي أو ظرف طارئ للمريض', count: 1, percentage: 4 },
-      ],
-      recentCancellations: [
-        { patientName: 'سارة عبد الله الشيخ', doctorName: 'د. أحمد رمزي', date: '2026-08-01', reason: 'المريض طلب الإلغاء', cancelledBy: 'موظف الاستقبال' },
-        { patientName: 'كريم محمود إسماعيل', doctorName: 'د. سارة فوزي', date: '2026-07-31', reason: 'تعارض في المواعيد والجدول', cancelledBy: 'الاستقبال' },
-        { patientName: 'هدى مصطفى خليل', doctorName: 'د. محمود سعيد', date: '2026-07-30', reason: 'سبب صحي أو ظرف طارئ للمريض', cancelledBy: 'إدارة العمليات' },
-      ]
+      totalSessions: 0,
+      attendedCount: 0,
+      attendedPercentage: 0,
+      noShowCount: 0,
+      noShowPercentage: 0,
+      cancelledCount: 0,
+      cancelledPercentage: 0,
+      reasons: [],
+      cancellationReasons: [],
+      recentCancellations: [],
     },
     packages: {
-      activeCount: 68,
-      endingSoonCount: 7,
-      renewedThisMonth: 19,
-      list: [
-        { patientName: 'سعد الله إبراهيم', packageTitle: 'باقة التأهيل الشامل (24 جلسة)', used: 22, total: 24, doctor: 'د. أحمد رمزي', status: 'ending_soon' },
-        { patientName: 'منى عبد المقصود', packageTitle: 'باقة التميز العلاجي (12 جلسة)', used: 11, total: 12, doctor: 'د. سارة فوزي', status: 'ending_soon' },
-        { patientName: 'خالد مصطفى شاهين', packageTitle: 'باقة التأهيل السريع (6 جلسات)', used: 5, total: 6, doctor: 'د. محمود سعيد', status: 'ending_soon' },
-        { patientName: 'نورا سعيد يوسف', packageTitle: 'باقة العلاج المائي الرياضي (12)', used: 4, total: 12, doctor: 'د. علياء عادل', status: 'active' },
-        { patientName: 'علي رضا هلال', packageTitle: 'باقة علاج العمود الفقري (24)', used: 16, total: 24, doctor: 'د. أحمد رمزي', status: 'active' },
-      ]
+      activeCount: 0,
+      endingSoonCount: 0,
+      renewedThisMonth: 0,
+      list: [],
     },
     finance: {
-      verifiedRevenue: '142,500 ج.م',
-      pendingAmount: '18,400 ج.م',
-      outstandingBalances: '9,250 ج.م',
-      recentVerifications: [
-        { patient: 'أحمد محمود سليمان', amount: '4,500 ج.م', date: '2026-08-01', status: 'VERIFIED', type: 'باقة تأهيل 12 جلسة' },
-        { patient: 'ريماز عبد الرزاق', amount: '1,200 ج.م', date: '2026-08-01', status: 'PENDING_FINANCE', type: 'جلسة تقييم متخصص' },
-        { patient: 'ياسر نور الدين', amount: '8,400 ج.م', date: '2026-07-31', status: 'VERIFIED', type: 'باقة العلاج المائي (24)' },
-      ]
-    }
+      verifiedRevenue: 0,
+      pendingAmount: 0,
+      outstandingBalances: 0,
+      recentVerifications: [],
+      discounts: 0,
+      revenueByCategory: [],
+    },
   });
 
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`;
+  const SOURCE_COLORS = ['bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500', 'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500'];
 
   const fetchRealReportData = async () => {
     setLoading(true);
-    const token = localStorage.getItem('mcsos_token');
     try {
-      const res = await fetch(`${API_BASE}/sessions?limit=100`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const rawData = await res.json();
-        const sessions = Array.isArray(rawData) ? rawData : (rawData.data || []);
-        
-        if (sessions.length > 0) {
-          const totalSessions = sessions.length;
-          const attended = sessions.filter(s => s.status === 'ATTENDED' || s.status === 'COMPLETED').length;
-          const cancelled = sessions.filter(s => 
-            s.status === 'CANCELED' || 
-            s.status === 'CANCELLED' || 
-            s.confirm_status === 'DECLINED' || 
-            s.confirm_status === 'CANCELLED' || 
-            s.is_cancelled || 
-            Boolean(s.cancellation_reason)
-          );
-          const noShow = sessions.filter(s => s.status === 'MISSED' || s.status === 'NO_SHOW').length;
+      const [source, capacity, attendance, packages, finance] = await Promise.all([
+        reportsService.getPatientSource(rangeFrom, rangeTo),
+        reportsService.getCapacity(rangeFrom, rangeTo),
+        reportsService.getAttendance(rangeFrom, rangeTo),
+        reportsService.getPackages(rangeFrom, rangeTo),
+        reportsService.getFinance(rangeFrom, rangeTo),
+      ]);
 
-          // Process real cancellation reasons
-          const reasonCounts = {};
-          const recentCancels = [];
+      const lastCapacityDay = capacity.days?.[capacity.days.length - 1];
+      const center = lastCapacityDay?.center;
 
-          cancelled.forEach(s => {
-            const reason = s.cancellation_reason || (isRTL ? 'إلغاء مباشر' : 'Direct Cancellation');
-            reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
-
-            const pName = s.patient ? `${s.patient.first_name || ''} ${s.patient.last_name || ''}`.trim() : (isRTL ? 'مريض' : 'Patient');
-            const dName = s.doctor?.name || (isRTL ? 'غير محدد' : 'N/A');
-            const dateStr = s.session_date ? s.session_date.split('T')[0] : '';
-            
-            recentCancels.push({
-              patientName: pName,
-              doctorName: dName,
-              date: dateStr,
-              reason: reason,
-              cancelledBy: s.cancelled_by || (isRTL ? 'موظف الاستقبال' : 'Reception')
-            });
-          });
-
-          const formattedReasons = Object.entries(reasonCounts).map(([reason, count]) => ({
-            reason,
-            count,
-            percentage: cancelled.length > 0 ? Math.round((count / cancelled.length) * 100) : 0
-          }));
-
-          setReportData(prev => ({
-            ...prev,
-            attendance: {
-              ...prev.attendance,
-              totalSessions,
-              attendedCount: attended,
-              attendedPercentage: totalSessions > 0 ? Math.round((attended / totalSessions) * 100) : prev.attendance.attendedPercentage,
-              noShowCount: noShow,
-              noShowPercentage: totalSessions > 0 ? Math.round((noShow / totalSessions) * 100) : prev.attendance.noShowPercentage,
-              cancelledCount: cancelled.length,
-              cancelledPercentage: totalSessions > 0 ? Math.round((cancelled.length / totalSessions) * 100) : prev.attendance.cancelledPercentage,
-              cancellationReasons: formattedReasons.length > 0 ? formattedReasons : prev.attendance.cancellationReasons,
-              recentCancellations: recentCancels.length > 0 ? recentCancels : prev.attendance.recentCancellations
-            }
-          }));
-        }
-      }
+      setReportData((prev) => ({
+        ...prev,
+        patientSources: (source.sources || []).map((item, index) => ({
+          source: item.source === 'unknown'
+            ? (isRTL ? 'غير محدد' : 'Unknown')
+            : item.source,
+          count: item.count,
+          percentage: item.percentage,
+          color: SOURCE_COLORS[index % SOURCE_COLORS.length],
+        })),
+        capacities: {
+          centerOccupancy: center?.pct ?? 0,
+          totalCapacity: center?.limit ?? 0,
+          currentBookings: center?.used ?? 0,
+          doctors: (lastCapacityDay?.doctors || []).map((d) => ({
+            name: d.name,
+            current: d.used,
+            max: d.limit ?? 0,
+            state: d.state,
+            pct: d.pct,
+          })),
+          rooms: (lastCapacityDay?.rooms || []).map((r) => ({
+            name: r.name,
+            current: r.used,
+            max: r.limit ?? 0,
+            state: r.state,
+            pct: r.pct,
+          })),
+        },
+        attendance: {
+          ...prev.attendance,
+          totalSessions: attendance.totals?.sessions ?? 0,
+          attendedCount: attendance.totals?.attended ?? 0,
+          attendedPercentage: attendance.totals?.attendance_pct ?? 0,
+          noShowCount: attendance.totals?.missed ?? 0,
+          noShowPercentage: attendance.totals?.no_show_pct ?? 0,
+          cancelledCount: attendance.totals?.cancelled ?? 0,
+          cancelledPercentage: attendance.totals?.cancellation_pct ?? 0,
+        },
+        packages: {
+          ...prev.packages,
+          activeCount: packages.active_packages ?? 0,
+          endingSoonCount: packages.ending_soon ?? 0,
+          renewedThisMonth: packages.renewals_in_period ?? 0,
+        },
+        finance: {
+          verifiedRevenue: finance.verified_payments?.amount ?? 0,
+          pendingAmount: finance.pending_payments?.amount ?? 0,
+          outstandingBalances: finance.outstanding_balance ?? 0,
+          discounts: finance.discounts_granted ?? 0,
+          revenueByCategory: finance.revenue_by_category ?? [],
+        },
+      }));
     } catch (error) {
-      console.error('Error fetching report sessions:', error);
+      console.error('Error fetching reports:', error);
+      toast.error(isRTL ? 'فشل تحميل التقارير' : 'Failed to load reports');
     } finally {
       setLoading(false);
     }
@@ -172,7 +137,7 @@ export default function ReportsDashboard() {
 
   useEffect(() => {
     fetchRealReportData();
-  }, []);
+  }, [rangeFrom, rangeTo]);
 
   const handleExportPDF = () => {
     toast.success(isRTL ? 'تم تجهيز وتصدير التقرير بنجاح 📑' : 'Report exported successfully!');
@@ -196,9 +161,21 @@ export default function ReportsDashboard() {
               : 'Monitor operational utilization, attendance, package progress, and financial metrics'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="date"
+            value={rangeFrom}
+            onChange={(e) => setRangeFrom(e.target.value)}
+            className="px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800"
+          />
+          <input
+            type="date"
+            value={rangeTo}
+            onChange={(e) => setRangeTo(e.target.value)}
+            className="px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800"
+          />
           <button
-            onClick={() => { fetchRealReportData(); toast.success('تم تحديث البيانات 🔄'); }}
+            onClick={() => { fetchRealReportData(); toast.success(isRTL ? 'تم تحديث البيانات' : 'Data refreshed'); }}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 font-bold text-gray-700 dark:text-gray-200 rounded-xl text-xs transition flex items-center gap-2 shadow-xs"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -320,7 +297,9 @@ export default function ReportsDashboard() {
                   {isRTL ? 'سعة ومعدل إشغال الأطباء اليومي (Max: 20 مرضى/دكتور)' : 'Doctor Daily Occupancy (Max: 20 patients)'}
                 </h3>
                 {reportData.capacities.doctors.map((doc, i) => {
-                  const cap = getCapacityIndicator(doc.current, doc.max);
+                  const cap = doc.max
+                    ? getCapacityIndicator(doc.current, doc.max)
+                    : getCapacityIndicator(0, 1);
                   return (
                     <div key={i} className="p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200/80 dark:border-gray-800 shadow-2xs space-y-2">
                       <div className="flex items-center justify-between">

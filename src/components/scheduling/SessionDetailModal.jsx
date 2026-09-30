@@ -1,13 +1,18 @@
 // src/components/scheduling/SessionDetailModal.jsx
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { confirmAlert } from '../../utils/confirmAlert'
 import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award, Package, RefreshCw, CheckCircle, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
+import { usePermissions } from '../../context/PermissionsContext'
 
 export default function SessionDetailModal({ isOpen, onClose, session, onUpdate }) {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
+  const { hasPermission } = usePermissions()
+  const canVerifyPayment = hasPermission('finance.verify_payment')
+  const canEditEvaluation = hasPermission('sessions.evaluation_report')
   const [submitting, setSubmitting] = useState(false)
   const [notes, setNotes] = useState({
     doctorNotes: session?.doctor_notes || '',
@@ -86,7 +91,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
   }, [isOpen])
 
   const fetchDoctorsAndRooms = async () => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const docsRes = await fetch(`${API_BASE}/doctors?limit=50`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -140,7 +145,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
 
   const handleAction = async (actionType, body = {}) => {
     setSubmitting(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     let url = `${API_BASE}/sessions/${session.id}`
     let method = 'PUT'
 
@@ -201,7 +206,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
 
   const handleSaveEvaluation = async () => {
     setSubmitting(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const res = await fetch(`${API_BASE}/sessions/${session.id}/evaluation-report`, {
         method: 'PUT',
@@ -224,7 +229,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
 
   const handleSaveReAssessment = async () => {
     setSubmitting(true)
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const res = await fetch(`${API_BASE}/sessions/${session.id}/evaluation-report`, {
         method: 'PUT',
@@ -656,7 +661,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                 </div>
 
                 {/* Elegant Payment Verification Action Banner when unverified */}
-                {!session.payment_verified && !session.is_deducted && session.status !== 'CANCELED' && (
+                {canVerifyPayment && !session.payment_verified && !session.is_deducted && session.status !== 'CANCELED' && (
                   <div className="col-span-2 p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center justify-between gap-3 shadow-sm">
                     <div className="flex items-center gap-2.5 text-emerald-900 dark:text-emerald-300">
                       <CreditCard size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -821,7 +826,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
             )}
 
           {/* Phase 6: Doctor Assessment Evaluation & Recommended Packages Report */}
-          {session.session_type === 'ASSESSMENT' && (
+          {session.session_type === 'ASSESSMENT' && canEditEvaluation && (
             <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/80 dark:from-gray-900/90 dark:to-indigo-950/40 rounded-2xl border-2 border-blue-200 dark:border-indigo-800/80 shadow-md space-y-4">
               <div className="flex flex-wrap items-center justify-between border-b pb-3 border-blue-200 dark:border-indigo-800/60 gap-2">
                 <h5 className="text-xs font-extrabold text-blue-950 dark:text-indigo-200 flex items-center gap-2">

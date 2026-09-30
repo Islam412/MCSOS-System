@@ -1,5 +1,6 @@
 // src/pages/dashboard/DoctorDashboard.jsx
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { 
   Users, Calendar, Clock, Activity, CheckCircle, TrendingUp, 
@@ -85,7 +86,7 @@ export default function DoctorDashboard() {
 
   // ========== دالة مساعدة للـ GET ==========
   const get = async (endpoint) => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     const response = await fetch(`${API_BASE}${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -102,7 +103,7 @@ export default function DoctorDashboard() {
 
   // ========== دالة مساعدة للـ POST ==========
   const post = async (endpoint, data) => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
       headers: {
@@ -121,7 +122,7 @@ export default function DoctorDashboard() {
 
   // ========== دالة مساعدة للـ PUT ==========
   const put = async (endpoint, data) => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'PUT',
       headers: {

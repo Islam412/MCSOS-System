@@ -60,7 +60,8 @@ export const prescriptionsService = {
   getPrescriptionsByPatient: async (patientId) => {
     try {
       const response = await get(ENDPOINTS.PRESCRIPTIONS.BY_PATIENT(patientId))
-      return response
+      const list = response?.data || response?.prescriptions || response
+      return Array.isArray(list) ? list : []
     } catch (error) {
       throw error
     }
@@ -76,23 +77,4 @@ export const prescriptionsService = {
     }
   },
 
-  // طباعة روشتة (PDF)
-  printPrescription: async (id) => {
-    try {
-      const response = await get(ENDPOINTS.PRESCRIPTIONS.PRINT(id))
-      return response
-    } catch (error) {
-      throw error
-    }
-  },
-
-  // مزامنة الروشتات
-  syncPrescriptions: async (prescriptions) => {
-    try {
-      const response = await post('/prescriptions/sync', { prescriptions })
-      return response
-    } catch (error) {
-      throw error
-    }
-  },
 }

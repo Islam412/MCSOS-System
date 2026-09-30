@@ -1,5 +1,6 @@
 // src/components/scheduling/SchedulingEngine.jsx
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { Calendar, Clock, Users, Plus, Trash2, Save, Zap, Loader2, RefreshCw, Edit, X, CheckCircle, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -43,7 +44,7 @@ export default function SchedulingEngine() {
 
   // ========== دالة مساعدة للـ GET ==========
   const fetchApi = async (endpoint) => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         headers: {
@@ -63,7 +64,7 @@ export default function SchedulingEngine() {
 
   // ========== دالة مساعدة للـ POST ==========
   const postApi = async (endpoint, data) => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
@@ -86,7 +87,7 @@ export default function SchedulingEngine() {
 
   // ========== دالة مساعدة للـ PUT ==========
   const putApi = async (endpoint, data) => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'PUT',
@@ -109,7 +110,7 @@ export default function SchedulingEngine() {
 
   // ========== دالة مساعدة للـ DELETE ==========
   const deleteApi = async (endpoint) => {
-    const token = localStorage.getItem('mcsos_token')
+    const token = getToken()
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'DELETE',

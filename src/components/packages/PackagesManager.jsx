@@ -1,5 +1,6 @@
 // src/components/packages/PackagesManager.jsx
 import { useState, useEffect, useRef } from 'react'
+import { getToken } from '../../services/api/client'
 import { useTranslation } from 'react-i18next'
 import { Package, Plus, Edit, Trash2, DollarSign, Clock, CheckCircle, XCircle, RefreshCw, Loader2, X, LayoutGrid, List, Search, ChevronDown, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -193,13 +194,13 @@ export default function PackagesManager() {
   const loadServices = async () => {
     try {
       if (isOnline) {
-        const token = localStorage.getItem('mcsos_token')
+        const token = getToken()
         console.log('🔑 Token:', token ? 'موجود' : 'غير موجود')
         
         const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
         const response = await fetch(`${API_BASE}/services`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('mcsos_token')}`,
+            'Authorization': `Bearer ${getToken()}`,
             'Content-Type': 'application/json'
           }
         })
