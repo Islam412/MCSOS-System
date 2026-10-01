@@ -63,13 +63,30 @@ export default function ReportsDashboard() {
   const fetchRealReportData = async () => {
     setLoading(true);
     try {
-      const [source, capacity, attendance, packages, finance] = await Promise.all([
+      const settled = await Promise.allSettled([
         reportsService.getPatientSource(rangeFrom, rangeTo),
         reportsService.getCapacity(rangeFrom, rangeTo),
         reportsService.getAttendance(rangeFrom, rangeTo),
         reportsService.getPackages(rangeFrom, rangeTo),
         reportsService.getFinance(rangeFrom, rangeTo),
       ]);
+
+      const [sourceR, capacityR, attendanceR, packagesR, financeR] = settled;
+      const failed = settled.filter((r) => r.status === 'rejected').length;
+      if (failed === settled.length) {
+        const first = settled[0];
+        throw (first.status === 'rejected' ? first.reason : null) ?? new Error('All reports failed');
+      }
+      if (failed > 0) {
+        console.warn('Some report endpoints failed:', settled.filter((r) => r.status === 'rejected'));
+        toast.error(isRTL ? 'بعض التقارير فشلت في التحميل' : 'Some reports failed to load');
+      }
+
+      const source = sourceR.status === 'fulfilled' ? sourceR.value : { sources: [] };
+      const capacity = capacityR.status === 'fulfilled' ? capacityR.value : { days: [] };
+      const attendance = attendanceR.status === 'fulfilled' ? attendanceR.value : { totals: {} };
+      const packages = packagesR.status === 'fulfilled' ? packagesR.value : {};
+      const finance = financeR.status === 'fulfilled' ? financeR.value : {};
 
       const lastCapacityDay = capacity.days?.[capacity.days.length - 1];
       const center = lastCapacityDay?.center;
