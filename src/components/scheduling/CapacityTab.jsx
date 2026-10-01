@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getToken } from '../../services/api/client'
+import { API_BASE } from '../../services/api/config'
 import { useTranslation } from 'react-i18next'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, User, Search, CheckCircle, XCircle, Clock, Stethoscope, Tag } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -73,7 +74,6 @@ export default function CapacityTab() {
   })
   const [savingSettings, setSavingSettings] = useState(false)
 
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
   const userRole = (() => {
     try {
       const raw = localStorage.getItem('mcsos_user')

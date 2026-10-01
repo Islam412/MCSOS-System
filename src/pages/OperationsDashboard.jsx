@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
 import { doctorsService } from '../services/api'
+import { API_BASE } from '../services/api/config'
 import { useServices } from '../context/ServiceContext'
 
 export default function OperationsDashboard() {
@@ -24,8 +25,6 @@ export default function OperationsDashboard() {
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
-  
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   // ========== بيانات ==========
   const [stats, setStats] = useState({

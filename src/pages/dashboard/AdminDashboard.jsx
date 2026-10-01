@@ -19,6 +19,7 @@ import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 import { usersService, doctorsService, patientsService, invoicesService } from '../../services/api'
+import { API_BASE } from '../../services/api/config'
 import { useServices } from '../../context/ServiceContext'
 
 export default function AdminDashboard() {
@@ -43,7 +44,6 @@ export default function AdminDashboard() {
   const [rbacRolesList, setRbacRolesList] = useState([])
 
   // ========== بيانات من API ==========
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
   const [employees, setEmployees] = useState({
     reception: [],
     doctors: [],

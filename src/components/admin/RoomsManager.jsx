@@ -1,6 +1,7 @@
 // src/components/admin/RoomsManager.jsx
 import { useState, useEffect } from 'react'
 import { getToken } from '../../services/api/client'
+import { API_BASE } from '../../services/api/config'
 import { confirmAlert } from '../../utils/confirmAlert'
 import { useTranslation } from 'react-i18next'
 import { MapPin, Plus, Edit, Trash2, X, Save, Search, RefreshCw, Loader2, DoorOpen } from 'lucide-react'
@@ -25,8 +26,6 @@ export default function RoomsManager() {
     is_active: true,
     max_concurrent_sessions: 1
   })
-
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   useEffect(() => {
     loadRooms()

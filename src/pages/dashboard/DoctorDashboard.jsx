@@ -13,11 +13,9 @@ import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
 import { appointmentsService, patientsService, prescriptionsService } from '../../services/api'
+import { API_BASE } from '../../services/api/config'
 import { useServices } from '../../context/ServiceContext'
 import SessionDetailModal from '../../components/scheduling/SessionDetailModal'
-
-// ✅ عنوان الـ API
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
 export default function DoctorDashboard() {
   const { t, i18n } = useTranslation()

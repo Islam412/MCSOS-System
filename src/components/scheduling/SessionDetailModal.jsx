@@ -1,6 +1,7 @@
 // src/components/scheduling/SessionDetailModal.jsx
 import { useState, useEffect } from 'react'
 import { getToken } from '../../services/api/client'
+import { API_BASE } from '../../services/api/config'
 import { confirmAlert } from '../../utils/confirmAlert'
 import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User, Stethoscope, FileText, CreditCard, Printer, ClipboardCheck, Award, Package, RefreshCw, CheckCircle, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -140,8 +141,6 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
   const isAdmin = currentUser?.role === 'admin'
 
   if (!isOpen || !session) return null
-
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   const handleAction = async (actionType, body = {}) => {
     setSubmitting(true)

@@ -8,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { authService } from '../../services/api'
+import { API_BASE } from '../../services/api/config'
 
 export default function DashboardLayout() {
   const { t, i18n } = useTranslation()
@@ -20,7 +21,7 @@ export default function DashboardLayout() {
   const [notifications, setNotifications] = useState([])
   const isRTL = i18n.language === 'ar'
   
-  const apiBase = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
+  const apiBase = API_BASE
 
   const mapNotification = (item) => ({
     id: item.id,

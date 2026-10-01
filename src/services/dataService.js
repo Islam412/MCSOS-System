@@ -2,6 +2,7 @@
 // API helpers for dashboards. No invented demo numbers — empty/error on failure (T-012 stage 1).
 
 import { getToken } from './api/client'
+import { API_BASE } from './api/config'
 
 const STORAGE_KEYS = {
   STATS: 'mcsos_stats',
@@ -12,8 +13,6 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'mcsos_transactions',
   PACKAGES: 'mcsos_packages'
 }
-
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
 async function apiFetch(endpoint, options = {}) {
   const token = getToken()

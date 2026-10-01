@@ -15,9 +15,8 @@ import { useTheme } from '../../context/ThemeContext'
 
 // ========== استيراد الخدمات ==========
 import { authService, usersService } from '../../services/api'
+import { API_BASE } from '../../services/api/config'
 import { useServices } from '../../context/ServiceContext'
-
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
 // خدمة حفظ واسترجاع بيانات المستخدم
 const STORAGE_KEY = 'mcsos_user_profile'

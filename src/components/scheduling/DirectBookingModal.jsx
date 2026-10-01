@@ -1,6 +1,7 @@
 // src/components/scheduling/DirectBookingModal.jsx
 import { useState, useEffect, useRef } from 'react'
 import { getToken } from '../../services/api/client'
+import { API_BASE } from '../../services/api/config'
 import { useTranslation } from 'react-i18next'
 import { X, Search, Plus, User, ClipboardList, MapPin, Loader2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -67,7 +68,6 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
   const [selectedSuggestion, setSelectedSuggestion] = useState(null)
   
   const searchTimeoutRef = useRef(null)
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
   
   useEffect(() => {
     if (rooms && rooms.length > 0) {

@@ -1,6 +1,7 @@
 // src/components/scheduling/AddToWaitlistModal.jsx
 import { useState, useEffect, useRef } from 'react'
 import { getToken } from '../../services/api/client'
+import { API_BASE } from '../../services/api/config'
 import { useTranslation } from 'react-i18next'
 import { X, Search, Plus, User, ClipboardList, Loader2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -24,7 +25,6 @@ export default function AddToWaitlistModal({ isOpen, onClose, doctors, onAddComp
   const [notes, setNotes] = useState('')
   
   const searchTimeoutRef = useRef(null)
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   useEffect(() => {
     if (!isOpen) return

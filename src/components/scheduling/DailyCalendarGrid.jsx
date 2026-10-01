@@ -8,6 +8,7 @@ import DirectBookingModal from './DirectBookingModal'
 import AddPatientModal from '../common/AddPatientModal'
 import BookingCalendar from './BookingCalendar'
 import { appointmentsService } from '../../services/api'
+import { API_BASE } from '../../services/api/config'
 import { validateAppointmentReschedule } from '../../utils/schedulingValidation'
 import { getBilingualConflictMessage } from '../../utils/conflictToastMessage'
 import { restoreSessionPlacement } from '../../utils/sessionPlacement'
@@ -34,8 +35,6 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   const [selectedSpecialization, setSelectedSpecialization] = useState('')
   const [selectedShift, setSelectedShift] = useState('all') // 'all', 'morning', 'evening'
   const [selectedStatus, setSelectedStatus] = useState('all') // 'all', 'confirmed', 'cancelled', 'pending'
-
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
   // Time slots from 08:00 to 21:00 (one-hour intervals)
   let timeSlots = []

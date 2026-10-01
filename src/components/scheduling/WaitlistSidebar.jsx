@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getToken } from '../../services/api/client'
+import { API_BASE } from '../../services/api/config'
 import { useTranslation } from 'react-i18next'
 import { User, ClipboardList, RefreshCw, Check, AlertCircle, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -12,8 +13,6 @@ export default function WaitlistSidebar({ onSelectEntry, selectedEntryId, refres
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
   
   useEffect(() => {
     fetchWaitlist()

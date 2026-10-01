@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 
 // ========== استيراد الخدمات ==========
 import { doctorsService } from '../../services/api'
+import { API_BASE } from '../../services/api/config'
 import { useServices } from '../../context/ServiceContext'
 
 // ========== استيراد المكونات الجديدة ==========
@@ -15,9 +16,6 @@ import SessionDetailModal from './SessionDetailModal'
 import WaitlistSidebar from './WaitlistSidebar'
 import SchedulingPackages from './SchedulingPackages'
 import CapacityTab from './CapacityTab'
-
-// ========== عنوان الـ API ==========
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app'}/api/v1`
 
 export default function SchedulingEngine() {
   const { t, i18n } = useTranslation()

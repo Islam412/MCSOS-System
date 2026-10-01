@@ -1,9 +1,25 @@
 // src/services/api/config.js
 
+// دالة تحديد عنوان الـ API بشكل ديناميكي وذكي
+export const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL
+  // إذا كان التطبيق يعمل داخل المتصفح على دومين حقيقي (وليس localhost)
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    if (!isLocalhost) {
+      // إذا كان المتغير يشير إلى localhost أو فارغ، نستخدم رابط الـ Production تلقائياً
+      if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+        return 'https://medical-center-app-production.up.railway.app'
+      }
+    }
+  }
+  return envUrl || 'https://medical-center-app-production.up.railway.app'
+}
+
 // تكوين API
 export const API_CONFIG = {
   // ✅ BASE_URL بدون /api في النهاية لتجنب التكرار
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://medical-center-app-production.up.railway.app',
+  BASE_URL: getApiBaseUrl(),
   TIMEOUT: 30000,
   RETRY_COUNT: 3,
   RETRY_DELAY: 1000,
@@ -12,6 +28,8 @@ export const API_CONFIG = {
     'Accept': 'application/json',
   }
 }
+
+export const API_BASE = `${API_CONFIG.BASE_URL}/api/v1`
 
 // نقاط النهاية (Endpoints) - ✅ تم التحديث حسب Swagger مع إضافة /api/v1
 export const ENDPOINTS = {
