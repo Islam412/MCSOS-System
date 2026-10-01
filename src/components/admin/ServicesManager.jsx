@@ -9,6 +9,7 @@ import {
 import toast from 'react-hot-toast'
 import { servicesService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+import PageLoader from '../common/PageLoader'
 
 const CATEGORIES = [
   { id: 'ALL', labelAr: 'جميع الخدمات', labelEn: 'All Services', icon: Layers, color: 'bg-slate-700 text-white', hover: 'hover:bg-slate-600' },
@@ -200,12 +201,9 @@ export default function ServicesManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={36} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-slate-600 dark:text-white font-medium">{isRTL ? 'جاري تحميل بيان الخدمات والأسعار...' : 'Loading services & pricing...'}</div>
-        </div>
-      </div>
+      <PageLoader
+        label={isRTL ? 'جاري تحميل بيان الخدمات والأسعار...' : 'Loading services & pricing...'}
+      />
     )
   }
 

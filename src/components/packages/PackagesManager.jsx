@@ -3,8 +3,9 @@ import { useState, useEffect, useRef } from 'react'
 import { getToken } from '../../services/api/client'
 import { API_BASE } from '../../services/api/config'
 import { useTranslation } from 'react-i18next'
-import { Package, Plus, Edit, Trash2, DollarSign, Clock, CheckCircle, XCircle, RefreshCw, Loader2, X, LayoutGrid, List, Search, ChevronDown, Check } from 'lucide-react'
+import { Package, Plus, Edit, Trash2, DollarSign, Clock, CheckCircle, XCircle, RefreshCw, X, LayoutGrid, List, Search, ChevronDown, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
+import PageLoader from '../common/PageLoader'
 
 // ========== استيراد الخدمات ==========
 import { packagesService } from '../../services/api'
@@ -557,14 +558,7 @@ export default function PackagesManager() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-white">جاري التحميل...</div>
-        </div>
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

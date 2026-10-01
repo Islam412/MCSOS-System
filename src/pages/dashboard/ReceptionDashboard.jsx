@@ -9,6 +9,7 @@ import {
   User, Loader2, RefreshCw
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import PageLoader from '../../components/common/PageLoader'
 
 // ========== استيراد الخدمات ==========
 import { patientsService, appointmentsService, doctorsService } from '../../services/api'
@@ -767,14 +768,7 @@ export default function ReceptionDashboard() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-white">جاري التحميل...</div>
-        </div>
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

@@ -209,6 +209,33 @@ th, td {
   animation: fadeIn 0.3s ease-out;
 }
 
+/* Page loader — dual-ring reverse + soft breathe */
+@keyframes page-loader-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes page-loader-breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+.page-loader-ring-reverse {
+  animation: page-loader-spin-reverse 0.85s linear infinite;
+}
+
+.page-loader-breathe {
+  animation: page-loader-breathe 2.2s ease-in-out infinite;
+}
+
 /* سكرول بار مخصص */
 ::-webkit-scrollbar {
   width: 8px;

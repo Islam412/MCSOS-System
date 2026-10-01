@@ -1,9 +1,12 @@
 import { Navigate } from 'react-router-dom'
 import { getToken } from '../../services/api/client'
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { authService } from '../../services/api'
+import PageLoader from './PageLoader'
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
+  const { i18n } = useTranslation()
   const [isLoading, setIsLoading] = useState(true)
   const [isValid, setIsValid] = useState(false)
   const [user, setUser] = useState(null)
@@ -36,12 +39,10 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">جاري التحقق من الجلسة...</p>
-        </div>
-      </div>
+      <PageLoader
+        fullscreen
+        label={i18n.language === 'ar' ? 'جاري التحقق من الجلسة...' : 'Verifying session...'}
+      />
     )
   }
 

@@ -17,6 +17,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { authService, usersService } from '../../services/api'
 import { API_BASE } from '../../services/api/config'
 import { useServices } from '../../context/ServiceContext'
+import PageLoader from '../../components/common/PageLoader'
 
 // خدمة حفظ واسترجاع بيانات المستخدم
 const STORAGE_KEY = 'mcsos_user_profile'
@@ -406,12 +407,9 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-white">جاري تحميل الملف الشخصي...</div>
-        </div>
-      </div>
+      <PageLoader
+        label={i18n.language === 'ar' ? 'جاري تحميل الملف الشخصي...' : 'Loading profile...'}
+      />
     )
   }
   

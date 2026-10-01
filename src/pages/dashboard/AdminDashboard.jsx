@@ -12,8 +12,7 @@ import {
   Clock as ClockIcon, Check, XCircle, AlertTriangle, Star, Phone, Mail,
   PieChart as LucidePieChart, LineChart as LineChartIcon, Settings, Bell, Home,
   MapPin, Droplet, FileBadge, UserCircle, Briefcase, Syringe, Thermometer,
-  Package, Box, Database, CreditCard, Wallet, Truck, Clipboard,
-  Loader2
+  Package, Box, Database, CreditCard, Wallet, Truck, Clipboard
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -21,6 +20,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { usersService, doctorsService, patientsService, invoicesService } from '../../services/api'
 import { API_BASE } from '../../services/api/config'
 import { useServices } from '../../context/ServiceContext'
+import PageLoader from '../../components/common/PageLoader'
 
 export default function AdminDashboard() {
   const { t, i18n } = useTranslation()
@@ -110,8 +110,7 @@ export default function AdminDashboard() {
         loadEmployees(),
         loadMedicalSupplies(),
         loadTreatmentTypes(),
-        loadInventoryStats(),
-        loadDashboardStats()
+        loadInventoryStats()
       ])
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -290,41 +289,6 @@ export default function AdminDashboard() {
     }
   }
 
-  // ========== تحميل إحصائيات لوحة التحكم من API ==========
-  const loadDashboardStats = async () => {
-    try {
-      if (!isOnline) return
-
-      // ✅ استخدام الـ Endpoints المتوفرة في الـ API
-      const endpoints = [
-        { key: 'operations', url: '/v1/stats/operations' },
-        { key: 'doctor', url: '/v1/stats/doctor' },
-        { key: 'finance', url: '/v1/stats/finance' }
-      ]
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(`${API_BASE.replace('/v1', '')}${endpoint.url}`, {
-            headers: {
-              'Authorization': `Bearer ${getToken()}`,
-              'Content-Type': 'application/json'
-            }
-          })
-          
-          if (response.ok) {
-            const data = await response.json()
-            console.log(`${endpoint.key} stats:`, data)
-          }
-        } catch (e) {
-          console.warn(`Error loading ${endpoint.key} stats:`, e)
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error loading dashboard stats:', error)
-    }
-  }
-
   // ========== دوال مساعدة ==========
   const getStatusBadge = (status) => {
     switch(status?.toLowerCase()) {
@@ -434,14 +398,7 @@ export default function AdminDashboard() {
   const totalFinance = Array.isArray(employees.finance) ? employees.finance.length : 0
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <p className="text-gray-400">جاري تحميل البيانات...</p>
-        </div>
-      </div>
-    )
+    return <PageLoader label={isRTL ? 'جاري تحميل البيانات...' : 'Loading data...'} />
   }
 
   return (

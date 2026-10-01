@@ -1,13 +1,14 @@
 // src/pages/patient/Appointments.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { 
   Calendar, Clock, MapPin, Stethoscope, CheckCircle, CalendarDays, 
   Bell, MessageCircle, Eye, Plus, Search, Filter, X, 
   User, Phone, Mail, AlertCircle, Video, Download, Printer,
   ChevronRight, ChevronLeft, Sparkles, Heart, Shield, Star,
   ArrowRight, Clock8, CalendarCheck, Building, Smartphone, Award,
-  Send, Copy, Share2, Bookmark, Trash2, Edit, Loader2
+  Send, Copy, Share2, Bookmark, Trash2, Edit
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { confirmAlert } from '../../utils/confirmAlert'
@@ -16,9 +17,12 @@ import BookingCalendar from '../../components/scheduling/BookingCalendar'
 // ========== استيراد الخدمات ==========
 import { appointmentsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+import PageLoader from '../../components/common/PageLoader'
 
 export default function Appointments() {
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
+  const isRTL = i18n.language === 'ar'
   
   // ========== استخدام خدمات API ==========
   const { isOnline, executeWithOfflineSupport } = useServices()
@@ -372,12 +376,10 @@ export default function Appointments() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <p className="text-gray-400">جاري تحميل مواعيدك...</p>
-        </div>
-      </div>
+      <PageLoader
+        className="min-h-[60vh]"
+        label={isRTL ? 'جاري تحميل مواعيدك...' : 'Loading your appointments...'}
+      />
     )
   }
 

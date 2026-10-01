@@ -12,7 +12,7 @@ import {
   Thermometer, Droplet, Microscope, Scissors, Ambulance,
   Printer, Bookmark, CalendarCheck, VideoIcon, PhoneCall, Clock8,
   Filter as FilterIcon, ChevronLeft, ChevronRight, XCircle, Briefcase,
-  Loader2, RefreshCw
+  RefreshCw
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -21,6 +21,7 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 // ========== استيراد الخدمات ==========
 import { patientsService, doctorsService, appointmentsService, prescriptionsService } from '../../services/api'
 import { useServices } from '../../context/ServiceContext'
+import PageLoader from '../../components/common/PageLoader'
 
 export default function PatientDashboard() {
   const { t, i18n } = useTranslation()
@@ -681,12 +682,10 @@ ${report.description || 'لا يوجد وصف تفصيلي'}
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <p className="text-white text-lg">جاري تحميل بياناتك الصحية...</p>
-        </div>
-      </div>
+      <PageLoader
+        fullscreen
+        label={i18n.language === 'ar' ? 'جاري تحميل بياناتك الصحية...' : 'Loading your health data...'}
+      />
     )
   }
 

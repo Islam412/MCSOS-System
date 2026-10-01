@@ -16,6 +16,7 @@ import { appointmentsService, patientsService, prescriptionsService } from '../.
 import { API_BASE } from '../../services/api/config'
 import { useServices } from '../../context/ServiceContext'
 import SessionDetailModal from '../../components/scheduling/SessionDetailModal'
+import PageLoader from '../../components/common/PageLoader'
 
 export default function DoctorDashboard() {
   const { t, i18n } = useTranslation()
@@ -530,14 +531,7 @@ export default function DoctorDashboard() {
   const scheduledPatients = todaySchedule.filter(app => app.status === 'scheduled' || app.status === 'upcoming' || app.status === 'pending')
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <p className="text-gray-400">جاري التحميل...</p>
-        </div>
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

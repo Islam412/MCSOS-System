@@ -10,6 +10,7 @@ import {
   Lock, Key, Unlock, Plus, X, Save, UserCog, UserRound
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import PageLoader from '../common/PageLoader'
 
 // ========== استيراد الخدمات ==========
 import { usersService } from '../../services/api'
@@ -368,14 +369,7 @@ export default function UsersManager() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-white">جاري التحميل...</div>
-        </div>
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

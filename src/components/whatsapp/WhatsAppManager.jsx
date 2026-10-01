@@ -19,6 +19,7 @@ import {
   Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import PageLoader from '../common/PageLoader'
 
 // ========== استيراد الخدمات ==========
 import { whatsappService } from '../../services/api'
@@ -579,14 +580,7 @@ export default function WhatsAppManager() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-green-500 animate-spin mb-4" />
-          <div className="text-white">جاري التحميل...</div>
-        </div>
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

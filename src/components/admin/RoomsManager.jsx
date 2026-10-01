@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Plus, Edit, Trash2, X, Save, Search, RefreshCw, Loader2, DoorOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useServices } from '../../context/ServiceContext'
+import PageLoader from '../common/PageLoader'
 
 export default function RoomsManager() {
   const { t, i18n } = useTranslation()
@@ -230,10 +231,7 @@ export default function RoomsManager() {
 
       {/* Main Grid list */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <Loader2 className="animate-spin mb-4 text-indigo-600" size={32} />
-          <p>{isRTL ? 'جاري تحميل الغرف...' : 'Loading rooms...'}</p>
-        </div>
+        <PageLoader label={isRTL ? 'جاري تحميل الغرف...' : 'Loading rooms...'} />
       ) : filteredRooms.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center border border-gray-100 dark:border-gray-700">
           <DoorOpen size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />

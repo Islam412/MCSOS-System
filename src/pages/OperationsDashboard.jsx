@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { 
   TrendingUp, Users, Calendar, Activity, Download, 
   Calendar as CalendarIcon, CheckCircle, XCircle, Edit, Plus, 
-  Trash2, RefreshCw, Loader2, FileText, Eye, Printer
+  Trash2, RefreshCw, FileText, Eye, Printer
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import { doctorsService } from '../services/api'
 import { API_BASE } from '../services/api/config'
 import { useServices } from '../context/ServiceContext'
+import PageLoader from '../components/common/PageLoader'
 
 export default function OperationsDashboard() {
   const { t, i18n } = useTranslation()
@@ -457,12 +458,9 @@ export default function OperationsDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-white">جاري تحميل بيانات العمليات...</div>
-        </div>
-      </div>
+      <PageLoader
+        label={isRTL ? 'جاري تحميل بيانات العمليات...' : 'Loading operations data...'}
+      />
     )
   }
 

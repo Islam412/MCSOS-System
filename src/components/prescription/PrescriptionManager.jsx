@@ -14,6 +14,7 @@ import {
   MessageCircle, Send, Copy, Share2, Bookmark
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import PageLoader from '../common/PageLoader'
 
 // ========== استيراد الخدمات ==========
 import { prescriptionsService, patientsService, doctorsService } from '../../services/api'
@@ -594,14 +595,7 @@ export default function PrescriptionManager() {
   })
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto text-blue-500 animate-spin mb-4" />
-          <div className="text-white">جاري التحميل...</div>
-        </div>
-      </div>
-    )
+    return <PageLoader />
   }
 
   return (

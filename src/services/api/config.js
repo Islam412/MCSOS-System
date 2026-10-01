@@ -2,7 +2,11 @@
 
 // دالة تحديد عنوان الـ API بشكل ديناميكي وذكي
 export const getApiBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL
+  const rawEnvUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+  const envUrl = /^https?:\/\//i.test(rawEnvUrl) ? rawEnvUrl.replace(/\/+$/, '') : ''
+  if (rawEnvUrl && !envUrl) {
+    console.error(`Invalid VITE_API_BASE_URL "${rawEnvUrl}" — must start with http:// or https://`)
+  }
   // إذا كان التطبيق يعمل داخل المتصفح على دومين حقيقي (وليس localhost)
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
