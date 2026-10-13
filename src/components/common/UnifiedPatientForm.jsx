@@ -1,5 +1,5 @@
 // src/components/common/UnifiedPatientForm.jsx
-import React, { useState } from 'react'
+import React, { useState, forwardRef, useImperativeHandle } from 'react'
 import { useTranslation } from 'react-i18next'
 import { User, Phone, Mail, MapPin, Briefcase, Calendar, FileText, Upload, X, Loader2, Sparkles, Check, Stethoscope } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -24,14 +24,15 @@ const nationalityToCountryCode = (nat) => {
   return 'EG'
 }
 
-export default function UnifiedPatientForm({
+const UnifiedPatientForm = forwardRef(function UnifiedPatientForm({
   variant = 'modal', // 'modal' | 'inline' | 'compact'
   onSuccess,
   onCancel,
   showExtras = false,
   submitBtnText,
-  initialValues = {}
-}) {
+  initialValues = {},
+  hideActions = false,
+}, ref) {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   const { isOnline } = useServices()
@@ -74,7 +75,7 @@ export default function UnifiedPatientForm({
   const currentAge = calculateAge(form.date_of_birth)
 
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault()
+    if (e?.preventDefault) e.preventDefault()
 
     setLoading(true)
 
@@ -82,10 +83,10 @@ export default function UnifiedPatientForm({
     const hasName = Boolean(form.full_name_ar.trim() || form.first_name.trim() || form.last_name.trim())
     const hasPhone = Boolean(form.phone.trim())
 
-    if (!hasName && !hasPhone) {
-      toast.error(isRTL ? 'الرجاء إدخال اسم المريض أو رقم الهاتف على الأقل' : 'Please enter patient name or phone')
+    if (!hasName || !hasPhone) {
+      toast.error(isRTL ? 'الرجاء إدخال الاسم الكامل ورقم الهاتف' : 'Please enter full name and phone number')
       setLoading(false)
-      return
+      return null
     }
 
     // Name parts logic
@@ -154,21 +155,32 @@ export default function UnifiedPatientForm({
       }
 
       if (onSuccess) onSuccess(createdPatient)
+      return createdPatient
     } catch (error) {
       console.error('Unified Patient Registration error:', error)
       const errorMsg = error?.response?.data?.message
         ? (Array.isArray(error.response.data.message) ? error.response.data.message.join(' - ') : error.response.data.message)
         : (error?.message || (isRTL ? 'فشل تسجيل المريض الجديد' : 'Failed to register patient'))
       toast.error(errorMsg)
+      return null
     } finally {
       setLoading(false)
     }
   }
 
+  useImperativeHandle(ref, () => ({
+    register: () => handleSubmit(),
+  }))
+
   const isCompact = variant === 'compact'
 
+  const Root = hideActions ? 'div' : 'form'
+
   return (
-    <form onSubmit={handleSubmit} className={`space-y-4 ${isRTL ? 'text-right' : 'text-left'}`}>
+    <Root
+      {...(hideActions ? {} : { onSubmit: handleSubmit })}
+      className={`space-y-4 ${isRTL ? 'text-right' : 'text-left'}`}
+    >
       {/* Full Name (4 Parts) */}
       <div>
         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
@@ -454,7 +466,7 @@ export default function UnifiedPatientForm({
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {!hideActions && (
       <div className="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-3">
         {onCancel && (
           <button
@@ -484,6 +496,9 @@ export default function UnifiedPatientForm({
           )}
         </button>
       </div>
-    </form>
+      )}
+    </Root>
   )
-}
+})
+
+export default UnifiedPatientForm

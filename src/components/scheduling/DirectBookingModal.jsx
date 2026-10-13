@@ -5,7 +5,6 @@ import { API_BASE } from '../../services/api/config'
 import { useTranslation } from 'react-i18next'
 import { X, Search, Plus, User, ClipboardList, MapPin, Loader2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { compressImage } from '../../utils/imageCompressor'
 import UnifiedPatientForm from '../common/UnifiedPatientForm'
 
 export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, onBookingComplete }) {
@@ -20,37 +19,6 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
   const [searchQuery, setSearchQuery] = useState('')
   const [patientsList, setPatientsList] = useState([])
   const [selectedPatient, setSelectedPatient] = useState(null)
-  
-  // Registration Form States
-  const [regForm, setRegForm] = useState({
-    fullName: '',
-    phone: '',
-    whatsapp_number: '',
-    sameAsPhone: true,
-    referral_source: '',
-    national_id_front: '',
-    national_id_back: '',
-    national_id_photo: '',
-    gender: 'male',
-    date_of_birth: '',
-    nationality: 'مصري - Egypt',
-    occupation: ''
-  })
-
-  const calculateAge = (dob) => {
-    if (!dob) return null
-    const birthDate = new Date(dob)
-    if (isNaN(birthDate.getTime())) return null
-    const today = new Date()
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const m = today.getMonth() - birthDate.getMonth()
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--
-    }
-    return age > 0 ? age : 0
-  }
-
-  const currentAge = calculateAge(regForm.date_of_birth)
   
   // Booking Fields
   const [sessionType, setSessionType] = useState(() => {
@@ -68,6 +36,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
   const [selectedSuggestion, setSelectedSuggestion] = useState(null)
   
   const searchTimeoutRef = useRef(null)
+  const patientFormRef = useRef(null)
   
   useEffect(() => {
     if (rooms && rooms.length > 0) {
@@ -116,69 +85,13 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
   if (!isOpen || !slotInfo) return null
   const { doctor, timeStr, dateStr } = slotInfo
 
-  // Handle register and submit
-  const handleRegisterPatient = async () => {
-    if (!regForm.fullName.trim() || !regForm.phone) {
-      toast.error(isRTL ? 'الرجاء إدخال الاسم الكامل ورقم الهاتف' : 'Please enter full name and phone number')
-      return null
-    }
-
-    if (!regForm.national_id_front) {
-      toast.error(isRTL ? 'الرجاء رفع صورة الوجه الأمامي للهوية الوطنية (إلزامي)' : 'Please upload Front view of National ID (Required)')
-      return null
-    }
-    
-    const nameParts = regForm.fullName.trim().split(/\s+/)
-    const firstName = nameParts[0] || 'مريض'
-    const lastName = nameParts.slice(1).join(' ') || nameParts[0]
-    
-    const token = getToken()
-    try {
-      setLoading(true)
-      const payload = {
-        first_name: firstName,
-        last_name: lastName,
-        full_name_ar: regForm.fullName.trim(),
-        phone: regForm.phone.trim(),
-        whatsapp_number: regForm.sameAsPhone ? regForm.phone.trim() : (regForm.whatsapp_number.trim() || regForm.phone.trim()),
-        referral_source: regForm.referral_source || undefined,
-        national_id_front: regForm.national_id_front || undefined,
-        national_id_back: regForm.national_id_back || undefined,
-        national_id_photo: regForm.national_id_front || regForm.national_id_photo || undefined,
-        gender: regForm.gender || 'male',
-        date_of_birth: regForm.date_of_birth || undefined,
-        nationality: regForm.nationality || 'Egypt',
-        occupation: regForm.occupation || undefined,
-        age: currentAge !== null ? currentAge : undefined
-      }
-      const response = await fetch(`${API_BASE}/patients`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      })
-      
-      if (!response.ok) throw new Error('Failed to register patient')
-      const newPatient = await response.json()
-      toast.success(isRTL ? 'تم تسجيل المريض بنجاح!' : 'Patient registered successfully!')
-      return newPatient
-    } catch (error) {
-      toast.error(isRTL ? 'فشل تسجيل المريض الجديد' : 'Failed to register new patient')
-      return null
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleBookingSubmit = async (e) => {
     e.preventDefault()
     
     let targetPatientId = selectedPatient?.id
     
     if (mode === 'register') {
-      const registered = await handleRegisterPatient()
+      const registered = await patientFormRef.current?.register()
       if (!registered) return
       targetPatientId = registered.id
     }
@@ -223,20 +136,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
       setSelectedPatient(null)
       setSearchQuery('')
       setReceptionNotes('')
-      setRegForm({
-        fullName: '',
-        phone: '',
-        whatsapp_number: '',
-        sameAsPhone: true,
-        referral_source: '',
-        national_id_front: '',
-        national_id_back: '',
-        national_id_photo: '',
-        gender: 'male',
-        date_of_birth: '',
-        nationality: 'مصري - Egypt',
-        occupation: ''
-      })
+      setMode('select')
       
       if (onBookingComplete) onBookingComplete()
     } catch (error) {
@@ -248,7 +148,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl shadow-2xl border border-gray-150 dark:border-gray-700 overflow-hidden flex flex-col my-8">
+      <div className="bg-white dark:bg-gray-800 w-full max-w-5xl max-h-[94vh] rounded-2xl shadow-2xl border border-gray-150 dark:border-gray-700 overflow-hidden flex flex-col my-4">
         
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-gray-900 dark:to-gray-900">
@@ -303,7 +203,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
           </button>
         </div>
 
-        <form onSubmit={handleBookingSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto max-h-[60vh]">
+        <form onSubmit={handleBookingSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto">
           
           {/* Patient Selection/Creation Section */}
           {mode === 'select' ? (
@@ -324,7 +224,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
               </div>
 
               {/* Suggestions List */}
-              <div className="max-h-[160px] overflow-y-auto border border-gray-150 dark:border-gray-700 rounded-xl divide-y divide-gray-100 dark:divide-gray-750 bg-white dark:bg-gray-900 shadow-inner">
+              <div className="max-h-80 overflow-y-auto border border-gray-150 dark:border-gray-700 rounded-xl divide-y divide-gray-100 dark:divide-gray-750 bg-white dark:bg-gray-900 shadow-inner">
                 {searching ? (
                   <div className="p-4 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
                     <Loader2 size={14} className="animate-spin text-indigo-500" />
@@ -382,11 +282,11 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                 {isRTL ? 'بيانات المريض الجديد' : 'New Patient Info'}
               </h4>
               <UnifiedPatientForm
+                ref={patientFormRef}
                 variant="compact"
-                submitBtnText={isRTL ? 'حفظ المريض واختياره للحجز' : 'Save & Select Patient'}
+                hideActions
                 onSuccess={(newPatient) => {
                   setSelectedPatient(newPatient)
-                  setMode('search')
                 }}
               />
             </div>
@@ -396,6 +296,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
 
           {/* Session Parameters */}
           <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 {isRTL ? 'نوع الجلسة' : 'Session Type'}
@@ -454,17 +355,18 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                 </select>
               </div>
             </div>
+            </div>
 
             {/* Phase 8: Auto Booking Suggestions Card */}
             <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/80 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                  🤖 {isRTL ? 'اقتراح المواعيد التلقائي الذكي (Phase 8)' : 'Auto Booking Suggestions'}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5 min-w-0">
+                  {isRTL ? 'اقتراح المواعيد التلقائي' : 'Auto Booking Suggestions'}
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowSuggestions(!showSuggestions)}
-                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition shadow-2xs"
+                  className="shrink-0 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition shadow-2xs"
                 >
                   {showSuggestions ? (isRTL ? 'إخفاء الاقتراحات ✖' : 'Hide') : (isRTL ? '✨ توليد اقتراحات متاحة' : '✨ Generate Options')}
                 </button>
