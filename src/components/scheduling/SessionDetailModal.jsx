@@ -180,7 +180,19 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
       })
 
       if (!response.ok) {
-        throw new Error('فشلت العملية')
+        let message = isRTL ? 'فشلت العملية' : 'Operation failed'
+        try {
+          const errBody = await response.json()
+          const raw = errBody?.message
+          if (raw && typeof raw === 'object') {
+            message = isRTL ? (raw.ar || raw.en || message) : (raw.en || raw.ar || message)
+          } else if (typeof raw === 'string' && raw !== 'Forbidden resource' && raw !== 'Internal server error') {
+            message = raw
+          }
+        } catch {
+          // keep the generic message
+        }
+        throw new Error(message)
       }
 
       const updatedSession = method === 'DELETE' ? null : await response.json()
