@@ -518,15 +518,15 @@ export default function AdminDashboard() {
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             employees.doctors.map(doctor => (
-              <div key={doctor.id} className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50 hover:border-blue-500/30 transition">
+              <div key={doctor.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-blue-500/30 transition">
                 <div className="flex justify-between items-start">
-                  <div><h3 className="text-lg font-bold text-white">{doctor.name}</h3><p className="text-blue-400">{doctor.specialty || doctor.specialization}</p></div>
-                  <div className="text-right"><div className="text-green-400 font-bold">{doctor.rating || '4.5'} ⭐</div><p className="text-xs text-gray-400">{doctor.patientsCount || 0} مريض</p></div>
+                  <div><h3 className="text-base font-semibold text-slate-900">{doctor.name}</h3><p className="text-blue-400">{doctor.specialty || doctor.specialization}</p></div>
+                  <p className="text-xs text-slate-500 tabular-nums">{doctor.patientsCount || 0} مريض</p>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /><span className="text-gray-300 dir-ltr">{doctor.phone}</span></div>
-                  <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="text-gray-300">{doctor.email}</span></div>
-                  <div className="flex items-center gap-2"><Activity size={14} className="text-gray-400" /><span className="text-gray-300">{doctor.sessionsCount || 0} جلسة</span></div>
+                  <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /><span className="text-slate-600 dir-ltr">{doctor.phone}</span></div>
+                  <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="text-slate-600">{doctor.email}</span></div>
+                  <div className="flex items-center gap-2"><Activity size={14} className="text-gray-400" /><span className="text-slate-600">{doctor.sessionsCount || 0} جلسة</span></div>
                   <div className="flex items-center gap-2">{getStatusBadge(doctor.status || 'active')}</div>
                 </div>
               </div>
@@ -542,14 +542,14 @@ export default function AdminDashboard() {
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             employees.nurses.map(nurse => (
-              <div key={nurse.id} className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50 hover:border-pink-500/30 transition">
+              <div key={nurse.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-pink-500/30 transition">
                 <div className="flex justify-between items-start">
-                  <div><h3 className="text-lg font-bold text-white">{nurse.name}</h3><p className="text-pink-400">{nurse.department}</p></div>
+                  <div><h3 className="text-base font-semibold text-slate-900">{nurse.name}</h3><p className="text-pink-400">{nurse.department}</p></div>
                   <div className="text-right"><span className="px-2 py-1 rounded-full text-xs bg-pink-500/20 text-pink-400">{nurse.shift || 'صباحي'}</span></div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /><span className="text-gray-300 dir-ltr">{nurse.phone}</span></div>
-                  <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="text-gray-300">{nurse.email}</span></div>
+                  <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /><span className="text-slate-600 dir-ltr">{nurse.phone}</span></div>
+                  <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="text-slate-600">{nurse.email}</span></div>
                   <div className="flex items-center gap-2">{getStatusBadge(nurse.status || 'active')}</div>
                 </div>
               </div>
@@ -565,14 +565,14 @@ export default function AdminDashboard() {
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             employees.reception.map(emp => (
-              <div key={emp.id} className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50 hover:border-green-500/30 transition">
+              <div key={emp.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-green-500/30 transition">
                 <div className="flex justify-between items-start">
-                  <div><h3 className="text-lg font-bold text-white">{emp.name}</h3><p className="text-green-400">{emp.shift || 'صباحي'}</p></div>
+                  <div><h3 className="text-base font-semibold text-slate-900">{emp.name}</h3><p className="text-green-400">{emp.shift || 'صباحي'}</p></div>
                   <div>{getStatusBadge(emp.status || 'active')}</div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /><span className="text-gray-300 dir-ltr">{emp.phone}</span></div>
-                  <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="text-gray-300">{emp.email}</span></div>
+                  <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /><span className="text-slate-600 dir-ltr">{emp.phone}</span></div>
+                  <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="text-slate-600">{emp.email}</span></div>
                 </div>
               </div>
             ))
@@ -587,14 +587,14 @@ export default function AdminDashboard() {
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             employees.finance.map(emp => (
-              <div key={emp.id} className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50 hover:border-purple-500/30 transition">
+              <div key={emp.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-purple-500/30 transition">
                 <div className="flex justify-between items-start">
-                  <div><h3 className="text-lg font-bold text-white">{emp.name}</h3><p className="text-purple-400">{emp.position || 'موظف مالي'}</p></div>
+                  <div><h3 className="text-base font-semibold text-slate-900">{emp.name}</h3><p className="text-purple-400">{emp.position || 'موظف مالي'}</p></div>
                   <div>{getStatusBadge(emp.status || 'active')}</div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /><span className="text-gray-300 dir-ltr">{emp.phone}</span></div>
-                  <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="text-gray-300">{emp.email}</span></div>
+                  <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /><span className="text-slate-600 dir-ltr">{emp.phone}</span></div>
+                  <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="text-slate-600">{emp.email}</span></div>
                 </div>
               </div>
             ))
@@ -606,51 +606,42 @@ export default function AdminDashboard() {
       {activeTab === 'inventory' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl p-4 border border-blue-500/30 text-center">
-              <Package className="mx-auto text-blue-400 mb-2" size={28} />
-              <p className="text-2xl font-bold text-white">{inventory.totalItems || 0}</p>
-              <p className="text-xs text-gray-400">إجمالي الأصناف</p>
-            </div>
-            <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-2xl p-4 border border-green-500/30 text-center">
-              <Database className="mx-auto text-green-400 mb-2" size={28} />
-              <p className="text-2xl font-bold text-white">${inventory.totalValue?.toLocaleString() || 0}</p>
-              <p className="text-xs text-gray-400">قيمة المخزون</p>
-            </div>
-            <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 rounded-2xl p-4 border border-yellow-500/30 text-center">
-              <AlertCircle className="mx-auto text-yellow-400 mb-2" size={28} />
-              <p className="text-2xl font-bold text-yellow-400">{inventory.lowStockItems || 0}</p>
-              <p className="text-xs text-gray-400">أصناف منخفضة</p>
-            </div>
-            <div className="bg-gradient-to-br from-red-500/20 to-red-600/20 rounded-2xl p-4 border border-red-500/30 text-center">
-              <AlertTriangle className="mx-auto text-red-400 mb-2" size={28} />
-              <p className="text-2xl font-bold text-red-400">{inventory.criticalItems || 0}</p>
-              <p className="text-xs text-gray-400">أصناف حرجة</p>
-            </div>
+            {[
+              ['إجمالي الأصناف', inventory.totalItems || 0],
+              ['قيمة المخزون', inventory.totalValue?.toLocaleString() || 0],
+              ['أصناف منخفضة', inventory.lowStockItems || 0],
+              ['أصناف حرجة', inventory.criticalItems || 0],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-white rounded-xl p-4 border border-slate-200">
+                <p className="text-sm text-slate-500">{label}</p>
+                <p className="text-2xl font-semibold text-slate-900 tabular-nums mt-1">{value}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-700/50">
-            <div className="px-6 py-4 border-b border-gray-700/50"><h2 className="text-xl font-bold text-white">المواد الطبية المتاحة</h2></div>
+          <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+            <div className="px-6 py-4 border-b border-slate-200"><h2 className="text-base font-semibold text-slate-900">المواد الطبية المتاحة</h2></div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-800/80">
-                  <tr className={`${isRTL ? 'text-right' : 'text-left'}`}>
-                    <th className="px-4 py-3 text-sm text-gray-300">المنتج</th>
-                    <th className="px-4 py-3 text-sm text-gray-300">الفئة</th>
-                    <th className="px-4 py-3 text-sm text-gray-300">الكمية</th>
-                    <th className="px-4 py-3 text-sm text-gray-300">الوحدة</th>
-                    <th className="px-4 py-3 text-sm text-gray-300">الحالة</th>
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-500">المنتج</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-500">الفئة</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-500">الكمية</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-500">الوحدة</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-500">الحالة</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700/50">
+                <tbody className="divide-y divide-slate-100">
                   {!Array.isArray(medicalSupplies) || medicalSupplies.length === 0 ? (
-                    <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-400">لا توجد بيانات</td></tr>
+                    <tr><td colSpan="5" className="px-4 py-8 text-center text-slate-500">لا توجد بيانات</td></tr>
                   ) : (
                     medicalSupplies.map(item => (
-                      <tr key={item.id} className="hover:bg-gray-700/30">
-                        <td className="px-4 py-3 font-semibold text-white">{item.name}</td>
-                        <td className="px-4 py-3 text-gray-300">{item.category}</td>
-                        <td className="px-4 py-3 text-gray-300">{item.quantity}</td>
-                        <td className="px-4 py-3 text-gray-300">{item.unit}</td>
+                      <tr key={item.id}>
+                        <td className="px-4 py-3 font-semibold text-slate-900">{item.name}</td>
+                        <td className="px-4 py-3 text-slate-600">{item.category}</td>
+                        <td className="px-4 py-3 text-slate-600 tabular-nums">{item.quantity}</td>
+                        <td className="px-4 py-3 text-slate-600">{item.unit}</td>
                         <td className="px-4 py-3">{getStockStatusBadge(item.quantity, item.lowStock || 10)}</td>
                       </tr>
                     ))
@@ -669,15 +660,15 @@ export default function AdminDashboard() {
             <div className="col-span-2 text-center py-12 text-gray-400">لا توجد بيانات</div>
           ) : (
             treatmentTypes.map(treatment => (
-              <div key={treatment.id} className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50 hover:border-green-500/30 transition">
+              <div key={treatment.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-green-500/30 transition">
                 <div className="flex justify-between items-start">
-                  <div><h3 className="text-lg font-bold text-white">{treatment.name}</h3><p className="text-green-400">{treatment.nameEn}</p></div>
+                  <div><h3 className="text-base font-semibold text-slate-900">{treatment.name}</h3><p className="text-green-400">{treatment.nameEn}</p></div>
                   <div className="text-right"><p className="text-2xl font-bold text-green-400">{treatment.price} <span className="text-xs">ج.م</span></p></div>
                 </div>
                 <p className="text-gray-400 text-sm mt-2">{treatment.description}</p>
                 <div className="mt-3 flex gap-3 text-sm">
-                  <div className="flex items-center gap-2"><Clock size={14} className="text-gray-400" /><span className="text-gray-300">{treatment.sessions} جلسة</span></div>
-                  <div className="flex items-center gap-2"><Activity size={14} className="text-gray-400" /><span className="text-gray-300">المدة: {treatment.duration}</span></div>
+                  <div className="flex items-center gap-2"><Clock size={14} className="text-gray-400" /><span className="text-slate-600">{treatment.sessions} جلسة</span></div>
+                  <div className="flex items-center gap-2"><Activity size={14} className="text-gray-400" /><span className="text-slate-600">المدة: {treatment.duration}</span></div>
                 </div>
               </div>
             ))
