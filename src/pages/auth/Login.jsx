@@ -364,28 +364,6 @@ export default function Login() {
         
         {/* بطاقة تسجيل الدخول */}
         <div className="bg-white/80 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 dark:border-gray-700/50 shadow-2xl">
-          {/* الأيقونات التعريفية */}
-          <div className="flex justify-center gap-4 mb-6">
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center mx-auto mb-2">
-                <Shield size={24} className="text-blue-600 dark:text-blue-400" />
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'آمن' : 'Secure'}</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center mx-auto mb-2">
-                <Heart size={24} className="text-green-600 dark:text-green-400" />
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'رعاية صحية' : 'Healthcare'}</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center mx-auto mb-2">
-                <User size={24} className="text-purple-600 dark:text-purple-400" />
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'مريض أولاً' : 'Patient First'}</p>
-            </div>
-          </div>
-          
           {/* نموذج تسجيل الدخول */}
           <form onSubmit={handleLogin} className="space-y-5">
             {error && (
@@ -422,7 +400,7 @@ export default function Login() {
                   type={showPassword ? 'text' : 'password'}
                   required
                   className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition"
-                  placeholder="********"
+                  placeholder=""
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -460,7 +438,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-teal-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-teal-700 transition-all duration-200 shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-[#1B4F8A] text-white py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -480,10 +458,10 @@ export default function Login() {
           </div>
           
           {/* ========== حسابات تجريبية - الشكل الجديد ========== */}
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <details className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <summary className="text-sm text-slate-500 cursor-pointer">
               {isRTL ? 'حسابات تجريبية' : 'Demo Accounts'}
-            </p>
+            </summary>
             
             {/* Medical Accounts */}
             <div className="mb-3">
@@ -566,12 +544,10 @@ export default function Login() {
             </div>
 
             {/* تلميح */}
-            <div className="mt-3 text-center">
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                💡 {isRTL ? 'انقر على أي حساب لتعبئة البيانات تلقائياً' : 'Click any account to auto-fill credentials'}
-              </span>
-            </div>
-          </div>
+            <p className="mt-3 text-center text-xs text-slate-400">
+              {isRTL ? 'انقر على أي حساب لتعبئة البيانات' : 'Click an account to fill the form'}
+            </p>
+          </details>
         </div>
         
         <p className="text-center text-gray-400 dark:text-gray-500 text-xs mt-8">
