@@ -1,5 +1,8 @@
 // src/App.jsx
+import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { applyDocumentDirection } from './i18n/direction'
 import { ThemeProvider } from './context/ThemeContext'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -35,6 +38,15 @@ import RbacManagerPage from './pages/admin/RbacManagerPage'
 import ContractsManager from './components/contracts/ContractsManager'
 
 function App() {
+  const { i18n } = useTranslation()
+
+  useEffect(() => {
+    applyDocumentDirection(i18n.resolvedLanguage || i18n.language)
+    const onChange = (language) => applyDocumentDirection(language)
+    i18n.on('languageChanged', onChange)
+    return () => i18n.off('languageChanged', onChange)
+  }, [i18n])
+
   return (
     <ThemeProvider>
       {/* ❌ إزالة <Router> من هنا لأنها موجودة في main.jsx */}
