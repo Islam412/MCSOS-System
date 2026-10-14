@@ -1809,24 +1809,30 @@ export default function PatientProfile() {
                 CANCELED: 'text-[#BE123C]',
               }
               return (
-                <div className="px-5 pb-6 md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)] md:gap-8">
-                  <section className="md:border-e md:border-[#E2E8F0] md:pe-8 dark:md:border-slate-700">
+                <div className="px-5 pb-6">
+                  <section>
                     <h3 className="text-sm font-semibold leading-5 text-[#0F172A] dark:text-white">الجلسات</h3>
                     {sessions.length === 0 ? (
                       <p className="mt-3 text-sm leading-6 text-[#64748B]">لا توجد جلسات مسجلة لهذا المريض.</p>
                     ) : (
                       <>
-                        <div className="mt-3 inline-grid grid-cols-3 gap-x-8 items-baseline">
-                          <p className="text-[28px] font-semibold leading-8 text-[#0F172A] dark:text-slate-50 tabular-nums">{attended}</p>
-                          <p className="text-[15px] font-medium leading-6 text-[#0F172A] dark:text-slate-100 tabular-nums">{booked}</p>
-                          <p className={`text-[15px] font-medium leading-6 tabular-nums ${missed > 0 ? 'text-[#BE123C]' : 'text-[#0F172A] dark:text-slate-100'}`}>{missed}</p>
-                          <p className="text-[13px] font-semibold leading-5 text-[#047857]">تمت</p>
-                          <p className="text-[13px] leading-5 text-[#64748B]">محجوزة</p>
-                          <p className="text-[13px] leading-5 text-[#64748B]">لم يحضر</p>
+                        <div className="mt-3 flex items-end gap-8">
+                          <div>
+                            <p className="text-[28px] font-semibold leading-8 text-[#0F172A] dark:text-slate-50 tabular-nums">{attended}</p>
+                            <p className="text-[13px] font-semibold leading-5 text-[#047857]">تمت</p>
+                          </div>
+                          <div>
+                            <p className="text-[15px] font-medium leading-6 text-[#0F172A] dark:text-slate-100 tabular-nums">{booked}</p>
+                            <p className="text-[13px] leading-5 text-[#64748B]">محجوزة</p>
+                          </div>
+                          <div>
+                            <p className={`text-[15px] font-medium leading-6 tabular-nums ${missed > 0 ? 'text-[#BE123C]' : 'text-[#0F172A] dark:text-slate-100'}`}>{missed}</p>
+                            <p className="text-[13px] leading-5 text-[#64748B]">لم يحضر</p>
+                          </div>
                         </div>
-                        <ul className="mt-4 w-max max-w-full">
+                        <ul className="mt-4 max-w-md">
                           {sessions.slice(0, 8).map((session) => (
-                            <li key={session.id} className="grid grid-cols-[7.5rem_8.5rem_4.75rem] gap-x-3 items-baseline border-b border-[#E2E8F0] py-2 last:border-b-0 dark:border-slate-700">
+                            <li key={session.id} className="flex w-max max-w-full items-baseline gap-x-6 border-b border-[#E2E8F0] py-2 last:border-b-0 dark:border-slate-700">
                               <span className="text-[15px] font-medium leading-6 text-[#0F172A] dark:text-slate-100">{typeLabel[session.session_type] || 'جلسة'}</span>
                               <span className="text-[13px] leading-5 text-[#64748B]">
                                 {session.session_date ? new Date(session.session_date).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
@@ -1839,7 +1845,7 @@ export default function PatientProfile() {
                     )}
                   </section>
 
-                  <section className="mt-6 border-t border-[#E2E8F0] pt-5 md:mt-0 md:border-t-0 md:pt-0 dark:border-slate-700">
+                  <section className="mt-6 border-t border-[#E2E8F0] pt-5 dark:border-slate-700">
                     <div className="flex items-baseline gap-3">
                       <h3 className="text-sm font-semibold leading-5 text-[#0F172A] dark:text-white">الباقات</h3>
                       {!showPackageForm && (
@@ -1880,17 +1886,17 @@ export default function PatientProfile() {
                     </div>
 
                     {showPackageForm && (
-                      <form className="mt-4 max-w-md space-y-3 border-t border-[#E2E8F0] pt-4 dark:border-slate-700" onSubmit={(event) => { event.preventDefault(); savePackageFromProfile() }}>
+                      <form className="mt-4 max-w-md space-y-3" onSubmit={(event) => { event.preventDefault(); savePackageFromProfile() }}>
                         {treatmentServices.length === 0 ? (
                           <p className="text-sm leading-6 text-[#64748B]">لا توجد خدمات علاج مفعّلة. أضفها من إدارة الخدمات، وخلّي خدمة التقييم معلّمة كتقييم.</p>
                         ) : packageLines.map((line, index) => (
-                          <div key={index} className="flex flex-wrap items-end gap-2">
-                            <label className="block">
+                          <div key={index} className="flex items-end gap-3">
+                            <label className="block min-w-0 flex-1">
                               {index === 0 && <span className="mb-1 block text-[13px] leading-5 text-[#64748B]">الخدمة</span>}
                               <select
                                 value={line.service_id}
                                 onChange={(event) => setPackageLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, service_id: event.target.value } : row))}
-                                className="h-10 w-[min(18rem,70vw)] rounded-lg border border-[#E2E8F0] bg-white px-3 text-[15px] text-[#0F172A] focus:border-[#1B4F8A] focus:outline-none dark:bg-slate-900 dark:text-slate-100"
+                                className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-[15px] text-[#0F172A] focus:border-[#1B4F8A] focus:outline-none dark:bg-slate-900 dark:text-slate-100"
                               >
                                 <option value="">اختر الخدمة</option>
                                 {treatmentServices.map((service) => (
