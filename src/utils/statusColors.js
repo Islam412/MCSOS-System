@@ -136,3 +136,27 @@ export function getCapacityIndicator(current, max = 20) {
     };
   }
 }
+
+export function paymentTone(verified) {
+  return verified ? STATUS_COLORS.AVAILABLE : STATUS_COLORS.PAYMENT_PENDING
+}
+
+export function quotaTone(remaining) {
+  const left = Number(remaining)
+  if (!Number.isFinite(left) || left <= 0) return STATUS_COLORS.CANCELLED
+  if (left <= 3) return STATUS_COLORS.PACKAGE_ENDING_SOON
+  return STATUS_COLORS.AVAILABLE
+}
+
+export function sessionTone(session) {
+  if (!session) return STATUS_COLORS.AVAILABLE
+  if (session.status === 'CANCELED' || session.status === 'CANCELLED') return STATUS_COLORS.CANCELLED
+  if (session.status === 'MISSED') return STATUS_COLORS.NO_SHOW
+  const needsPayment = session.session_type === 'ASSESSMENT' || session.session_type === 'RE_ASSESSMENT'
+  if (needsPayment && !session.payment_verified && !session.is_deducted) return STATUS_COLORS.PAYMENT_PENDING
+  if (session.end_time || session.status === 'ATTENDED') return STATUS_COLORS.COMPLETED
+  if (session.start_time) return STATUS_COLORS.IN_PROGRESS
+  if (session.payment_verified) return STATUS_COLORS.AVAILABLE
+  if (session.confirm_status !== 'CONFIRMED') return STATUS_COLORS.AWAITING_FINANCE_APPROVAL
+  return STATUS_COLORS.PAYMENT_PENDING
+}

@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom'
 import { getToken, clearToken } from '../../services/api/client'
-import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck, DoorOpen, Activity, ChevronRight, ChevronLeft, UserCog, Lock, Building2 } from 'lucide-react'
+import { Calendar, Users, DollarSign, LogOut, Menu, X, Clock, Package, MessageCircle, FileText, Pill, UserCircle, LayoutDashboard, User, Stethoscope, CalendarDays, Hospital, Shield, CalendarCheck, DoorOpen, Activity, BarChart3, ChevronRight, ChevronLeft, UserCog, Lock, Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
@@ -115,25 +115,25 @@ export default function DashboardLayout() {
     
     if (userRole === 'admin') {
       return [
-        { to: '/admin', label: 'sidebar.admin_dashboard', icon: Shield },
+        { to: '/admin', label: 'sidebar.admin_dashboard', icon: Shield, section: 'sidebar.section_admin' },
         { to: '/employees-manager', label: 'sidebar.employees_manager', icon: UserCog },
         { to: '/rbac-manager', label: 'sidebar.rbac_manager', icon: Lock },
         { to: '/dashboard', label: 'sidebar.hospital_dashboard', icon: Hospital },
-        { to: '/reports', label: 'sidebar.reports', icon: Activity },
+        { to: '/scheduling', label: 'sidebar.scheduling', icon: Calendar, section: 'sidebar.section_today' },
         { to: '/daily-followup', label: 'sidebar.daily_followup', icon: Clock },
         { to: '/patients', label: 'sidebar.patients', icon: Users },
-        { to: '/doctors-manager', label: 'sidebar.doctors_manager', icon: Stethoscope },
-        { to: '/doctor', label: 'sidebar.doctor', icon: Stethoscope },
-        { to: '/finance', label: 'sidebar.finance', icon: DollarSign },
         { to: '/operations', label: 'sidebar.operations', icon: CalendarDays },
-        { to: '/scheduling', label: 'sidebar.scheduling', icon: Clock },
-        { to: '/packages', label: 'sidebar.packages', icon: Package },
-        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
-        { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
-        { to: '/prescription', label: 'sidebar.prescription', icon: Pill },
+        { to: '/doctors-manager', label: 'sidebar.doctors_manager', icon: Stethoscope, section: 'sidebar.section_clinic' },
+        { to: '/doctor', label: 'sidebar.doctor', icon: User },
         { to: '/rooms-manager', label: 'sidebar.rooms_manager', icon: DoorOpen },
-        { to: '/services-manager', label: 'sidebar.services_manager', icon: Activity },
+        { to: '/services-manager', label: 'sidebar.services_manager', icon: Pill },
+        { to: '/packages', label: 'sidebar.packages', icon: Package },
+        { to: '/prescription', label: 'sidebar.prescription', icon: FileText },
+        { to: '/whatsapp', label: 'sidebar.whatsapp', icon: MessageCircle },
+        { to: '/finance', label: 'sidebar.finance', icon: DollarSign, section: 'sidebar.section_money' },
+        { to: '/invoice', label: 'sidebar.invoice', icon: FileText },
         { to: '/contracts', label: 'sidebar.contracts', icon: Building2 },
+        { to: '/reports', label: 'sidebar.reports', icon: BarChart3 },
         profileItem
       ]
     } else if (userRole === 'doctor') {
@@ -235,69 +235,76 @@ export default function DashboardLayout() {
           shadow-xl border-gray-200 dark:border-gray-700
           ${isRTL ? 'border-l right-0' : 'border-r left-0'}
           ${isMobile ? (sidebarOpen ? 'translate-x-0' : isRTL ? 'translate-x-full' : '-translate-x-full') : 'translate-x-0'}
-          ${sidebarOpen || isMobile ? 'w-80' : 'w-20'}
+          ${sidebarOpen || isMobile ? 'w-72' : 'w-[4.5rem]'}
         `}>
           {/* Header */}
-          <div className={`p-6 border-b border-gray-200 dark:border-gray-700 ${isRTL ? 'text-right' : 'text-left'} ${isMobile ? 'mt-12' : 'mt-0'} overflow-hidden whitespace-nowrap`}>
-            <div className={`font-bold text-2xl flex items-center ${(!isMobile && !sidebarOpen) ? 'justify-center' : ''} h-8`}>
-              <span className="bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
-                {(!isMobile && !sidebarOpen) ? t('app.title').charAt(0) : t('app.title')}
+          <div className={`px-5 py-5 border-b border-slate-200 dark:border-gray-700 ${isMobile ? 'mt-12' : ''}`}>
+            <div className={`flex items-center gap-3 ${(!isMobile && !sidebarOpen) ? 'justify-center' : ''}`}>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1B4F8A] text-white">
+                <Hospital size={18} />
               </span>
-            </div>
-            <div className={`transition-opacity duration-300 ${(!isMobile && !sidebarOpen) ? 'opacity-0 hidden' : 'opacity-100 block'}`}>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 truncate">
-                {user ? (isRTL ? user.name : user.nameEn) : t('app.name')}
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-medium truncate">{getRoleName()}</p>
+              <div className={`${(!isMobile && !sidebarOpen) ? 'hidden' : 'min-w-0'}`}>
+                <p className="text-[15px] font-semibold text-slate-900 dark:text-white truncate">{t('app.title')}</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400 truncate">{getRoleName()}</p>
+              </div>
             </div>
           </div>
 
-          {/* Nav Links */}
-          <nav className={`flex-1 p-4 space-y-1 ${(!isMobile && !sidebarOpen) ? 'overflow-visible' : 'overflow-y-auto overflow-x-hidden'}`}>
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={closeSidebar}
-                className={({ isActive }) =>
-                  `group relative flex items-center px-4 py-3 rounded-xl transition-all duration-300 font-bold text-sm
-                  ${isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-gray-700/60 hover:text-blue-700 dark:hover:text-white'
-                  }
-                  ${(!isMobile && !sidebarOpen) ? 'justify-center px-0' : (isRTL ? 'flex-row-reverse gap-3' : 'flex-row gap-3')}`
-                }
-              >
-                <item.icon size={22} className="min-w-[22px]" />
-                {(!isMobile && !sidebarOpen) ? (
-                  <div className={`
-                    absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-full mr-3' : 'left-full ml-3'}
-                    px-2.5 py-1.5 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded-lg shadow-xl 
-                    opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap pointer-events-none
-                  `}>
-                    {t(item.label)}
-                  </div>
-                ) : (
-                  <span className="whitespace-nowrap">{t(item.label)}</span>
-                )}
-              </NavLink>
-            ))}
+          <nav className={`flex-1 px-3 py-3 ${(!isMobile && !sidebarOpen) ? 'overflow-visible' : 'overflow-y-auto overflow-x-hidden'}`}>
+            {navItems.map((item, index) => {
+              const showSection = item.section && (sidebarOpen || isMobile) && (index === 0 || navItems[index - 1].section !== item.section)
+              return (
+                <div key={item.to}>
+                  {showSection && (
+                    <p className={`px-3 pb-1 text-[11px] font-medium text-slate-400 dark:text-gray-500 ${index === 0 ? 'pt-1' : 'pt-4'}`}>
+                      {t(item.section)}
+                    </p>
+                  )}
+                  <NavLink
+                    to={item.to}
+                    onClick={closeSidebar}
+                    className={({ isActive }) =>
+                      `group relative flex items-center rounded-lg text-[13px] font-medium transition-colors
+                      ${isActive
+                        ? 'bg-[#E7F0FA] text-[#1B4F8A] dark:bg-blue-950/50 dark:text-blue-200'
+                        : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
+                      }
+                      ${(!isMobile && !sidebarOpen) ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2'}`
+                    }
+                  >
+                    <item.icon size={18} className="shrink-0" />
+                    {(!isMobile && !sidebarOpen) ? (
+                      <div className={`
+                        absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-full mr-2' : 'left-full ml-2'}
+                        px-2 py-1 bg-slate-800 text-white text-xs rounded-md
+                        opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50 whitespace-nowrap pointer-events-none
+                      `}>
+                        {t(item.label)}
+                      </div>
+                    ) : (
+                      <span className="truncate">{t(item.label)}</span>
+                    )}
+                  </NavLink>
+                </div>
+              )
+            })}
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3 flex flex-col items-center">
+          <div className="px-3 py-2 border-t border-slate-200 dark:border-gray-700 space-y-1">
             {(!isMobile && !sidebarOpen) ? null : (
-              <div className="grid grid-cols-2 gap-2 w-full">
-                <LanguageSwitcher />
-                <ThemeSwitcher />
+              <div className="grid grid-cols-2 gap-1.5 w-full">
+                <LanguageSwitcher compact />
+                <ThemeSwitcher compact />
               </div>
             )}
-            
+
+            <div className={`flex items-center ${(!isMobile && !sidebarOpen) ? 'flex-col gap-1' : 'gap-1'}`}>
             <button
               onClick={handleLogout}
-              className={`group relative flex items-center text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 w-full hover:bg-red-50 dark:hover:bg-red-500/10 p-3 rounded-xl transition-colors ${(!isMobile && !sidebarOpen) ? 'justify-center' : (isRTL ? 'flex-row-reverse gap-3' : 'gap-3')}`}
+              className={`group relative flex items-center text-slate-600 dark:text-gray-300 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md text-xs font-medium ${(!isMobile && !sidebarOpen) ? 'justify-center py-2 w-full' : 'gap-2 px-2 py-1.5 flex-1'}`}
             >
-              <LogOut size={22} className="min-w-[22px]" />
+              <LogOut size={15} className="shrink-0" />
               {(!isMobile && !sidebarOpen) ? (
                 <div className={`
                   absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-full mr-3' : 'left-full ml-3'}
@@ -311,16 +318,16 @@ export default function DashboardLayout() {
               )}
             </button>
 
-            {/* زر طي/فرد السايدبار للشاشات الكبيرة */}
             {!isMobile && (
               <button
                 onClick={toggleSidebar}
-                className={`flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 w-full hover:bg-gray-100 dark:hover:bg-gray-700/60 p-3 rounded-xl transition-colors`}
+                className="flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/60 p-1.5 rounded-md"
                 title={isRTL ? (sidebarOpen ? 'طي القائمة' : 'توسيع القائمة') : (sidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar')}
               >
-                {sidebarOpen ? (isRTL ? <ChevronRight size={22} /> : <ChevronLeft size={22} />) : (isRTL ? <ChevronLeft size={22} /> : <ChevronRight size={22} />)}
+                {sidebarOpen ? (isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />) : (isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />)}
               </button>
             )}
+            </div>
           </div>
         </div>
 
@@ -332,10 +339,10 @@ export default function DashboardLayout() {
         {/* المحتوى الرئيسي */}
         <main className={`min-h-screen transition-all duration-300 ${
           !isMobile 
-            ? (isRTL 
-                ? (sidebarOpen ? 'mr-80' : 'mr-20') 
-                : (sidebarOpen ? 'ml-80' : 'ml-20')
-              ) 
+                ? (isRTL 
+                    ? (sidebarOpen ? 'mr-72' : 'mr-[4.5rem]') 
+                    : (sidebarOpen ? 'ml-72' : 'ml-[4.5rem]')
+                  )
             : ''
         }`}>
           {/* Phase 14 & 15: RBAC Role Bar & Interactive Role Switcher */}

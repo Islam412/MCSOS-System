@@ -515,7 +515,7 @@ export default function BookingCalendar() {
       </div>
 
       {/* شاشة الكالندر الرئيسي */}
-      <div className="bg-white dark:bg-gray-800/90 p-4 rounded-2xl border border-gray-200/70 dark:border-gray-700 shadow-xl min-h-[650px] text-gray-800 dark:text-gray-200">
+      <div className="bg-white dark:bg-gray-800/90 p-4 rounded-2xl border border-gray-200/70 dark:border-gray-700 shadow-xl text-gray-800 dark:text-gray-200">
         <DnDCalendar
           localizer={localizer}
           events={events}
@@ -532,6 +532,8 @@ export default function BookingCalendar() {
           }}
           min={minTime}
           max={maxTime}
+          step={30}
+          timeslots={2}
           culture={i18n.language === 'ar' ? 'ar' : 'en'}
           messages={{
             next: isRTL ? 'التالي' : 'Next',
@@ -546,7 +548,7 @@ export default function BookingCalendar() {
             event: isRTL ? 'الموعد' : 'Event',
             noEventsInRange: isRTL ? 'لا يوجد مواعيد مسجلة في هذه الفترة' : 'No appointments recorded in this range'
           }}
-          style={{ height: 650 }}
+          style={{ height: 'calc(100vh - 220px)', minHeight: 560 }}
         />
       </div>
 

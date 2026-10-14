@@ -48,9 +48,21 @@ th, td {
 .rbc-time-view, .rbc-month-view {
   border: 1px solid #e2e8f0 !important;
   border-radius: 16px !important;
-  overflow: hidden !important;
   background: white;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+.rbc-time-content {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 0 !important;
+}
+
+.rbc-timeslot-group {
+  min-height: 72px !important;
 }
 
 .dark .rbc-time-view, .dark .rbc-month-view {

@@ -6,7 +6,7 @@
   "sidebar": {
     "admin_dashboard": "Admin Dashboard",
     "employees_manager": "Staff & Employees",
-    "rbac_manager": "RBAC & Permissions",
+    "rbac_manager": "Roles and permissions",
     "hospital_dashboard": "Hospital Dashboard",
     "dashboard": "Dashboard",
     "doctors_manager": "Doctors Manager",
@@ -28,7 +28,11 @@
     "contracts": "Contracts",
     "reports": "Reports & Analytics",
     "daily_followup": "Daily Follow-Up",
-    "logout": "Logout"
+    "logout": "Logout",
+    "section_admin": "Admin",
+    "section_today": "Today",
+    "section_clinic": "Clinic",
+    "section_money": "Money"
   },
   "reception": {
     "title": "Reception Dashboard",

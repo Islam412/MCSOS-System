@@ -144,5 +144,9 @@ export const packagesService = {
       console.warn('⚠️ getPatientPackages failed:', error.message)
       return []
     }
+  },
+
+  verifyPackagePayment: async (id) => {
+    return post(`/api/v1/patient-packages/${id}/verify-payment`, {})
   }
 }

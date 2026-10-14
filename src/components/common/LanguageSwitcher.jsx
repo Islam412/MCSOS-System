@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Globe, Check } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ compact = false }) {
   const { i18n } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -38,10 +38,14 @@ export default function LanguageSwitcher() {
     <div className="relative w-full" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 w-full"
+        className={`flex items-center justify-center w-full hover:bg-gray-200 dark:hover:bg-gray-600 ${
+          compact
+            ? 'gap-1 px-2 py-1 rounded-md bg-slate-100 dark:bg-gray-700 text-[11px]'
+            : 'gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700'
+        }`}
       >
-        <Globe size={18} />
-        <span className="text-sm font-medium">{currentLanguage.flag} {currentLanguage.name}</span>
+        <Globe size={compact ? 13 : 18} />
+        <span className={compact ? 'font-medium' : 'text-sm font-medium'}>{currentLanguage.flag} {currentLanguage.name}</span>
       </button>
 
       {isOpen && (

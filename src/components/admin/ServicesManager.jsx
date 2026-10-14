@@ -43,7 +43,8 @@ export default function ServicesManager() {
     price_package_12: '',
     notes: '',
     sort_order: 100,
-    is_active: true
+    is_active: true,
+    is_assessment: false
   })
 
   useEffect(() => {
@@ -85,7 +86,8 @@ export default function ServicesManager() {
         price_package_12: form.price_package_12 !== '' ? parseFloat(form.price_package_12) : null,
         notes: form.notes || null,
         sort_order: form.sort_order ? parseInt(form.sort_order) : 100,
-        is_active: form.is_active
+        is_active: form.is_active,
+        is_assessment: form.is_assessment
       }
 
       await servicesService.createService(data)
@@ -112,7 +114,8 @@ export default function ServicesManager() {
       price_package_12: service.price_package_12 ?? '',
       notes: service.notes || '',
       sort_order: service.sort_order ?? 100,
-      is_active: service.is_active ?? true
+      is_active: service.is_active ?? true,
+      is_assessment: service.is_assessment ?? false
     })
     setShowModal(true)
   }
@@ -134,7 +137,8 @@ export default function ServicesManager() {
         price_package_12: form.price_package_12 !== '' && form.price_package_12 != null ? parseFloat(form.price_package_12) : null,
         notes: form.notes || null,
         sort_order: form.sort_order ? parseInt(form.sort_order) : 100,
-        is_active: form.is_active
+        is_active: form.is_active,
+        is_assessment: form.is_assessment
       }
 
       await servicesService.updateService(editingService.id, data)
@@ -173,7 +177,8 @@ export default function ServicesManager() {
       price_package_12: '',
       notes: '',
       sort_order: 100,
-      is_active: true
+      is_active: true,
+      is_assessment: false
     })
   }
 
@@ -576,6 +581,20 @@ export default function ServicesManager() {
                   value={form.notes} 
                   onChange={(e) => setForm({...form, notes: e.target.value})} 
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-gray-700/50 rounded-2xl border border-slate-200 dark:border-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.is_assessment}
+                    onChange={(e) => setForm({ ...form, is_assessment: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded-lg focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="text-sm font-bold text-slate-800 dark:text-gray-200">
+                    {isRTL ? 'خدمة تقييم (سعرها يتبعت للحسابات قبل العلاج)' : 'Assessment service (price is billed before treatment)'}
+                  </span>
+                </label>
               </div>
 
               <div className="md:col-span-2 pt-2">

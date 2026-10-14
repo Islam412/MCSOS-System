@@ -194,7 +194,18 @@ export default function FinanceManager() {
       let pkgs = []
       if (isOnline) {
         try {
-          pkgs = await packagesService.getAllPatientPackages()
+          const rows = await packagesService.getAllPatientPackages()
+          pkgs = (rows || []).map((pkg) => {
+            const paid = pkg.payment_verified === true || pkg.payment_status === 'PAID'
+            return {
+              ...pkg,
+              patient_name: pkg.patient_name || pkg.patient?.full_name_ar || pkg.patient?.first_name || '',
+              package_title: pkg.package_title || pkg.package?.name || (isRTL ? 'خدمات بعد التقييم' : 'Post-assessment services'),
+              total_sessions: pkg.total_sessions || pkg.package?.total_sessions || pkg.remaining_sessions || 0,
+              payment_status: paid ? 'PAID' : 'PENDING',
+              final_price: pkg.final_price ?? pkg.package?.price ?? 0,
+            }
+          })
         } catch (e) {
           console.warn('API patient-packages fetch failed, using local:', e)
         }
@@ -386,37 +397,21 @@ export default function FinanceManager() {
 
   // ========== Confirm Package Payment Action ==========
   const handleVerifyPackagePayment = async (pkg) => {
-    if (!(await confirmAlert({ title: isRTL ? 'تأكيد سداد الباقة' : 'Confirm Package Payment', text: isRTL ? `هل تؤكد استلام دفعة الباقة بالكامل للمريض (${pkg.patient_name}) بقيمة ${pkg.final_price} ج.م؟ سيتم إدراجها فوراً في سجل الفواتير.` : `Confirm package payment of ${pkg.final_price} EGP for ${pkg.patient_name}?` }))) return
+    if (!(await confirmAlert({ title: isRTL ? 'تأكيد سداد الباقة' : 'Confirm Package Payment', text: isRTL ? `هل تؤكد استلام دفعة الباقة بالكامل للمريض (${pkg.patient_name || ''}) بقيمة ${pkg.final_price} ج.م؟` : `Confirm package payment of ${pkg.final_price} EGP?` }))) return
 
-    setPatientPackages(prev => prev.map(p => {
-      if (p.id === pkg.id) {
-        return { ...p, payment_status: 'PAID' }
-      }
-      return p
-    }))
-
-    // Auto-generate official receipt in invoices ledger
-    const existingInvoices = getLocalData(STORAGE_KEYS.INVOICES) || transactions || []
-    const invoiceId = 'REC-' + Math.floor(1000 + Math.random() * 9000)
-    const autoInvoice = {
-      id: invoiceId,
-      patient_name: pkg.patient_name,
-      patientNameAr: pkg.patient_name,
-      patientNameEn: pkg.patient_name,
-      amount: Number(pkg.final_price || 2100),
-      subtotal: Number(pkg.final_price || 2100),
-      status: 'paid',
-      payment_status: 'paid',
-      date: new Date().toISOString().split('T')[0],
-      created_at: new Date().toISOString().split('T')[0],
-      packageName: `تحصيل باكدج: ${pkg.package_title}`,
-      packageAr: `تحصيل باكدج: ${pkg.package_title}`,
-      packageEn: `Package Fee: ${pkg.package_title}`,
-      _syncPending: !isOnline
+    try {
+      await packagesService.verifyPackagePayment(pkg.id)
+      setPatientPackages(prev => prev.map(p => {
+        if (p.id === pkg.id) {
+          return { ...p, payment_status: 'PAID', payment_verified: true }
+        }
+        return p
+      }))
+      toast.success(isRTL ? 'تم تأكيد سداد الباقة' : 'Package payment verified')
+    } catch (error) {
+      console.error('Failed to verify package payment:', error)
+      toast.error(isRTL ? 'تعذر حفظ تأكيد السداد' : 'Could not save the payment confirmation')
     }
-    await saveTransactions([autoInvoice, ...existingInvoices])
-
-    toast.success(isRTL ? '✅ تم تأكيد سداد الباقة وإدراجها في سجل الفواتير بنجاح!' : '✅ Package payment verified & invoiced successfully!')
   }
 
   // ========== Invoices Actions ==========
@@ -911,7 +906,7 @@ export default function FinanceManager() {
                                 <button
                                   onClick={() => handleVerifySessionPayment(session)}
                                   disabled={verifyingSessionId === session.id}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3.5 rounded-xl shadow-sm transition active:scale-95 flex items-center justify-center gap-1.5 text-xs w-fit mx-auto disabled:opacity-50"
+                                  className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-bold py-1.5 px-3.5 rounded-xl shadow-sm transition active:scale-95 flex items-center justify-center gap-1.5 text-xs w-fit mx-auto disabled:opacity-50"
                                   title={isRTL ? 'تأكيد السداد ومنح الإذن للطبيب' : 'Confirm payment & clear doctor'}
                                 >
                                   <ShieldCheck size={15} />
@@ -919,8 +914,8 @@ export default function FinanceManager() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-full text-xs font-bold">
-                                <CheckCircle size={14} className="text-emerald-600" />
+                              <div className="inline-flex items-center gap-1 bg-emerald-600 text-white border border-emerald-700 px-2.5 py-1 rounded-full text-xs font-bold">
+                                <CheckCircle size={14} />
                                 <span>{isRTL ? 'مؤكد الدفع' : 'Verified'}</span>
                               </div>
                             )}

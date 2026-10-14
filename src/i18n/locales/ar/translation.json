@@ -6,7 +6,7 @@
   "sidebar": {
     "admin_dashboard": "لوحة المدير",
     "employees_manager": "إدارة الموظفين والكوادر",
-    "rbac_manager": "الصلاحيات والأدوار (RBAC)",
+    "rbac_manager": "الصلاحيات والأدوار",
     "hospital_dashboard": "لوحة المستشفى",
     "dashboard": "لوحة التحكم",
     "doctors_manager": "إدارة الأطباء",
@@ -28,7 +28,11 @@
     "contracts": "التعاقدات",
     "reports": "التقارير والإحصائيات",
     "daily_followup": "المتابعة اليومية",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "section_admin": "الإدارة",
+    "section_today": "اليوم",
+    "section_clinic": "العيادة",
+    "section_money": "المال"
   },
   "reception": {
     "title": "لوحة الاستقبال",

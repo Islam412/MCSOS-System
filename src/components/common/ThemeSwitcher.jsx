@@ -3,7 +3,7 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export default function ThemeSwitcher() {
+export default function ThemeSwitcher({ compact = false }) {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { i18n } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -39,10 +39,14 @@ export default function ThemeSwitcher() {
     <div className="relative w-full" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 w-full"
+        className={`flex items-center justify-center w-full hover:bg-gray-200 dark:hover:bg-gray-600 ${
+          compact
+            ? 'gap-1 px-2 py-1 rounded-md bg-slate-100 dark:bg-gray-700 text-[11px]'
+            : 'gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700'
+        }`}
       >
-        <CurrentIcon size={18} className={currentTheme.color} />
-        <span className="text-sm font-medium">{currentLabel}</span>
+        <CurrentIcon size={compact ? 13 : 18} className={currentTheme.color} />
+        <span className={compact ? 'font-medium' : 'text-sm font-medium'}>{currentLabel}</span>
       </button>
 
       {isOpen && (

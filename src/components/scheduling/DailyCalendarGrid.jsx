@@ -36,22 +36,27 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   const [selectedShift, setSelectedShift] = useState('all') // 'all', 'morning', 'evening'
   const [selectedStatus, setSelectedStatus] = useState('all') // 'all', 'confirmed', 'cancelled', 'pending'
 
-  // Time slots from 08:00 to 21:00 (one-hour intervals)
-  let timeSlots = []
-  for (let hour = 8; hour < 22; hour++) {
-    const hh = String(hour).padStart(2, '0')
-    timeSlots.push(`${hh}:00`)
+  // Time slots from 08:00 to 21:30, every 30 minutes
+  const SLOT_MINUTES = 30
+  const allTimeSlots = []
+  for (let minutes = 8 * 60; minutes < 22 * 60; minutes += SLOT_MINUTES) {
+    const hh = String(Math.floor(minutes / 60)).padStart(2, '0')
+    const mm = String(minutes % 60).padStart(2, '0')
+    allTimeSlots.push(`${hh}:${mm}`)
   }
 
+  let timeSlots = allTimeSlots
   if (selectedShift === 'morning') {
-    timeSlots = timeSlots.filter(t => {
-      const hour = parseInt(t.split(':')[0], 10)
-      return hour >= 8 && hour < 15 // 08:00 to 14:30
+    timeSlots = allTimeSlots.filter((t) => {
+      const [hour, minute] = t.split(':').map(Number)
+      const total = hour * 60 + minute
+      return total >= 8 * 60 && total < 15 * 60
     })
   } else if (selectedShift === 'evening') {
-    timeSlots = timeSlots.filter(t => {
-      const hour = parseInt(t.split(':')[0], 10)
-      return hour >= 15 && hour < 22 // 15:00 to 21:30
+    timeSlots = allTimeSlots.filter((t) => {
+      const [hour, minute] = t.split(':').map(Number)
+      const total = hour * 60 + minute
+      return total >= 15 * 60 && total < 22 * 60
     })
   }
 
@@ -93,7 +98,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
 
     if (isCancelled) {
       return {
-        classes: 'bg-rose-50/95 border-rose-300 text-rose-950 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-200 border-l-rose-600',
+        classes: 'bg-rose-100 border-rose-400 text-rose-950 dark:bg-rose-950/70 dark:border-rose-700 dark:text-rose-100 border-l-rose-600',
         badge: { text: isRTL ? 'ملغي' : 'Cancelled', color: 'bg-rose-600 text-white' },
         isCancelled: true
       }
@@ -117,7 +122,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
 
     if (isFinishedNotRenewed) {
       return {
-        classes: 'bg-rose-50/95 border-rose-300 text-rose-950 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-200 border-l-rose-600',
+        classes: 'bg-rose-100 border-rose-400 text-rose-950 dark:bg-rose-950/70 dark:border-rose-700 dark:text-rose-100 border-l-rose-600',
         badge: { text: isRTL ? 'منتهية لم تجدد' : 'Expired', color: 'bg-rose-600 text-white' },
         isCancelled: false
       }
@@ -127,7 +132,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     const isNearCompletion = progress >= 90 || (totalSessions > 0 && (totalSessions - completedSessions) <= 1)
     if (isNearCompletion && totalSessions > 0) {
       return {
-        classes: 'bg-amber-50/95 border-amber-300 text-amber-950 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-200 border-l-amber-500',
+        classes: 'bg-amber-100 border-amber-400 text-amber-950 dark:bg-amber-950/70 dark:border-amber-600 dark:text-amber-100 border-l-amber-500',
         badge: { text: isRTL ? 'شارفت على الانتهاء' : '90% done', color: 'bg-amber-500 text-white' },
         isCancelled: false
       }
@@ -136,14 +141,14 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     // Green with confirmed
     if (s.confirm_status === 'CONFIRMED' || s.status === 'CONFIRMED') {
       return {
-        classes: 'bg-emerald-50/95 border-emerald-300 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-200 border-l-emerald-600',
+        classes: 'bg-emerald-100 border-emerald-400 text-emerald-950 dark:bg-emerald-950/70 dark:border-emerald-700 dark:text-emerald-100 border-l-emerald-600',
         badge: { text: isRTL ? 'مؤكد' : 'Confirmed', color: 'bg-emerald-600 text-white' },
         isCancelled: false
       }
     }
 
     return {
-      classes: 'bg-indigo-50/70 border-indigo-200 text-indigo-950 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-200 border-l-indigo-400',
+      classes: 'bg-indigo-100 border-indigo-300 text-indigo-950 dark:bg-indigo-950/60 dark:border-indigo-700 dark:text-indigo-100 border-l-indigo-500',
       badge: null,
       isCancelled: false
     }
@@ -212,31 +217,57 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
     setSelectedDate(d.toISOString().split('T')[0])
   }
 
-  // Find session for a doctor and time slot
+  const sessionPlacement = (session) => {
+    const sessionDateObj = new Date(session.session_date)
+    const startMinutes = sessionDateObj.getHours() * 60 + sessionDateObj.getMinutes()
+    const gridStart = 8 * 60
+    const offset = Math.max(0, startMinutes - gridStart)
+    const snapped = gridStart + offset - (offset % SLOT_MINUTES)
+    let duration = Number(session.scheduled_duration_minutes) || 0
+    if (!duration && session.end_time) {
+      const end = new Date(session.end_time)
+      const diff = Math.round((end.getTime() - sessionDateObj.getTime()) / 60000)
+      if (diff > 0) duration = diff
+    }
+    if (!duration) duration = 60
+    const slots = Math.max(1, Math.ceil(duration / SLOT_MINUTES))
+    const hh = String(Math.floor(snapped / 60)).padStart(2, '0')
+    const mm = String(snapped % 60).padStart(2, '0')
+    return { startLabel: `${hh}:${mm}`, slots, duration }
+  }
+
+  const sessionMatchesStatus = (session) => {
+    if (selectedStatus === 'cancelled') {
+      return session.status === 'CANCELED' || session.status === 'CANCELLED' || session.confirm_status === 'DECLINED' || session.confirm_status === 'CANCELLED' || session.is_cancelled || Boolean(session.cancellation_reason)
+    }
+    if (selectedStatus === 'confirmed') {
+      return session.confirm_status === 'CONFIRMED' || session.status === 'CONFIRMED'
+    }
+    if (selectedStatus === 'pending') {
+      return session.confirm_status === 'PENDING' || session.status === 'PENDING'
+    }
+    return true
+  }
+
+  // Session that occupies this doctor column at this half-hour, if it starts here
   const findSession = (doctorId, timeStr) => {
-    return sessions.find(s => {
-      const sDocId = s.doctor_id || s.doctor?.id
-      if (!sDocId || String(sDocId) !== String(doctorId)) return false
-      
-      const sessionDateObj = new Date(s.session_date)
-      const hours = sessionDateObj.getHours().toString().padStart(2, '0')
-      const minutes = sessionDateObj.getMinutes().toString().padStart(2, '0')
-      const sessionTime = `${hours}:${minutes}`
-      
-      if (sessionTime !== timeStr) return false
+    return sessions.find((session) => {
+      const doctor = session.doctor_id || session.doctor?.id
+      if (!doctor || String(doctor) !== String(doctorId)) return false
+      if (!sessionMatchesStatus(session)) return false
+      return sessionPlacement(session).startLabel === timeStr
+    })
+  }
 
-      if (selectedStatus === 'cancelled') {
-        const isCancelled = s.status === 'CANCELED' || s.status === 'CANCELLED' || s.confirm_status === 'DECLINED' || s.confirm_status === 'CANCELLED' || s.is_cancelled || Boolean(s.cancellation_reason)
-        return isCancelled
-      }
-      if (selectedStatus === 'confirmed') {
-        return s.confirm_status === 'CONFIRMED' || s.status === 'CONFIRMED'
-      }
-      if (selectedStatus === 'pending') {
-        return s.confirm_status === 'PENDING' || s.status === 'PENDING'
-      }
-
-      return true
+  const slotIsCovered = (doctorId, timeStr) => {
+    const slotMinutes = timeStr.split(':').map(Number).reduce((hour, minute) => hour * 60 + minute)
+    return sessions.some((session) => {
+      const doctor = session.doctor_id || session.doctor?.id
+      if (!doctor || String(doctor) !== String(doctorId)) return false
+      if (!sessionMatchesStatus(session)) return false
+      const place = sessionPlacement(session)
+      const start = place.startLabel.split(':').map(Number).reduce((hour, minute) => hour * 60 + minute)
+      return slotMinutes > start && slotMinutes < start + place.slots * SLOT_MINUTES
     })
   }
 
@@ -412,7 +443,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden flex flex-col h-full">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl flex flex-col">
       {/* Grid Header Controls */}
       <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -611,7 +642,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
         </div>
       ) : (
         /* Grid Container */
-        <div className="flex-1 overflow-auto relative max-h-[65vh]">
+        <div className="flex-1 overflow-auto relative min-h-[70vh]">
           {filteredDoctors.length === 0 ? (
             <div className="text-center py-16 bg-white dark:bg-gray-800">
               <User size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
@@ -659,20 +690,26 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
 
                     {/* Doctor cells */}
                     {filteredDoctors.map(doc => {
+                      if (slotIsCovered(doc.id, timeStr)) return null
                       const session = findSession(doc.id, timeStr)
+                      const slotIndex = timeSlots.indexOf(timeStr)
+                      const span = session
+                        ? Math.min(sessionPlacement(session).slots, timeSlots.length - slotIndex)
+                        : 1
                       
                       return (
                         <td 
                           key={doc.id}
+                          rowSpan={span}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={(e) => handleCellDrop(e, doc, timeStr)}
                           onClick={() => !session && handleCellClick(doc, timeStr)}
-                          className={`w-[180px] min-w-[180px] p-2 border-r border-gray-200 dark:border-gray-700 text-center relative ${
-                            !session 
-                              ? selectedWaitlistEntry
-                                ? 'hover:bg-indigo-50/40 dark:hover:bg-indigo-950/5 cursor-pointer bg-indigo-50/5 dark:bg-indigo-950/2'
-                                : 'cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/10'
-                              : ''
+                          className={`w-[180px] min-w-[180px] border-r border-gray-200 dark:border-gray-700 text-center relative align-top ${
+                            session
+                              ? 'p-1 h-px'
+                              : selectedWaitlistEntry
+                                ? 'p-2 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/5 cursor-pointer bg-indigo-50/5 dark:bg-indigo-950/2'
+                                : 'p-2 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/10'
                           }`}
                         >
                           {session ? (
@@ -690,7 +727,7 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                                     e.stopPropagation()
                                     onViewSession(session)
                                   }}
-                                  className={`p-2.5 rounded-xl text-right border text-xs shadow-sm cursor-grab active:cursor-grabbing transition duration-300 transform hover:scale-[1.02] hover:shadow-md flex flex-col justify-between border-l-4 h-full min-h-[55px] ${cardColor.classes}`}
+                                  className={`absolute inset-1 p-2.5 rounded-xl text-right border text-xs shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md flex flex-col border-l-4 ${cardColor.classes}`}
                                 >
                                   <div className="flex items-center justify-between gap-1">
                                     <div className="flex items-center gap-2 truncate">
@@ -715,6 +752,9 @@ export default function DailyCalendarGrid({ selectedWaitlistEntry, onAssignCompl
                                   </div>
                                   
                                   <div className="flex items-center justify-between gap-1 mt-1.5">
+                                    <span className="text-[9px] font-bold text-gray-600 dark:text-gray-300">
+                                      {sessionPlacement(session).duration} {isRTL ? 'د' : 'min'}
+                                    </span>
                                     {cardColor.isCancelled && session.cancellation_reason ? (
                                       <span className="text-[9px] font-bold text-rose-700 dark:text-rose-300 truncate max-w-[90px]" title={session.cancellation_reason}>
                                         🚫 {session.cancellation_reason}

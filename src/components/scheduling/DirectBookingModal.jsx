@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { X, Search, Plus, User, ClipboardList, MapPin, Loader2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import UnifiedPatientForm from '../common/UnifiedPatientForm'
+import { quotaTone } from '../../utils/statusColors'
 
 export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, onBookingComplete }) {
   const { i18n } = useTranslation()
@@ -21,17 +22,14 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
   const [selectedPatient, setSelectedPatient] = useState(null)
   
   // Booking Fields
-  const [sessionType, setSessionType] = useState(() => {
-    try {
-      const urlParams = new URLSearchParams(window.location.search)
-      return urlParams.get('type') || 'TREATMENT'
-    } catch (e) {
-      return 'TREATMENT'
-    }
-  })
-  const [scheduledDuration, setScheduledDuration] = useState(60)
   const [roomId, setRoomId] = useState('')
   const [receptionNotes, setReceptionNotes] = useState('')
+  const [services, setServices] = useState([])
+  const [paidQuotas, setPaidQuotas] = useState([])
+  const [serviceId, setServiceId] = useState('')
+  const [serviceQuery, setServiceQuery] = useState('')
+  const [startAt, setStartAt] = useState('')
+  const [endAt, setEndAt] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedSuggestion, setSelectedSuggestion] = useState(null)
   
@@ -43,6 +41,57 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
       setRoomId(rooms[0].id)
     }
   }, [rooms])
+
+  useEffect(() => {
+    if (!isOpen || !slotInfo) return
+    const start = `${slotInfo.dateStr}T${String(slotInfo.timeStr || '08:00').slice(0, 5)}`
+    const startDate = new Date(start)
+    const endDate = new Date(startDate.getTime() + 60 * 60000)
+    const pad = (value) => String(value).padStart(2, '0')
+    const toInput = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+    setStartAt(toInput(startDate))
+    setEndAt(toInput(endDate))
+  }, [isOpen, slotInfo])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const token = getToken()
+    fetch(`${API_BASE}/services`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data) => setServices(Array.isArray(data) ? data : data.data || []))
+      .catch(() => setServices([]))
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || !selectedPatient?.id) {
+      setPaidQuotas([])
+      return
+    }
+    const token = getToken()
+    fetch(`${API_BASE}/patient-packages/patient/${selectedPatient.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data) => {
+        const packages = Array.isArray(data) ? data : data.data || []
+        const lines = []
+        packages.forEach((pkg) => {
+          if (!pkg.payment_verified) return
+          ;(pkg.quotas || []).forEach((quota) => {
+            if (Number(quota.remaining_sessions) > 0) {
+              lines.push({
+                ...quota,
+                patient_package_id: pkg.id,
+              })
+            }
+          })
+        })
+        setPaidQuotas(lines)
+      })
+      .catch(() => setPaidQuotas([]))
+  }, [isOpen, selectedPatient])
 
   // Fetch initial list of patients or search when query changes
   useEffect(() => {
@@ -102,11 +151,23 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
     }
 
     const token = getToken()
-    
-    // Construct datetime
-    const [hours, minutes] = timeStr.split(':')
-    const sessionDate = new Date(dateStr)
-    sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+    const starts = new Date(startAt)
+    const ends = new Date(endAt)
+    if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime()) || ends <= starts) {
+      toast.error(isRTL ? 'حدد بداية ونهاية صحيحة للجلسة' : 'Set a valid start and end')
+      return
+    }
+
+    const chosen = services.find((service) => service.id === serviceId)
+    if (!chosen) {
+      toast.error(isRTL ? 'اختر الخدمة' : 'Choose a service')
+      return
+    }
+    const quota = paidQuotas.find((line) => line.service_id === serviceId)
+    if (!chosen.is_assessment && !quota) {
+      toast.error(isRTL ? 'الخدمة دي مش ضمن باكدج مدفوع للمريض' : 'This service is not in a paid package for this patient')
+      return
+    }
     
     try {
       setLoading(true)
@@ -120,15 +181,27 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
         body: JSON.stringify({
           patient_id: targetPatientId,
           doctor_id: doctor.id,
-          session_type: sessionType,
-          scheduled_duration_minutes: sessionType === 'ASSESSMENT' ? scheduledDuration : 45,
-          session_date: sessionDate.toISOString(),
+          session_type: chosen.is_assessment ? 'ASSESSMENT' : 'TREATMENT',
+          service_id: chosen.id,
+          patient_package_id: chosen.is_assessment ? undefined : quota.patient_package_id,
+          scheduled_duration_minutes: Math.max(15, Math.round((ends - starts) / 60000)),
+          session_date: starts.toISOString(),
+          end_time: ends.toISOString(),
           room_id: roomId || null,
           reception_notes: receptionNotes || null
         })
       })
 
-      if (!sessionResponse.ok) throw new Error()
+      if (!sessionResponse.ok) {
+        const errBody = await sessionResponse.json().catch(() => ({}))
+        const raw = errBody?.message
+        const text = typeof raw === 'string'
+          ? raw
+          : Array.isArray(raw)
+            ? raw.join(' - ')
+            : (isRTL ? raw?.ar || raw?.en : raw?.en || raw?.ar)
+        throw new Error(text || (isRTL ? 'فشل حجز الموعد' : 'Failed to book appointment'))
+      }
       
       toast.success(isRTL ? 'تم حجز الموعد بنجاح!' : 'Appointment booked successfully!')
       
@@ -140,7 +213,7 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
       
       if (onBookingComplete) onBookingComplete()
     } catch (error) {
-      toast.error(isRTL ? 'فشل حجز الموعد' : 'Failed to book appointment')
+      toast.error(error?.message || (isRTL ? 'فشل حجز الموعد' : 'Failed to book appointment'))
     } finally {
       setLoading(false)
     }
@@ -296,45 +369,85 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
 
           {/* Session Parameters */}
           <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                {isRTL ? 'نوع الجلسة' : 'Session Type'}
+                {isRTL ? 'الخدمة' : 'Service'}
               </label>
-              <select
-                value={sessionType}
-                onChange={(e) => setSessionType(e.target.value)}
-                className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="TREATMENT">{isRTL ? 'جلسة علاج طبيعي' : 'Treatment Session'}</option>
-                <option value="ASSESSMENT">{isRTL ? 'كشف / تقييم مبدئي' : 'Initial Assessment'}</option>
-                <option value="RE_ASSESSMENT">{isRTL ? '🩺 إعادة تقييم (Re-assessment)' : '🩺 Re-assessment'}</option>
-                <option value="FOLLOWUP">{isRTL ? 'متابعة' : 'Followup'}</option>
-              </select>
+              <div className="relative">
+                <Search className="absolute right-3 top-3 text-gray-400" size={14} />
+                <input
+                  type="text"
+                  value={serviceQuery}
+                  onChange={(e) => {
+                    setServiceQuery(e.target.value)
+                    setServiceId('')
+                  }}
+                  placeholder={isRTL ? 'ابحث عن الخدمة...' : 'Search services...'}
+                  className="w-full pl-3 pr-9 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+                {services
+                  .filter((service) => service.is_active !== false)
+                  .filter((service) => (service.name || '').toLowerCase().includes(serviceQuery.trim().toLowerCase()))
+                  .map((service) => {
+                    const selected = service.id === serviceId
+                    return (
+                      <button
+                        key={service.id}
+                        type="button"
+                        onClick={() => {
+                          setServiceId(service.id)
+                          setServiceQuery(service.name || '')
+                        }}
+                        className={`w-full text-right px-3 py-2 text-xs font-medium transition ${
+                          selected
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-800 dark:text-gray-100 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+                        }`}
+                      >
+                        {service.name}{service.is_assessment ? (isRTL ? ' — تقييم' : ' — Assessment') : ''}
+                      </button>
+                    )
+                  })}
+              </div>
+              {serviceId && !services.find((service) => service.id === serviceId)?.is_assessment && (
+                <span className={`mt-2 inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${quotaTone(paidQuotas.find((line) => line.service_id === serviceId)?.remaining_sessions).colorClass}`}>
+                  {isRTL ? 'المتبقي من الباكدج' : 'Package left'} {paidQuotas.find((line) => line.service_id === serviceId)?.remaining_sessions ?? 0}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  {isRTL ? 'بداية الجلسة' : 'Starts'}
+                </label>
+                <input
+                  type="datetime-local"
+                  value={startAt}
+                  onChange={(e) => setStartAt(e.target.value)}
+                  className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  {isRTL ? 'نهاية الجلسة' : 'Ends'}
+                </label>
+                <input
+                  type="datetime-local"
+                  value={endAt}
+                  onChange={(e) => setEndAt(e.target.value)}
+                  className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </div>
 
-            {(sessionType === 'ASSESSMENT' || sessionType === 'RE_ASSESSMENT') && (
-              <div className="col-span-2 p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-2 shadow-xs transition-all">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-extrabold text-amber-900 dark:text-amber-300">
-                    {isRTL ? '⏱️ مدة التقييم المجدولة (للمراقبة الآلية):' : '⏱️ Scheduled Assessment Duration:'}
-                  </span>
-                  <select
-                    value={scheduledDuration}
-                    onChange={(e) => setScheduledDuration(Number(e.target.value))}
-                    className="py-1.5 px-2.5 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold text-amber-900 dark:text-amber-200 outline-none shadow-xs"
-                  >
-                    <option value={30}>{isRTL ? '30 دقيقة' : '30 Minutes'}</option>
-                    <option value={60}>{isRTL ? '60 دقيقة (قياسي)' : '60 Minutes (Standard)'}</option>
-                    <option value={90}>{isRTL ? '90 دقيقة' : '90 Minutes'}</option>
-                  </select>
-                </div>
-                <p className="text-[11px] text-amber-800 dark:text-amber-400 font-medium leading-relaxed">
-                  {isRTL 
-                    ? '⚠️ تنبيه: جلسة التقييم الطبي ستتطلب اعتماد وتأكيد الدفعة المالية من قِبل قسم الحسابات ولن تُفتح لبدء التنفيذ دون التحقق.' 
-                    : '⚠️ Note: Assessment session requires financial verification from Finance department before starting.'}
-                </p>
-              </div>
+            {services.find((service) => service.id === serviceId)?.is_assessment && (
+              <p className="text-[11px] text-amber-800 dark:text-amber-400 font-medium leading-relaxed">
+                {isRTL
+                  ? 'جلسة التقييم تنزل تكلفتها للحسابات، ومش هتبدأ قبل اعتماد الدفع.'
+                  : 'The assessment price goes to finance and cannot start before payment is confirmed.'}
+              </p>
             )}
 
             <div>
@@ -354,7 +467,6 @@ export default function DirectBookingModal({ isOpen, onClose, slotInfo, rooms, o
                   ))}
                 </select>
               </div>
-            </div>
             </div>
 
             {/* Phase 8: Auto Booking Suggestions Card */}

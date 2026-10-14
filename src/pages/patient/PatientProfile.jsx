@@ -16,6 +16,8 @@ import { compressImage } from '../../utils/imageCompressor'
 
 // ========== استيراد الخدمات ==========
 import { patientsService, prescriptionsService } from '../../services/api'
+import { getToken } from '../../services/api/client'
+import { API_BASE } from '../../services/api/config'
 import { useServices } from '../../context/ServiceContext'
 import AddPatientModal from '../../components/common/AddPatientModal'
 
@@ -33,6 +35,10 @@ export default function PatientProfile() {
   const [showAddPatientModal, setShowAddPatientModal] = useState(false)
   const [showEditPatientModal, setShowEditPatientModal] = useState(false)
   const [activeTab, setActiveTab] = useState('info')
+  const [chart, setChart] = useState({ sessions: [], packages: [], services: [] })
+  const [packageLines, setPackageLines] = useState([{ service_id: '', session_count: 1 }])
+  const [showPackageForm, setShowPackageForm] = useState(false)
+  const [savingPackage, setSavingPackage] = useState(false)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -134,6 +140,73 @@ export default function PatientProfile() {
     }
   }
 
+  const loadChart = async (patientId) => {
+    const headers = { Authorization: `Bearer ${getToken()}` }
+    try {
+      const [sessionsRaw, packagesRaw, servicesRaw] = await Promise.all([
+        fetch(`${API_BASE}/sessions/patient/${patientId}?limit=200`, { headers }).then((r) => r.ok ? r.json() : { data: [] }),
+        fetch(`${API_BASE}/patient-packages/patient/${patientId}`, { headers }).then((r) => r.ok ? r.json() : []),
+        fetch(`${API_BASE}/services`, { headers }).then((r) => r.ok ? r.json() : []),
+      ])
+      const sessions = sessionsRaw.data || sessionsRaw.sessions || (Array.isArray(sessionsRaw) ? sessionsRaw : [])
+      const packages = Array.isArray(packagesRaw) ? packagesRaw : packagesRaw.data || []
+      const services = Array.isArray(servicesRaw) ? servicesRaw : servicesRaw.data || []
+      setChart({ sessions, packages, services })
+    } catch {
+      setChart({ sessions: [], packages: [], services: [] })
+    }
+  }
+
+  useEffect(() => {
+    if (!showPatientModal || !selectedPatient?.id) return
+    setShowPackageForm(false)
+    setPackageLines([{ service_id: '', session_count: 1 }])
+    loadChart(selectedPatient.id)
+  }, [showPatientModal, selectedPatient?.id])
+
+  const savePackageFromProfile = async () => {
+    const lines = packageLines
+      .filter((line) => line.service_id)
+      .map((line) => ({ service_id: line.service_id, session_count: Number(line.session_count) }))
+    if (!lines.length || lines.some((line) => !Number.isInteger(line.session_count) || line.session_count < 1)) {
+      toast.error('اختر خدمة وعدد جلساتها')
+      return
+    }
+    if (new Set(lines.map((line) => line.service_id)).size !== lines.length) {
+      toast.error('الخدمة متكررة في نفس الباقة')
+      return
+    }
+    setSavingPackage(true)
+    try {
+      const response = await fetch(`${API_BASE}/patient-packages/custom`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ patient_id: selectedPatient.id, lines }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const message = body?.message
+        const text = typeof message === 'string'
+          ? message
+          : Array.isArray(message)
+            ? message.join('، ')
+            : message?.ar || message?.en || 'تعذر إضافة الباقة'
+        throw new Error(text)
+      }
+      toast.success('اتضافت الباقة، وبانتظار تأكيد السداد من الحسابات')
+      setPackageLines([{ service_id: '', session_count: 1 }])
+      setShowPackageForm(false)
+      await loadChart(selectedPatient.id)
+    } catch (error) {
+      toast.error(error.message || 'تعذر إضافة الباقة')
+    } finally {
+      setSavingPackage(false)
+    }
+  }
+
   // ========== تحميل المرضى من API والخادم الحقيقي ==========
   const loadPatients = async () => {
     try {
@@ -168,11 +241,11 @@ export default function PatientProfile() {
                 national_id_back: patient.national_id_back || '',
                 phone: patient.phone || '',
                 email: patient.email || '',
-                diagnosis: patient.diagnosis || 'قيد التشخيص',
-                severity: patient.severity || 'moderate',
+                diagnosis: patient.diagnosis || '',
+                severity: patient.severity || '',
                 status: patient.status?.toLowerCase() || 'pending',
                 progress: patient.progress || 0,
-                totalSessions: patient.totalSessions || 6,
+                totalSessions: patient.totalSessions || 0,
                 completedSessions: patient.completedSessions || 0,
                 registerDate: patient.registration_date || patient.created_at || new Date().toISOString().split('T')[0],
                 _fromAPI: true,
@@ -1109,11 +1182,15 @@ export default function PatientProfile() {
                             <Calendar size={13} className="text-slate-400" />
                             <span>{getEffectiveAge(patient)} سنة</span>
                           </span>
-                          <span className="text-slate-300 dark:text-gray-700">•</span>
-                          <span className="flex items-center gap-1 font-medium">
-                            <Stethoscope size={13} className="text-slate-400" />
-                            <span>{patient.diagnosis || 'قيد التشخيص'}</span>
-                          </span>
+                          {patient.diagnosis && patient.diagnosis !== 'قيد التشخيص' && (
+                            <>
+                              <span className="text-slate-300 dark:text-gray-700">•</span>
+                              <span className="flex items-center gap-1 font-medium">
+                                <Stethoscope size={13} className="text-slate-400" />
+                                <span>{patient.diagnosis}</span>
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1541,253 +1618,351 @@ export default function PatientProfile() {
       {/* مودال عرض تفاصيل المريض */}
       {/* ============================================================ */}
       {showPatientModal && selectedPatient && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                {getPatientName(selectedPatient)}
-              </h2>
-              <div className="flex gap-2 flex-wrap">
-                <button onClick={() => {
-                  setEditPatient({
-                    ...selectedPatient,
-                    whatsapp_number: selectedPatient.whatsapp_number || '',
-                    sameAsPhone: !selectedPatient.whatsapp_number || selectedPatient.whatsapp_number === selectedPatient.phone,
-                    referral_source: selectedPatient.referral_source || '',
-                    national_id_photo: selectedPatient.national_id_photo || ''
-                  });
-                  setShowEditPatientModal(true);
-                  setShowPatientModal(false);
-                }} className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-lg text-sm"><Edit size={16} /> تعديل</button>
-                <button onClick={handlePrintReport} className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm"><Printer size={16} /> تقرير</button>
-                <button onClick={() => setShowPrescriptionModal(true)} className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm"><Pill size={16} /> روشتة</button>
-                <button onClick={() => setShowReportModal(true)} className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm"><FileText size={16} /> تقرير طبي</button>
-                <button onClick={() => setShowXrayModal(true)} className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg text-sm"><Bone size={16} /> أشعة</button>
-                <button type="button" disabled title="رفع الصور غير متاح حتى يتوفر تخزين الملفات" className="bg-gray-700/40 text-gray-500 px-3 py-1 rounded-lg text-sm cursor-not-allowed"><Camera size={16} /> صورة</button>
-                <button onClick={() => setShowPatientModal(false)}><X size={20} /></button>
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
+          <div dir="rtl" className="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-[#E2E8F0] dark:border-slate-700 text-right">
+            <div className="sticky top-0 z-10 bg-white dark:bg-slate-900">
+              <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[#E2E8F0] dark:border-slate-700">
+                <div className="min-w-0">
+                  <p className="text-[18px] font-semibold leading-7 text-[#0F172A] dark:text-slate-50 truncate">{getPatientName(selectedPatient)}</p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[13px] leading-5 text-[#64748B] dark:text-slate-400">
+                    {(selectedPatient.patient_code || selectedPatient.profile_number) && (
+                      <span>{selectedPatient.patient_code || selectedPatient.profile_number}</span>
+                    )}
+                    {(selectedPatient.status === 'pending' || selectedPatient.status === 'pending_assessment' || selectedPatient.status === 'PENDING_ASSESSMENT' || selectedPatient.status === 'assessment_completed' || selectedPatient.status === 'ASSESSMENT_COMPLETED' || selectedPatient.status === 'assessment_dropoff' || selectedPatient.status === 'ASSESSMENT_DROPOFF') && (
+                      <span>
+                        {selectedPatient.status === 'assessment_completed' || selectedPatient.status === 'ASSESSMENT_COMPLETED'
+                          ? 'اكتمل التقييم'
+                          : selectedPatient.status === 'assessment_dropoff' || selectedPatient.status === 'ASSESSMENT_DROPOFF'
+                            ? 'لم يكمل التقييم'
+                            : 'بانتظار التقييم'}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setShowPatientModal(false)} className="h-8 w-8 grid place-items-center text-[#64748B] hover:text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B4F8A]" aria-label="إغلاق">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex gap-1 px-4 border-b border-[#E2E8F0] dark:border-slate-700 overflow-x-auto">
+                {[
+                  ['info', 'معلومات'],
+                  ['progress', 'التقدم'],
+                  ['xrays', 'الأشعة'],
+                  ['prescriptions', 'الروشتات'],
+                  ['reports', 'التقارير'],
+                  ['images', 'الصور'],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTab(id)}
+                    className={`h-10 px-3 text-sm whitespace-nowrap border-b-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B4F8A] ${
+                      activeTab === id
+                        ? 'border-[#1B4F8A] text-[#1B4F8A] dark:text-blue-200 font-semibold'
+                        : 'border-transparent text-[#64748B] font-normal'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-1 gap-y-2 px-5 py-3">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('progress'); setShowPackageForm(true) }}
+                  className="h-9 px-4 rounded-lg bg-[#1B4F8A] text-sm font-semibold text-white hover:bg-[#174375] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B4F8A]"
+                >
+                  إضافة باقة
+                </button>
+                <span className="mx-2 h-4 w-px bg-[#E2E8F0] dark:bg-slate-700" aria-hidden="true" />
+                <button type="button" onClick={() => setShowXrayModal(true)} className="h-9 px-2 text-sm font-medium text-[#0F172A] dark:text-slate-100 hover:text-[#1B4F8A]">أشعة</button>
+                <button type="button" onClick={() => setShowReportModal(true)} className="h-9 px-2 text-sm font-medium text-[#0F172A] dark:text-slate-100 hover:text-[#1B4F8A]">تقرير</button>
+                <button type="button" onClick={() => setShowPrescriptionModal(true)} className="h-9 px-2 text-sm font-medium text-[#0F172A] dark:text-slate-100 hover:text-[#1B4F8A]">روشتة</button>
+                <span className="mx-2 h-4 w-px bg-[#E2E8F0] dark:bg-slate-700" aria-hidden="true" />
+                <button type="button" onClick={handlePrintReport} className="h-9 px-2 text-sm font-medium text-[#0F172A] dark:text-slate-100 hover:text-[#1B4F8A]">طباعة</button>
+                <button type="button" onClick={() => {
+                    setEditPatient({
+                      ...selectedPatient,
+                      whatsapp_number: selectedPatient.whatsapp_number || '',
+                      sameAsPhone: !selectedPatient.whatsapp_number || selectedPatient.whatsapp_number === selectedPatient.phone,
+                      referral_source: selectedPatient.referral_source || '',
+                      national_id_photo: selectedPatient.national_id_photo || ''
+                    });
+                    setShowEditPatientModal(true);
+                    setShowPatientModal(false);
+                  }} className="h-9 px-2 text-sm font-medium text-[#0F172A] dark:text-slate-100 hover:text-[#1B4F8A]">تعديل</button>
               </div>
             </div>
 
-            {/* التبويبات */}
-            <div className="flex gap-2 border-b border-gray-700 mb-4 overflow-x-auto">
-              <button onClick={() => setActiveTab('info')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'info' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>معلومات</button>
-              <button onClick={() => setActiveTab('progress')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'progress' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>التقدم</button>
-              <button onClick={() => setActiveTab('xrays')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'xrays' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>الأشعة</button>
-              <button onClick={() => setActiveTab('prescriptions')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'prescriptions' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>الروشتات</button>
-              <button onClick={() => setActiveTab('reports')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'reports' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>التقارير</button>
-              <button onClick={() => setActiveTab('images')} className={`px-4 py-2 text-sm rounded-t-lg ${activeTab === 'images' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>الصور</button>
-            </div>
-
-            {/* تبويب المعلومات */}
-            {activeTab === 'info' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-gray-700/30 rounded-lg p-4">
-                  <h3 className="font-bold text-white mb-3">المعلومات الشخصية</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">الاسم: </span><span className="text-white">{getPatientName(selectedPatient)}</span></div>
-                    <div><span className="text-gray-400">العمر: </span><span className="text-white">{getEffectiveAge(selectedPatient)} سنة</span></div>
-                    <div><span className="text-gray-400">الجوال: </span><span className="text-white">{selectedPatient.phone || '-'}</span></div>
-                    <div><span className="text-gray-400">رقم الواتساب: </span><span className="text-white">{selectedPatient.whatsapp_number || selectedPatient.phone || '-'}</span></div>
-                    <div><span className="text-gray-400">جهة التحويل: </span><span className="text-white">{selectedPatient.referral_source || '-'}</span></div>
-                    <div><span className="text-gray-400">البريد الإلكتروني: </span><span className="text-white">{selectedPatient.email || '-'}</span></div>
-                    <div><span className="text-gray-400">العنوان: </span><span className="text-white">{selectedPatient.address || '-'}</span></div>
-                    <div><span className="text-gray-400">تاريخ التسجيل: </span><span className="text-white">{selectedPatient.registerDate || '-'}</span></div>
-                    {(selectedPatient.national_id_front || selectedPatient.national_id_back || selectedPatient.national_id_photo) && (
-                      <div className="mt-3 pt-3 border-t border-gray-700">
-                        <span className="text-gray-400 block mb-2 font-semibold">صورة الهوية الوطنية / البطاقة الشخصية:</span>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(selectedPatient.national_id_front || selectedPatient.national_id_photo) && (
-                            <div>
-                              <span className="text-xs text-gray-400 block mb-1">الوجه الأمامي (Front):</span>
-                              <div className="w-full h-28 rounded-lg overflow-hidden border border-gray-700 cursor-pointer" onClick={() => handleViewImage([{ id: 'id_front', data: selectedPatient.national_id_front || selectedPatient.national_id_photo, title: 'الوجه الأمامي للهوية' }], 0)}>
-                                <img src={selectedPatient.national_id_front || selectedPatient.national_id_photo} alt="ID Front" className="w-full h-full object-cover hover:scale-105 transition duration-300" />
-                              </div>
-                            </div>
-                          )}
-                          {selectedPatient.national_id_back && (
-                            <div>
-                              <span className="text-xs text-gray-400 block mb-1">الوجه الخلفي (Back):</span>
-                              <div className="w-full h-28 rounded-lg overflow-hidden border border-gray-700 cursor-pointer" onClick={() => handleViewImage([{ id: 'id_back', data: selectedPatient.national_id_back, title: 'الوجه الخلفي للهوية' }], 0)}>
-                                <img src={selectedPatient.national_id_back} alt="ID Back" className="w-full h-full object-cover hover:scale-105 transition duration-300" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+            {activeTab === 'info' && (() => {
+              const shown = (value) => Boolean(value) && value !== 'غير محدد' && value !== 'غير متوفر' && value !== 'قيد التشخيص'
+              const age = getEffectiveAge(selectedPatient)
+              const phone = selectedPatient.phone
+              const whatsapp = selectedPatient.whatsapp_number
+              const identity = [
+                ['الجنس', selectedPatient.gender === 'female' ? 'أنثى' : selectedPatient.gender === 'male' ? 'ذكر' : ''],
+                ['تاريخ الميلاد', selectedPatient.date_of_birth || ''],
+                ['العمر', age ? `${age} سنة` : ''],
+                ['الجنسية', selectedPatient.nationality],
+                ['المهنة', selectedPatient.occupation],
+              ].filter(([, value]) => shown(value))
+              const contact = [
+                ['الجوال', phone],
+                ['واتساب', whatsapp && whatsapp !== phone ? whatsapp : ''],
+                ['طوارئ', selectedPatient.emergency_contact],
+                ['البريد', selectedPatient.email],
+                ['العنوان', selectedPatient.address],
+                ['تاريخ التسجيل', selectedPatient.registerDate || selectedPatient.registration_date],
+              ].filter(([, value]) => shown(value))
+              const referral = [
+                ['جهة التحويل', selectedPatient.referral_source],
+                ['الطبيب المحوّل', selectedPatient.referral_doctor_name],
+                ['ترشيح صديق', selectedPatient.referral_friend_name],
+              ].filter(([, value]) => shown(value))
+              const diagnosis = shown(selectedPatient.diagnosis) ? selectedPatient.diagnosis : ''
+              const notes = shown(selectedPatient.notes) ? selectedPatient.notes : ''
+              const bands = [
+                ['الهوية', identity],
+                ['التواصل', contact],
+                ['التحويل', referral],
+              ]
+              const Field = ({ label, value }) => (
+                <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 py-1.5">
+                  <p className="text-[13px] leading-5 text-[#64748B]">{label}</p>
+                  <p className="text-[15px] font-medium leading-6 text-[#0F172A] dark:text-slate-100 break-words">{value}</p>
                 </div>
-                <div className="bg-gray-700/30 rounded-lg p-4">
-                  <h3 className="font-bold text-white mb-3">المعلومات الطبية</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">التشخيص: </span><span className="text-white">{selectedPatient.diagnosis || '-'}</span></div>
-                    <div><span className="text-gray-400">درجة الحالة: </span><span className={getSeverityColor(selectedPatient.severity)}>{getSeverityText(selectedPatient.severity)}</span></div>
-                    <div><span className="text-gray-400">الحالة: </span><span className="text-white">
-                      {selectedPatient.status === 'pending' || selectedPatient.status === 'pending_assessment' 
-                        ? '⏳ قيد المراجعة' 
-                        : selectedPatient.status === 'completed' 
-                          ? 'مكتمل' 
-                          : 'نشط'}
-                    </span></div>
-                    <div><span className="text-gray-400">الطبيب المعالج: </span><span className="text-white">{selectedPatient.doctorName || '-'}</span></div>
-                    <div><span className="text-gray-400">ملاحظات: </span><span className="text-white">{selectedPatient.notes || '-'}</span></div>
-                    
-                    {(selectedPatient.status === 'pending' || 
-                      selectedPatient.status === 'pending_assessment' || 
-                      selectedPatient.status === 'PENDING_ASSESSMENT') && (
-                      <div className="pt-4 border-t border-gray-700 mt-3">
-                        <button
-                          onClick={async () => {
-                            try {
-                              setIsSubmitting(true)
-                              await patientsService.completeAssessment(selectedPatient.id)
-                              toast.success(isRTL ? 'تم اكتمال التقييم بنجاح!' : 'Assessment completed successfully!')
-                              
-                              const confirmResult = await confirmAlert({
-                                title: isRTL ? 'خطوة تالية' : 'Next Step',
-                                text: isRTL 
-                                  ? 'تم إكمال التقييم بنجاح! هل تود الانتقال لصفحة الباقات لتخصيص باقة علاجية لهذا المريض؟' 
-                                  : 'Assessment completed! Would you like to go to the packages page to assign a treatment package for this patient?',
-                                confirmText: isRTL ? 'نعم، انتقل' : 'Yes, go to packages',
-                                type: 'warning'
-                              });
-                              if (confirmResult) {
-                                window.location.href = `/packages?patientId=${selectedPatient.id}`
-                              } else {
-                                loadAllData()
-                                setShowPatientModal(false)
-                              }
-                            } catch (err) {
-                              toast.error(isRTL ? 'فشل اعتماد التقييم' : 'Failed to complete assessment')
-                            } finally {
-                              setIsSubmitting(false)
-                            }
-                          }}
-                          disabled={isSubmitting}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-green-600/10"
-                        >
-                          {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                          {isRTL ? 'اعتماد اكتمال التقييم' : 'Complete Assessment'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* تبويب التقدم */}
-            {activeTab === 'progress' && (
-              <div>
-                <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl p-6 text-center">
-                  <div className="text-5xl font-bold text-white">{Math.round(selectedPatient.progress || 0)}%</div>
-                  <div className="text-gray-400 text-sm mt-2">نسبة التقدم</div>
-                  <div className="w-full bg-gray-700 rounded-full h-3 mt-4">
-                    <div className="bg-blue-500 h-3 rounded-full" style={{ width: `${selectedPatient.progress || 0}%` }}></div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="bg-gray-700/30 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold text-white">{selectedPatient.totalSessions || 0}</div>
-                    <div className="text-sm text-gray-400">إجمالي الجلسات</div>
-                  </div>
-                  <div className="bg-gray-700/30 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold text-green-400">{selectedPatient.completedSessions || 0}</div>
-                    <div className="text-sm text-gray-400">الجلسات المكتملة</div>
-                  </div>
-                </div>
-                <p className="text-center text-sm text-amber-300 mt-4">عداد التقدم اليدوي غير متصل بالخادم. الحضور يُسجّل من الجلسة.</p>
-                <div className="flex gap-4 justify-center mt-2">
-                  <button type="button" disabled className="bg-gray-700/40 text-gray-500 px-6 py-2 rounded-lg cursor-not-allowed">
-                    تسجيل حضور +1
-                  </button>
-                  <button type="button" disabled className="bg-gray-700/40 text-gray-500 px-6 py-2 rounded-lg cursor-not-allowed">
-                    تعديل -1
-                  </button>
-                </div>
-
-                {/* Re-assessment Alert & Action Banner */}
-                {((selectedPatient.totalSessions > 0 && selectedPatient.completedSessions >= selectedPatient.totalSessions - 1) || (selectedPatient.progress >= 90)) && (
-                  <div className="mt-5 p-4 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border-2 border-amber-500/40 rounded-2xl shadow-lg space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md shrink-0">
-                        <AlertCircle size={22} />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-extrabold text-amber-300 flex items-center gap-1.5">
-                          <span>⚠️ {isRTL ? 'مطلوب إجراء جلسة إعادة تقييم (Re-assessment Required)' : 'Re-assessment Required'}</span>
-                        </h4>
-                        <p className="text-xs text-gray-200 mt-1 leading-relaxed">
-                          {isRTL
-                            ? `المريض قارب على إنهاء باقته العلاجية (${selectedPatient.completedSessions || 0}/${selectedPatient.totalSessions || 0} جلسة). يتوجب على الطبيب المعالج إجراء فحص إعادة تقييم لاتخاذ القرار الطبي المناسب: إما تكرار نفس الباقة لاستكمال التأهيل، أو تغيير وتعديل الباقة.`
-                            : `Patient has completed (${selectedPatient.completedSessions || 0}/${selectedPatient.totalSessions || 0} sessions). Doctor re-assessment is required to decide whether to repeat the package or modify treatment.`}
-                        </p>
-                      </div>
+              )
+              return (
+              <div className="px-5 pb-5">
+                {bands.map(([title, rows]) => rows.length > 0 && (
+                  <section key={title} className="border-t border-[#E2E8F0] dark:border-slate-700 pt-3 mt-3 first:mt-0 first:border-t-0">
+                    <h3 className="text-sm font-semibold leading-5 text-[#0F172A] dark:text-white mb-1">{title}</h3>
+                    <div className={rows.length >= 4 ? 'md:grid md:grid-cols-2 md:gap-x-8' : ''}>
+                      {rows.map(([label, value]) => <Field key={label} label={label} value={value} />)}
                     </div>
-                    
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-amber-500/30">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const patientId = selectedPatient.id
-                          const pName = encodeURIComponent(getPatientName(selectedPatient))
-                          const docName = encodeURIComponent(selectedPatient.doctorName || '')
-                          window.location.href = `/packages?patientId=${patientId}&patientName=${pName}&doctorName=${docName}&action=repeat`
-                        }}
-                        className="flex-1 min-w-[140px] bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/50 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
-                      >
-                        <RefreshCw size={14} />
-                        <span>{isRTL ? '🔁 تكرار نفس الباقة' : 'Repeat Package'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const patientId = selectedPatient.id
-                          const pName = encodeURIComponent(getPatientName(selectedPatient))
-                          const docName = encodeURIComponent(selectedPatient.doctorName || '')
-                          window.location.href = `/packages?patientId=${patientId}&patientName=${pName}&doctorName=${docName}&action=change`
-                        }}
-                        className="flex-1 min-w-[140px] bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/50 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
-                      >
-                        <TrendingUp size={14} />
-                        <span>{isRTL ? '📦 تغيير / ترقية الباقة' : 'Change Package'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.location.href = `/scheduling?patientId=${selectedPatient.id}&type=RE_ASSESSMENT`
-                        }}
-                        className="flex-1 min-w-[140px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border border-amber-500/50 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
-                      >
-                        <Calendar size={14} />
-                        <span>{isRTL ? '📅 حجز موعد إعادة تقييم' : 'Book Re-assessment'}</span>
-                      </button>
+                  </section>
+                ))}
+                <section className="border-t border-[#E2E8F0] dark:border-slate-700 pt-3 mt-3">
+                  <h3 className="text-sm font-semibold leading-5 text-[#0F172A] dark:text-white mb-1">طبي</h3>
+                  {diagnosis || notes ? (
+                    <div className="max-w-xl">
+                      {diagnosis && <Field label="التشخيص" value={diagnosis} />}
+                      {notes && <Field label="ملاحظات" value={notes} />}
                     </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm leading-6 text-[#64748B]">لا توجد ملاحظات طبية مسجلة</p>
+                  )}
+                  {(selectedPatient.status === 'pending' || selectedPatient.status === 'pending_assessment' || selectedPatient.status === 'PENDING_ASSESSMENT') && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          setIsSubmitting(true)
+                          await patientsService.completeAssessment(selectedPatient.id)
+                          toast.success(isRTL ? 'تم اكتمال التقييم' : 'Assessment completed')
+                          loadAllData()
+                          setShowPatientModal(false)
+                        } catch (err) {
+                          toast.error(isRTL ? 'فشل اعتماد التقييم' : 'Failed to complete assessment')
+                        } finally {
+                          setIsSubmitting(false)
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      className="mt-3 h-9 px-4 rounded-lg bg-[#1B4F8A] text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {isRTL ? 'اعتماد اكتمال التقييم' : 'Complete assessment'}
+                    </button>
+                  )}
+                </section>
+
+                {(selectedPatient.national_id_front || selectedPatient.national_id_back || selectedPatient.national_id_photo) && (
+                  <section className="border-t border-[#E2E8F0] pt-3 mt-3">
+                    <h3 className="text-sm font-semibold text-[#0F172A] mb-3">صورة الهوية</h3>
+                    <div className="flex gap-3">
+                      {(selectedPatient.national_id_front || selectedPatient.national_id_photo) && (
+                        <img src={selectedPatient.national_id_front || selectedPatient.national_id_photo} alt="وجه الهوية" className="h-28 w-40 object-cover rounded-lg border border-[#E2E8F0]" />
+                      )}
+                      {selectedPatient.national_id_back && (
+                        <img src={selectedPatient.national_id_back} alt="ظهر الهوية" className="h-28 w-40 object-cover rounded-lg border border-[#E2E8F0]" />
+                      )}
+                    </div>
+                  </section>
                 )}
               </div>
-            )}
+              )
+            })()}
+
+            {activeTab === 'progress' && (() => {
+              const sessions = chart.sessions || []
+              const attended = sessions.filter((session) => session.status === 'ATTENDED').length
+              const booked = sessions.filter((session) => session.status === 'SCHEDULED').length
+              const missed = sessions.filter((session) => session.status === 'MISSED').length
+              const treatmentServices = (chart.services || []).filter((service) => service.is_active !== false && !service.is_assessment)
+              const typeLabel = { ASSESSMENT: 'تقييم', TREATMENT: 'علاج', FOLLOWUP: 'متابعة', RE_ASSESSMENT: 'إعادة تقييم' }
+              const statusLabel = { SCHEDULED: 'محجوزة', ATTENDED: 'تمت', MISSED: 'لم يحضر', CANCELED: 'ملغاة' }
+              const statusTone = {
+                ATTENDED: 'text-[#047857]',
+                SCHEDULED: 'text-[#64748B]',
+                MISSED: 'text-[#BE123C]',
+                CANCELED: 'text-[#BE123C]',
+              }
+              return (
+                <div className="px-5 pb-6 md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)] md:gap-8">
+                  <section className="md:border-e md:border-[#E2E8F0] md:pe-8 dark:md:border-slate-700">
+                    <h3 className="text-sm font-semibold leading-5 text-[#0F172A] dark:text-white">الجلسات</h3>
+                    {sessions.length === 0 ? (
+                      <p className="mt-3 text-sm leading-6 text-[#64748B]">لا توجد جلسات مسجلة لهذا المريض.</p>
+                    ) : (
+                      <>
+                        <div className="mt-3 inline-grid grid-cols-3 gap-x-8 items-baseline">
+                          <p className="text-[28px] font-semibold leading-8 text-[#0F172A] dark:text-slate-50 tabular-nums">{attended}</p>
+                          <p className="text-[15px] font-medium leading-6 text-[#0F172A] dark:text-slate-100 tabular-nums">{booked}</p>
+                          <p className={`text-[15px] font-medium leading-6 tabular-nums ${missed > 0 ? 'text-[#BE123C]' : 'text-[#0F172A] dark:text-slate-100'}`}>{missed}</p>
+                          <p className="text-[13px] font-semibold leading-5 text-[#047857]">تمت</p>
+                          <p className="text-[13px] leading-5 text-[#64748B]">محجوزة</p>
+                          <p className="text-[13px] leading-5 text-[#64748B]">لم يحضر</p>
+                        </div>
+                        <ul className="mt-4 w-max max-w-full">
+                          {sessions.slice(0, 8).map((session) => (
+                            <li key={session.id} className="grid grid-cols-[7.5rem_8.5rem_4.75rem] gap-x-3 items-baseline border-b border-[#E2E8F0] py-2 last:border-b-0 dark:border-slate-700">
+                              <span className="text-[15px] font-medium leading-6 text-[#0F172A] dark:text-slate-100">{typeLabel[session.session_type] || 'جلسة'}</span>
+                              <span className="text-[13px] leading-5 text-[#64748B]">
+                                {session.session_date ? new Date(session.session_date).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                              </span>
+                              <span className={`text-[13px] font-medium leading-5 ${statusTone[session.status] || 'text-[#64748B]'}`}>{statusLabel[session.status] || ''}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </section>
+
+                  <section className="mt-6 border-t border-[#E2E8F0] pt-5 md:mt-0 md:border-t-0 md:pt-0 dark:border-slate-700">
+                    <div className="flex items-baseline gap-3">
+                      <h3 className="text-sm font-semibold leading-5 text-[#0F172A] dark:text-white">الباقات</h3>
+                      {!showPackageForm && (
+                        <button type="button" onClick={() => setShowPackageForm(true)} className="text-sm font-medium text-[#1B4F8A]">
+                          إضافة باقة
+                        </button>
+                      )}
+                    </div>
+                    {(chart.packages || []).length === 0 && !showPackageForm && (
+                      <p className="mt-3 max-w-md text-sm leading-6 text-[#64748B]">لا توجد باقة. بعد التقييم تقدر تضيف الخدمات وعدد الجلسات من هنا، والحسابات تؤكد السداد قبل الحجز.</p>
+                    )}
+                    <div className="mt-3 space-y-5">
+                      {(chart.packages || []).map((pkg) => {
+                        const waiting = !pkg.payment_verified
+                        const exhausted = pkg.status === 'EXHAUSTED'
+                        const paymentLabel = waiting ? 'بانتظار تأكيد السداد' : exhausted ? 'خلصت الجلسات' : 'السداد متأكد'
+                        return (
+                          <div key={pkg.id}>
+                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                              <p className="text-[15px] font-medium leading-6 text-[#0F172A] dark:text-slate-100">{pkg.package?.name || 'باقة علاج'}</p>
+                              <p className="inline-flex items-center gap-1.5 text-[13px] leading-5 text-[#64748B]">
+                                {waiting && <span className="h-2 w-2 rounded-full bg-[#EAB308] ring-1 ring-[#A16207]" aria-hidden="true" />}
+                                {!waiting && !exhausted && <span className="h-2 w-2 rounded-full bg-[#047857]" aria-hidden="true" />}
+                                {paymentLabel}
+                              </p>
+                            </div>
+                            <ul className="mt-1">
+                              {(pkg.quotas || []).map((quota) => (
+                                <li key={quota.id} className="grid w-max max-w-full grid-cols-[minmax(0,10rem)_auto] gap-x-3 py-1">
+                                  <span className="text-[15px] font-medium leading-6 text-[#0F172A] dark:text-slate-100">{quota.service?.name || 'خدمة'}</span>
+                                  <span className="text-[13px] leading-5 text-[#64748B]">متبقي <bdi className="tabular-nums">{quota.remaining_sessions}</bdi> من <bdi className="tabular-nums">{quota.session_count}</bdi></span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {showPackageForm && (
+                      <form className="mt-4 max-w-md space-y-3 border-t border-[#E2E8F0] pt-4 dark:border-slate-700" onSubmit={(event) => { event.preventDefault(); savePackageFromProfile() }}>
+                        {treatmentServices.length === 0 ? (
+                          <p className="text-sm leading-6 text-[#64748B]">لا توجد خدمات علاج مفعّلة. أضفها من إدارة الخدمات، وخلّي خدمة التقييم معلّمة كتقييم.</p>
+                        ) : packageLines.map((line, index) => (
+                          <div key={index} className="flex flex-wrap items-end gap-2">
+                            <label className="block">
+                              {index === 0 && <span className="mb-1 block text-[13px] leading-5 text-[#64748B]">الخدمة</span>}
+                              <select
+                                value={line.service_id}
+                                onChange={(event) => setPackageLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, service_id: event.target.value } : row))}
+                                className="h-10 w-[min(18rem,70vw)] rounded-lg border border-[#E2E8F0] bg-white px-3 text-[15px] text-[#0F172A] focus:border-[#1B4F8A] focus:outline-none dark:bg-slate-900 dark:text-slate-100"
+                              >
+                                <option value="">اختر الخدمة</option>
+                                {treatmentServices.map((service) => (
+                                  <option key={service.id} value={service.id}>{service.name}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="block">
+                              {index === 0 && <span className="mb-1 block text-[13px] leading-5 text-[#64748B]">الجلسات</span>}
+                              <input
+                                type="number"
+                                min="1"
+                                value={line.session_count}
+                                onChange={(event) => setPackageLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, session_count: event.target.value } : row))}
+                                className="h-10 w-[5.5rem] rounded-lg border border-[#E2E8F0] bg-white text-center text-[15px] tabular-nums text-[#0F172A] focus:border-[#1B4F8A] focus:outline-none dark:bg-slate-900 dark:text-slate-100"
+                                aria-label="عدد الجلسات"
+                              />
+                            </label>
+                            {packageLines.length > 1 && (
+                              <button type="button" onClick={() => setPackageLines((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} className="h-10 px-1 text-[13px] text-[#64748B]">حذف</button>
+                            )}
+                          </div>
+                        ))}
+                        {treatmentServices.length > 0 && (
+                          <>
+                            <button type="button" onClick={() => setPackageLines((rows) => [...rows, { service_id: '', session_count: 1 }])} className="text-sm font-medium text-[#1B4F8A]">
+                              إضافة خدمة
+                            </button>
+                            <p className="text-[13px] leading-5 text-[#64748B]">الحجز يتفتح بعد تأكيد الحسابات.</p>
+                            <div className="flex w-max gap-2">
+                              <button type="submit" disabled={savingPackage} className="h-9 px-4 rounded-lg bg-[#1B4F8A] text-sm font-semibold text-white hover:bg-[#174375] disabled:opacity-50">
+                                {savingPackage ? 'جاري الإرسال' : 'إرسال للحسابات'}
+                              </button>
+                              <button type="button" onClick={() => { setShowPackageForm(false); setPackageLines([{ service_id: '', session_count: 1 }]) }} className="h-9 px-2 text-sm font-medium text-[#0F172A] dark:text-slate-100">
+                                إلغاء
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </form>
+                    )}
+                  </section>
+                </div>
+              )
+            })()}
 
             {/* باقي التبويبات - نفس الكود الأصلي (محذوف للاختصار) */}
             {activeTab === 'xrays' && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center"><h3 className="text-lg font-semibold text-white">الأشعة والصور الشعاعية</h3><button onClick={() => setShowXrayModal(true)} className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg text-sm"><Plus size={14} /> إضافة أشعة</button></div>
+              <div className="px-5 pb-5 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">الأشعة</h3>
+                  <button onClick={() => setShowXrayModal(true)} className="text-sm text-[#1B4F8A]">إضافة أشعة</button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {!selectedPatient.xrays || selectedPatient.xrays.length === 0 ? (
-                    <p className="text-gray-400 text-center col-span-2 py-8">لا توجد أشعة مسجلة</p>
+                    <p className="text-sm text-slate-500 col-span-2 py-6">لا توجد أشعة مسجلة</p>
                   ) : (
                     selectedPatient.xrays.map((xray) => (
-                      <div key={xray.id} className="bg-gray-700/50 rounded-lg overflow-hidden border border-gray-600">
-                        <div className="p-3 bg-gray-800">
-                          <div className="flex justify-between items-start">
-                            <div><p className="font-bold text-white">{xray.title}</p><p className="text-xs text-gray-400">{new Date(xray.date).toLocaleDateString()} - {xray.doctorName}</p>{xray.bodyPart && <p className="text-xs text-blue-400 mt-1">منطقة: {getBodyPartText(xray.bodyPart)}</p>}</div>
-                            <div className="flex gap-2"><button onClick={() => handleViewXray(xray)} className="p-1 text-blue-400 hover:bg-blue-500/20 rounded"><Eye size={14} /></button><button onClick={() => handleDeleteXray(xray.id)} className="p-1 text-red-400 hover:bg-red-500/20 rounded"><Trash2 size={14} /></button></div>
+                      <div key={xray.id} className="rounded-lg border border-slate-200 p-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{xray.title}</p>
+                            <p className="text-xs text-slate-500">{xray.date ? new Date(xray.date).toLocaleDateString('ar-EG') : 'غير مسجل'}{xray.doctorName ? ` ${xray.doctorName}` : ''}</p>
+                            {xray.bodyPart && <p className="text-xs text-slate-500 mt-1">المنطقة: {getBodyPartText(xray.bodyPart)}</p>}
                           </div>
-                          {xray.description && <p className="text-sm text-gray-400 mt-2">{xray.description}</p>}
-                          {xray.report && <div className="mt-2 p-2 bg-gray-700 rounded-lg"><p className="text-xs text-gray-300"><span className="font-semibold">تقرير الأشعة:</span> {xray.report}</p></div>}
+                          <div className="flex gap-2">
+                            <button onClick={() => handleViewXray(xray)} className="text-[#1B4F8A]" aria-label="عرض"><Eye size={14} /></button>
+                            <button onClick={() => handleDeleteXray(xray.id)} className="text-rose-700" aria-label="حذف"><Trash2 size={14} /></button>
+                          </div>
                         </div>
+                        {xray.description && <p className="text-sm text-slate-600 mt-2">{xray.description}</p>}
+                        {xray.report && <p className="text-xs text-slate-600 mt-2">التقرير: {xray.report}</p>}
                       </div>
                     ))
                   )}
@@ -1796,21 +1971,19 @@ export default function PatientProfile() {
             )}
 
             {activeTab === 'prescriptions' && (
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 bg-gray-700/20 p-3 rounded-xl border border-gray-700/40">
+              <div className="px-5 pb-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Pill className="text-blue-400" size={18} />
-                      {isRTL ? 'الروشتات والوصفات الطبية' : 'Medical Prescriptions'}
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {isRTL ? 'الروشتات' : 'Prescriptions'}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {isRTL ? 'يمكنك إدخال الروشتة يدوياً أو رفعها كصورة أو ملف PDF' : 'Add prescriptions manually or upload as image/PDF file'}
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isRTL ? 'اكتب الروشتة أو ارفعها صورة أو PDF' : 'Write the prescription or upload an image or PDF'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="cursor-pointer bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
-                      <Upload size={14} />
-                      <span>{isRTL ? 'رفع روشتة (صورة/ملف)' : 'Upload Prescription (File/Image)'}</span>
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer text-sm text-[#1B4F8A]">
+                      {isRTL ? 'رفع ملف' : 'Upload'}
                       <input
                         type="file"
                         accept="image/*,.pdf"
@@ -1820,33 +1993,23 @@ export default function PatientProfile() {
                     </label>
                     <button
                       onClick={() => setShowPrescriptionModal(true)}
-                      className="bg-green-600/30 hover:bg-green-600/50 text-green-300 border border-green-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                      className="text-sm text-[#1B4F8A]"
                     >
-                      <Plus size={14} />
-                      <span>{isRTL ? 'إضافة روشتة جديدة' : 'New Prescription'}</span>
+                      {isRTL ? 'روشتة جديدة' : 'New prescription'}
                     </button>
                   </div>
                 </div>
 
                 {prescriptions.filter(p=>p.patientId===selectedPatient.id).length===0 ? (
-                  <div className="text-center py-10 bg-gray-800/40 rounded-xl border border-gray-700/30">
-                    <Pill className="mx-auto text-gray-500 mb-2 opacity-50" size={32} />
-                    <p className="text-gray-400 text-sm">{isRTL ? 'لا توجد روشتات مسجلة لهذا المريض' : 'No prescriptions recorded for this patient'}</p>
-                    <button
-                      onClick={() => setShowPrescriptionModal(true)}
-                      className="mt-3 text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-3 py-1.5 rounded-lg inline-flex items-center gap-1"
-                    >
-                      <Plus size={14} /> {isRTL ? 'إضافة أول روشتة' : 'Add First Prescription'}
-                    </button>
-                  </div>
+                  <p className="text-sm text-slate-500 py-6">{isRTL ? 'لا توجد روشتات مسجلة لهذا المريض' : 'No prescriptions for this patient'}</p>
                 ) : (
                   <div className="space-y-3">
                     {prescriptions.filter(p=>p.patientId===selectedPatient.id).map(p=>(
-                      <div key={p.id} className="bg-gray-800/60 rounded-xl p-4 border border-gray-700/60 shadow-sm space-y-3">
+                      <div key={p.id} className="border border-slate-200 rounded-lg p-4 space-y-3">
                         <div className="flex items-center justify-between border-b border-gray-700/40 pb-2">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-white font-mono">{p.prescriptionNumber}</span>
+                              <span className="font-semibold text-slate-900">{p.prescriptionNumber}</span>
                               <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-sans">
                                 {p.doctorName || (isRTL ? 'الطبيب المعالج' : 'Doctor')}
                               </span>
@@ -1934,7 +2097,7 @@ export default function PatientProfile() {
                             {p.medications.map((m,i)=>(
                               <div key={i} className="bg-gray-700/40 rounded-lg p-2.5 flex items-center justify-between text-xs">
                                 <div>
-                                  <strong className="text-white text-sm">{m.name}</strong>
+                                  <strong className="text-slate-900 text-sm">{m.name}</strong>
                                   {m.instructions && <p className="text-gray-400 text-[11px] mt-0.5">{m.instructions}</p>}
                                 </div>
                                 <div className="text-right text-gray-300 text-[11px] space-x-2">
@@ -1961,48 +2124,48 @@ export default function PatientProfile() {
             )}
 
             {activeTab === 'reports' && (
-              <div>
-                {selectedPatient.reports?.length===0 ? (
-                  <p className="text-gray-400 text-center py-8">لا توجد تقارير</p>
+              <div className="px-5 pb-5">
+                {!selectedPatient.reports?.length ? (
+                  <p className="text-sm text-slate-500 py-6">لا توجد تقارير</p>
                 ) : (
                   selectedPatient.reports.map(r=>(
-                    <div key={r.id} className="bg-gray-700/30 rounded-lg p-4 mb-2">
-                      <div className="flex justify-between">
+                    <div key={r.id} className="border-b border-slate-200 py-3">
+                      <div className="flex justify-between gap-3">
                         <div>
-                          <p className="font-bold text-white">{r.title}</p>
-                          <p className="text-sm text-gray-400">{new Date(r.date).toLocaleDateString()}</p>
+                          <p className="text-sm font-semibold text-slate-900">{r.title}</p>
+                          <p className="text-xs text-slate-500">{r.date ? new Date(r.date).toLocaleDateString('ar-EG') : 'غير مسجل'}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={()=>handleEditReport(r)} className="text-yellow-400 hover:bg-yellow-500/20 p-1 rounded"><Edit size={14}/></button>
-                          <button onClick={()=>handleDeleteReport(r.id)} className="text-red-400 hover:bg-red-500/20 p-1 rounded"><Trash2 size={14}/></button>
+                          <button onClick={()=>handleEditReport(r)} className="text-[#1B4F8A]" aria-label="تعديل"><Edit size={14}/></button>
+                          <button onClick={()=>handleDeleteReport(r.id)} className="text-rose-700" aria-label="حذف"><Trash2 size={14}/></button>
                         </div>
                       </div>
-                      <p className="text-gray-300 text-sm mt-2">{r.content}</p>
+                      <p className="text-sm text-slate-700 mt-2">{r.content}</p>
                     </div>
                   ))
                 )}
-                <button onClick={()=>setShowReportModal(true)} className="w-full bg-blue-500/20 text-blue-400 py-2 rounded-lg mt-2">
-                  <Plus size={16}/> إضافة تقرير
-                </button>
+                <button onClick={()=>setShowReportModal(true)} className="text-sm text-[#1B4F8A] mt-3">إضافة تقرير</button>
               </div>
             )}
 
             {activeTab === 'images' && (
-              <div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {selectedPatient.images?.map((img,idx)=>(
-                    <div key={img.id} className="bg-gray-700/50 rounded-lg overflow-hidden cursor-pointer hover:border-blue-500/50 border border-transparent transition" onClick={()=>handleViewImage(selectedPatient.images,idx)}>
-                      <img src={img.data} className="w-full h-32 object-cover"/>
-                      <div className="p-2">
-                        <p className="text-sm truncate text-white">{img.title}</p>
-                        <button onClick={(e)=>{e.stopPropagation();handleDeleteImage(img.id)}} className="text-red-400 text-xs hover:text-red-300">حذف</button>
+              <div className="px-5 pb-5">
+                {selectedPatient.images?.length ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {selectedPatient.images.map((img,idx)=>(
+                      <div key={img.id} className="rounded-lg overflow-hidden border border-slate-200 cursor-pointer" onClick={()=>handleViewImage(selectedPatient.images,idx)}>
+                        <img src={img.data} alt={img.title || 'صورة'} className="w-full h-32 object-cover"/>
+                        <div className="p-2 flex items-center justify-between gap-2">
+                          <p className="text-sm truncate text-slate-900">{img.title || 'صورة'}</p>
+                          <button onClick={(e)=>{e.stopPropagation();handleDeleteImage(img.id)}} className="text-xs text-rose-700">حذف</button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-                <button type="button" disabled title="رفع الصور غير متاح حتى يتوفر تخزين الملفات" className="w-full bg-gray-700/40 text-gray-500 py-2 rounded-lg mt-4 cursor-not-allowed">
-                  <Upload size={16}/> رفع الصور غير متاح حتى يتوفر تخزين الملفات
-                </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500 py-6">لا توجد صور مسجلة</p>
+                )}
+                <p className="text-sm text-slate-500 mt-3">رفع الصور غير متاح حتى يتوفر تخزين الملفات.</p>
               </div>
             )}
 

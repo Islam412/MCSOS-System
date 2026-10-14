@@ -7,6 +7,7 @@ import { X, Clock, Check, Play, Square, AlertTriangle, ShieldCheck, MapPin, User
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { usePermissions } from '../../context/PermissionsContext'
+import { paymentTone, STATUS_COLORS } from '../../utils/statusColors'
 
 export default function SessionDetailModal({ isOpen, onClose, session, onUpdate }) {
   const { t, i18n } = useTranslation()
@@ -33,6 +34,8 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelCustomNotes, setCancelCustomNotes] = useState('')
+  const [treatmentServices, setTreatmentServices] = useState([])
+  const [serviceLines, setServiceLines] = useState([{ service_id: '', session_count: 1 }])
 
   const [evaluationData, setEvaluationData] = useState({
     diagnosis: '',
@@ -109,6 +112,15 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
         const roomsData = await roomsRes.json()
         setRooms(roomsData)
       }
+
+      const servicesRes = await fetch(`${API_BASE}/services`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (servicesRes.ok) {
+        const servicesData = await servicesRes.json()
+        const list = Array.isArray(servicesData) ? servicesData : servicesData.data || []
+        setTreatmentServices(list.filter((service) => service.is_active !== false && !service.is_assessment))
+      }
     } catch (error) {
       console.error('Error fetching doctors/rooms in modal:', error)
     }
@@ -141,6 +153,44 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
   const isAdmin = currentUser?.role === 'admin'
 
   if (!isOpen || !session) return null
+
+  const saveAssignedServices = async () => {
+    const lines = serviceLines.filter((line) => line.service_id && Number(line.session_count) > 0)
+    if (!lines.length) {
+      toast.error(isRTL ? 'اختر خدمة وعدد الجلسات' : 'Choose a service and session count')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const response = await fetch(`${API_BASE}/sessions/${session.id}/assigned-services`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lines: lines.map((line) => ({
+            service_id: line.service_id,
+            session_count: Number(line.session_count),
+          })),
+        }),
+      })
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}))
+        throw new Error(typeof errBody?.message === 'string' ? errBody.message : 'failed')
+      }
+      const patientPackage = await response.json()
+      toast.success(isRTL ? 'اتحددت الخدمات واتبععت للحسابات' : 'Services sent to finance')
+      if (onUpdate) onUpdate({ ...session, end_time: session.end_time || new Date().toISOString(), status: 'ATTENDED' })
+      if (patientPackage?.id && canVerifyPayment && !patientPackage.payment_verified) {
+        toast(isRTL ? 'الدفع لسه معلّق عند الحسابات' : 'Package payment is still pending')
+      }
+    } catch (error) {
+      toast.error(error?.message || (isRTL ? 'فشل حفظ الخدمات' : 'Failed to save services'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const handleAction = async (actionType, body = {}) => {
     setSubmitting(true)
@@ -648,9 +698,9 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                   <div>
                     <p className="text-xs text-gray-400">{isRTL ? 'تأكيد الحجز' : 'Confirmation'}</p>
                     <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1 ${
-                      session.confirm_status === 'CONFIRMED' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' :
-                      session.confirm_status === 'DECLINED' ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' :
-                      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400'
+                      session.confirm_status === 'CONFIRMED' ? STATUS_COLORS.AVAILABLE.colorClass :
+                      session.confirm_status === 'DECLINED' ? STATUS_COLORS.CANCELLED.colorClass :
+                      STATUS_COLORS.PAYMENT_PENDING.colorClass
                     }`}>
                       {session.confirm_status || 'PENDING'}
                     </span>
@@ -662,11 +712,8 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                   <CreditCard className="text-blue-500 mt-1" size={18} />
                   <div>
                     <p className="text-xs text-gray-400">{isRTL ? 'حالة الدفع' : 'Payment Status'}</p>
-                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1 ${
-                      session.is_deducted || session.payment_verified ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' :
-                      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400'
-                    }`}>
-                      {session.is_deducted ? (isRTL ? 'مخصوم من الباقة' : 'Deducted') : session.payment_verified ? (isRTL ? 'تم تأكيد الدفع 🟢' : 'Verified') : (isRTL ? 'معلق 🟡' : 'Pending')}
+                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1 ${paymentTone(session.is_deducted || session.payment_verified).colorClass}`}>
+                      {session.is_deducted ? (isRTL ? 'مخصوم من الباقة' : 'Deducted') : session.payment_verified ? (isRTL ? 'تم تأكيد الدفع' : 'Verified') : (isRTL ? 'معلق' : 'Pending')}
                     </span>
                   </div>
                 </div>
@@ -686,7 +733,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                       type="button"
                       disabled={submitting}
                       onClick={() => handleAction('verify-payment')}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition shrink-0 flex items-center gap-1.5 transform active:scale-95"
+                      className={`px-4 py-2 font-bold text-xs rounded-xl shadow-md transition shrink-0 flex items-center gap-1.5 ${STATUS_COLORS.PAYMENT_PENDING.colorClass}`}
                     >
                       <Check size={15} />
                       <span>{isRTL ? 'تأكيد واعتماد الدفع 💳' : 'Confirm Payment 💳'}</span>
@@ -730,7 +777,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                   <div className="p-2.5 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
                     <span className="text-xs text-gray-400 block">{isRTL ? 'انتهت في' : 'Ended at'}</span>
                     <span className="text-sm font-mono font-bold text-gray-700 dark:text-gray-300">
-                      {formatTime(session.end_time)}
+                      {session.status === 'ATTENDED' ? formatTime(session.end_time) : '—'}
                     </span>
                   </div>
                 </div>
@@ -758,9 +805,14 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
             <div className="flex gap-2 pt-2">
               {session.confirm_status !== 'CONFIRMED' && session.status !== 'CANCELED' && (
                 <button
-                  disabled={submitting}
+                  disabled={submitting || ((session.session_type === 'ASSESSMENT' || session.session_type === 'RE_ASSESSMENT') && !session.payment_verified)}
                   onClick={() => handleAction('confirm', { confirm_status: 'CONFIRMED' })}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1"
+                  title={(session.session_type === 'ASSESSMENT' || session.session_type === 'RE_ASSESSMENT') && !session.payment_verified ? (isRTL ? 'مغلق: اعتمد الدفع أولاً' : 'Locked until payment is confirmed') : ''}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1 ${
+                    (session.session_type === 'ASSESSMENT' || session.session_type === 'RE_ASSESSMENT') && !session.payment_verified
+                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed border border-gray-300 dark:border-gray-600'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
                 >
                   <Check size={16} />
                   {isRTL ? 'تأكيد الحجز' : 'Confirm'}
@@ -779,13 +831,13 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
 
               {!session.start_time && session.status !== 'CANCELED' && session.confirm_status === 'CONFIRMED' && (
                 <button
-                  disabled={submitting || (session.session_type === 'ASSESSMENT' && !session.payment_verified)}
+                  disabled={submitting || ((session.session_type === 'ASSESSMENT' || session.session_type === 'RE_ASSESSMENT') && !session.payment_verified)}
                   onClick={() => handleAction('start')}
-                  title={session.session_type === 'ASSESSMENT' && !session.payment_verified ? (isRTL ? 'مغلق: يتطلب تأكيد الدفع أولاً' : 'Locked: Requires payment verification') : ''}
+                  title={(session.session_type === 'ASSESSMENT' || session.session_type === 'RE_ASSESSMENT') && !session.payment_verified ? (isRTL ? 'مغلق: يتطلب تأكيد الدفع أولاً' : 'Locked: Requires payment verification') : ''}
                   className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1 ${
-                    session.session_type === 'ASSESSMENT' && !session.payment_verified 
+                    (session.session_type === 'ASSESSMENT' || session.session_type === 'RE_ASSESSMENT') && !session.payment_verified 
                       ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed border border-gray-300 dark:border-gray-600' 
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20'
+                      : STATUS_COLORS.AVAILABLE.colorClass
                   }`}
                 >
                   <Play size={16} />
@@ -793,7 +845,7 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                 </button>
               )}
               
-              {session.start_time && !session.end_time && session.status !== 'CANCELED' ? (
+              {session.start_time && session.status !== 'ATTENDED' && session.status !== 'CANCELED' ? (
                 <button
                   disabled={submitting}
                   onClick={() => handleAction('end')}
@@ -804,6 +856,60 @@ export default function SessionDetailModal({ isOpen, onClose, session, onUpdate 
                 </button>
               ) : null}
             </div>
+
+            {(session.session_type === 'ASSESSMENT' || session.session_type === 'RE_ASSESSMENT') && canEditEvaluation && (
+              <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-xl space-y-2">
+                <p className="text-xs font-bold text-gray-600 dark:text-gray-300">
+                  {isRTL ? 'خدمات العلاج وعدد الجلسات' : 'Treatment services and session counts'}
+                </p>
+                {serviceLines.map((line, index) => (
+                  <div key={index} className="grid grid-cols-[1fr_90px] gap-2">
+                    <select
+                      value={line.service_id}
+                      onChange={(e) => {
+                        const next = [...serviceLines]
+                        next[index] = { ...line, service_id: e.target.value }
+                        setServiceLines(next)
+                      }}
+                      className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-xs"
+                    >
+                      <option value="">{isRTL ? 'الخدمة' : 'Service'}</option>
+                      {treatmentServices.map((service) => (
+                        <option key={service.id} value={service.id}>{service.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="1"
+                      value={line.session_count}
+                      onChange={(e) => {
+                        const next = [...serviceLines]
+                        next[index] = { ...line, session_count: e.target.value }
+                        setServiceLines(next)
+                      }}
+                      className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-900"
+                    />
+                  </div>
+                ))}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setServiceLines([...serviceLines, { service_id: '', session_count: 1 }])}
+                    className="px-3 py-2 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-700"
+                  >
+                    {isRTL ? 'خدمة أخرى' : 'Add service'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={saveAssignedServices}
+                    className={`px-3 py-2 text-xs font-bold rounded-lg ${STATUS_COLORS.PAYMENT_PENDING.colorClass}`}
+                  >
+                    {isRTL ? 'إرسال للحسابات' : 'Send to finance'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Cancel and Delete Actions */}
             {session.status !== 'CANCELED' && !session.end_time && (
