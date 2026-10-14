@@ -43,6 +43,7 @@ export default function FinanceManager() {
   const [servicesMap, setServicesMap] = useState({})
   const [sessionSearchTerm, setSessionSearchTerm] = useState('')
   const [sessionStatusFilter, setSessionStatusFilter] = useState('ALL') // 'ALL', 'PENDING', 'VERIFIED'
+  const [showAllSessions, setShowAllSessions] = useState(false)
   const [verifyingSessionId, setVerifyingSessionId] = useState(null)
 
   // ========== State For Patient Packages ==========
@@ -542,6 +543,8 @@ export default function FinanceManager() {
     })
   }, [sessions, sessionSearchTerm, sessionStatusFilter])
 
+  const visibleSessions = showAllSessions ? filteredSessions : filteredSessions.slice(0, 25)
+
   const filteredPatientPackages = useMemo(() => {
     return patientPackages.filter(p => {
       return !packageSearchTerm || 
@@ -585,15 +588,12 @@ export default function FinanceManager() {
       {/* Sleek Compact Header */}
       <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-xl shadow-sm">
-            <ShieldCheck size={24} />
-          </div>
           <div>
-            <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-emerald-700 via-teal-600 to-blue-600 bg-clip-text text-transparent">
-              {isRTL ? 'المالية والحسابات - تأكيد سداد المواعيد والباكدج' : 'Finance & Payment Verification Center'}
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+              {isRTL ? 'المالية' : 'Finance'}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium mt-0.5">
-              {isRTL ? 'توثيق مدفوعات الجلسات الفورية، التسكين الطبي، وإدارة أرصدة الباقات' : 'Verify instant session payments, doctor clearances, and packages'}
+            <p className="text-slate-500 text-sm mt-0.5">
+              {isRTL ? 'تأكيد سداد الجلسات والباقات' : 'Confirm session and package payments'}
             </p>
           </div>
         </div>
@@ -625,81 +625,17 @@ export default function FinanceManager() {
       
       {/* Sleek KPI Stats Cards (High Data Density) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-[11px] font-bold uppercase text-amber-100 tracking-wider">
-                {isRTL ? 'جلسات بانتظار التأكيد ⏳' : 'Pending Sessions ⏳'}
-              </div>
-              <div className="text-2xl font-extrabold mt-1 font-mono">
-                {stats.pendingSessionsCount} <span className="text-xs font-sans font-normal">{isRTL ? 'موعد' : 'pending'}</span>
-              </div>
-            </div>
-            <div className="p-2 bg-white/20 rounded-xl shrink-0">
-              <Clock size={20} className="animate-pulse" />
-            </div>
+        {[
+          [isRTL ? 'بانتظار التأكيد' : 'Pending', stats.pendingSessionsCount],
+          [isRTL ? 'مؤكد الدفع' : 'Verified', stats.verifiedSessionsCount],
+          [isRTL ? 'الباقات' : 'Packages', patientPackages.length],
+          [isRTL ? 'الفواتير' : 'Invoices', stats.invoicesRevenue.toLocaleString()],
+        ].map(([label, value]) => (
+          <div key={label} className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 px-4 py-3">
+            <p className="text-sm text-slate-500">{label}</p>
+            <p className="text-2xl font-semibold text-slate-900 dark:text-white tabular-nums mt-1">{value}</p>
           </div>
-          <div className="text-[10px] text-amber-100/90 mt-2 font-medium bg-black/15 px-2 py-0.5 rounded-md inline-block">
-            {isRTL ? 'شرط لبدء التقييم الطبي' : 'Required clearance'}
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-[11px] font-bold uppercase text-emerald-100 tracking-wider">
-                {isRTL ? 'جلسات مؤكدة الدفع اليوم ✅' : 'Verified Today ✅'}
-              </div>
-              <div className="text-2xl font-extrabold mt-1 font-mono">
-                {stats.verifiedSessionsCount} <span className="text-xs font-sans font-normal">{isRTL ? 'مكتمل' : 'cleared'}</span>
-              </div>
-            </div>
-            <div className="p-2 bg-white/20 rounded-xl shrink-0">
-              <CheckCircle size={20} />
-            </div>
-          </div>
-          <div className="text-[11px] text-emerald-100 mt-2 font-bold font-mono">
-            {isRTL ? 'التحصيلات:' : 'Receipts:'} <span className="text-white font-black">{stats.sessionsRevenue.toLocaleString()} {isRTL ? 'ج.م' : 'EGP'}</span>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-[11px] font-bold uppercase text-blue-100 tracking-wider">
-                {isRTL ? 'باقات المرضى المفعلة 📦' : 'Active Packages 📦'}
-              </div>
-              <div className="text-2xl font-extrabold mt-1 font-mono">
-                {patientPackages.length} <span className="text-xs font-sans font-normal">{isRTL ? 'باقة' : 'pkgs'}</span>
-              </div>
-            </div>
-            <div className="p-2 bg-white/20 rounded-xl shrink-0">
-              <Layers size={20} />
-            </div>
-          </div>
-          <div className="text-[11px] text-blue-100 mt-2 font-bold font-mono">
-            {isRTL ? 'أقيام الباقات:' : 'Total:'} <span className="text-white font-black">{stats.packagesRevenue.toLocaleString()} {isRTL ? 'ج.م' : 'EGP'}</span>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-600 to-fuchsia-700 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-[11px] font-bold uppercase text-purple-100 tracking-wider">
-                {isRTL ? 'إجمالي الفواتير 💰' : 'General Ledger 💰'}
-              </div>
-              <div className="text-2xl font-extrabold mt-1 font-mono">
-                {stats.invoicesRevenue.toLocaleString()} <span className="text-xs font-sans font-normal">{isRTL ? 'ج.م' : 'EGP'}</span>
-              </div>
-            </div>
-            <div className="p-2 bg-white/20 rounded-xl shrink-0">
-              <DollarSign size={20} />
-            </div>
-          </div>
-          <div className="text-[11px] text-purple-100 mt-2 font-medium truncate">
-            {isRTL ? `قيد الانتظار: ${stats.pendingInvoicesAmount} ج.م` : `Pending: ${stats.pendingInvoicesAmount} EGP`}
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Navigation Tabs Bar */}
@@ -806,9 +742,9 @@ export default function FinanceManager() {
           {/* Table with ZERO Clipping and Perfect Proportions */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[700px]">
+              <table className="w-full border-collapse min-w-[700px]">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-gray-800/80 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 font-extrabold text-[11px] uppercase tracking-wider">
+                  <tr className="bg-slate-50 dark:bg-gray-800/80 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 text-xs font-medium">
                     <th className="px-4 py-3">{isRTL ? 'المريض والتعريف' : 'Patient Info'}</th>
                     <th className="px-4 py-3">{isRTL ? 'التسكين والخدمة الطبية' : 'Service & Doctor Assignment'}</th>
                     <th className="px-4 py-3">{isRTL ? 'التاريخ والمكان' : 'Date & Room'}</th>
@@ -824,7 +760,7 @@ export default function FinanceManager() {
                       </td>
                     </tr>
                   ) : (
-                    filteredSessions.map((session) => {
+                    visibleSessions.map((session) => {
                       const isPending = !session.payment_verified
                       const isAssessment = session.session_type === 'ASSESSMENT' || session.session_type === 'تقييم'
                       
@@ -875,7 +811,7 @@ export default function FinanceManager() {
                               <span>{formatDateTime(session.session_date)}</span>
                             </div>
                             <div className="text-[11px] text-slate-500 dark:text-gray-400 font-medium mt-0.5 truncate">
-                              {session.room_title || (isRTL ? 'غرفة العلاج' : 'Room 1')}
+                              {session.room_title || ''}
                             </div>
                           </td>
 
@@ -890,7 +826,7 @@ export default function FinanceManager() {
                               </div>
                             ) : (
                               <div className="font-mono font-black text-slate-900 dark:text-white text-sm flex items-center gap-1">
-                                <span>{session.price ?? 450}</span>
+                                <span className="tabular-nums">{session.price == null ? '—' : session.price}</span>
                                 <span className="text-[11px] font-sans font-bold text-slate-500 dark:text-gray-400">{isRTL ? 'ج.م' : 'EGP'}</span>
                               </div>
                             )}
@@ -927,6 +863,14 @@ export default function FinanceManager() {
                 </tbody>
               </table>
             </div>
+            {filteredSessions.length > 25 && (
+              <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+                <span className="tabular-nums">{visibleSessions.length} من {filteredSessions.length}</span>
+                <button type="button" onClick={() => setShowAllSessions((open) => !open)} className="font-medium text-[#1B4F8A]">
+                  {showAllSessions ? (isRTL ? 'عرض ٢٥ فقط' : 'Show 25') : (isRTL ? 'عرض الكل' : 'Show all')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
